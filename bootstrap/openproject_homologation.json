@@ -1,0 +1,42 @@
+{
+  "project_identifier": "homologacao-gestao-demandas",
+  "types": ["User Story", "Bug"],
+  "priorities": [
+    {"name": "Baixa", "position": 1, "default": false},
+    {"name": "Normal", "position": 2, "default": true},
+    {"name": "Alta", "position": 3, "default": false},
+    {"name": "Imediata", "position": 4, "default": false}
+  ],
+  "customers": [
+    "ANGRA DOS REIS-RJ",
+    "ANÁPOLIS-GO",
+    "GOIÂNIA-GO",
+    "GOIANIRA-GO",
+    "JOÃO PESSOA-PB",
+    "PALMAS-TO",
+    "SANTARÉM-PA"
+  ],
+  "custom_fields": [
+    {"name": "Versão hml", "format": "string", "required": false},
+    {"name": "Pontos de história", "format": "float", "required": false},
+    {"name": "Status QA", "format": "list", "required": false, "values": ["Não iniciado", "Em andamento", "Aguardando testes", "Aprovado", "Reprovado"]},
+    {"name": "Entrega Parcial", "format": "bool", "required": false},
+    {"name": "Entrega Parcial - Link", "format": "link", "required": false},
+    {"name": "Data Entrega", "format": "date", "required": false},
+    {"name": "Cliente", "format": "list", "required": true, "values_from": "customers"},
+    {"name": "Link Devops", "format": "link", "required": false},
+    {"name": "WorkItem DevOps", "format": "integer", "required": false},
+    {"name": "GitHub PR", "format": "link", "required": false},
+    {"name": "ServiceDesk", "format": "integer", "required": false},
+    {"name": "Link ServiceDesk", "format": "link", "required": false},
+    {"name": "Build QA", "format": "string", "required": false}
+  ],
+  "test_users": [
+    {"login": "ana.requisitos", "firstname": "Ana", "lastname": "Requisitos", "mail": "ana.requisitos@mvp.local"},
+    {"login": "bruno.desenvolvimento", "firstname": "Bruno", "lastname": "Desenvolvimento", "mail": "bruno.desenvolvimento@mvp.local"},
+    {"login": "carla.qa", "firstname": "Carla", "lastname": "Qualidade", "mail": "carla.qa@mvp.local"},
+    {"login": "diego.lideranca", "firstname": "Diego", "lastname": "Liderança", "mail": "diego.lideranca@mvp.local"},
+    {"login": "elisa.produto", "firstname": "Elisa", "lastname": "Produto", "mail": "elisa.produto@mvp.local"},
+    {"login": "fabio.relacionamento", "firstname": "Fábio", "lastname": "Relacionamento", "mail": "fabio.relacionamento@mvp.local"}
+  ]
+}
