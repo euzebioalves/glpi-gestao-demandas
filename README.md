@@ -96,7 +96,7 @@ Dentro da rede Docker, utilize estes endereços:
 
 Não configure webhooks com `localhost`: dentro de um contêiner, `localhost` aponta para o próprio contêiner.
 
-O GLPI utiliza o endereço fixo `172.30.250.10` nessa rede. O OpenProject permite
+O GLPI utiliza o endereço fixo `172.31.251.10` nessa rede. O OpenProject permite
 somente esse endereço em sua proteção contra SSRF, para que o webhook alcance o
 GLPI sem liberar indiscriminadamente outras redes privadas.
 O Compose autoriza `openproject` como hostname interno adicional, mantendo `localhost:8280` como hostname público da homologação.
@@ -199,12 +199,31 @@ O script exige a confirmação textual `APAGAR` e remove os volumes com os banco
 
 Os dados ficam em volumes nomeados do Docker:
 
-- `demandas-mvp_glpi_db_data`;
-- `demandas-mvp_glpi_data`;
-- `demandas-mvp_openproject_pgdata`;
-- `demandas-mvp_openproject_assets`.
+- `demandas-hml1109_glpi_db_data`;
+- `demandas-hml1109_glpi_data`;
+- `demandas-hml1109_openproject_pgdata`;
+- `demandas-hml1109_openproject_assets`.
 
 Isso evita problemas comuns de permissão e desempenho ao montar bancos diretamente em pastas do Windows.
+
+### Isolamento de ambientes anteriores
+
+Esta homologação usa o projeto Docker `demandas-hml1109`, containers com o mesmo
+prefixo, rede `demandas-hml1109-network` e volumes exclusivos. Isso impede que
+um `.env` recém-gerado seja utilizado contra um banco persistido por versões
+anteriores do pacote.
+
+Se uma versão anterior estiver em execução, pare-a **antes** de atualizar os
+arquivos, sem remover seus volumes:
+
+```powershell
+docker compose down
+git pull origin main
+.\start.ps1
+```
+
+Os volumes antigos permanecem preservados no Docker e não são montados pela
+homologação 11.0.9.
 
 ## Limites deste pacote
 

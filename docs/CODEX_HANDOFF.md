@@ -99,6 +99,11 @@ Somente essas entradas são enviadas ao OpenProject. Horas de ponto nunca devem 
 - URL pública padrão: `http://localhost:8280`;
 - webhook interno: `http://glpi/plugins/demandas/webhook.php`.
 
+O Compose da homologação 11.0.9 usa o projeto Docker `demandas-hml1109`, rede
+e volumes exclusivos. Não reutilize nomes de projeto ou volumes de homologações
+anteriores, pois as credenciais gravadas pelo MariaDB na primeira inicialização
+não são alteradas automaticamente quando o arquivo `.env` muda.
+
 Dentro do Docker, `localhost` não deve ser usado entre contêineres.
 
 ### Identidade e token

@@ -1,9 +1,9 @@
-name: demandas-mvp
+name: demandas-hml1109
 
 services:
   glpi-db:
     image: mariadb:11.4
-    container_name: demandas-glpi-db
+    container_name: demandas-hml1109-glpi-db
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: ${GLPI_DB_ROOT_PASSWORD}
@@ -27,7 +27,7 @@ services:
 
   glpi:
     image: glpi/glpi:11.0.9
-    container_name: demandas-glpi
+    container_name: demandas-hml1109-glpi
     restart: unless-stopped
     depends_on:
       glpi-db:
@@ -54,11 +54,11 @@ services:
       start_period: 90s
     networks:
       demandas:
-        ipv4_address: 172.30.250.10
+        ipv4_address: 172.31.251.10
 
   openproject:
     image: openproject/openproject:17.7.2
-    container_name: demandas-openproject
+    container_name: demandas-hml1109-openproject
     restart: unless-stopped
     environment:
       OPENPROJECT_HOST__NAME: ${OPENPROJECT_HOST_NAME}
@@ -66,7 +66,7 @@ services:
       OPENPROJECT_HTTPS: "false"
       OPENPROJECT_HSTS: "false"
       # Autoriza exclusivamente o endpoint interno do GLPI para entregas de webhook.
-      OPENPROJECT_SSRF_PROTECTION_IP_ALLOWLIST: "172.30.250.10/32"
+      OPENPROJECT_SSRF_PROTECTION_IP_ALLOWLIST: "172.31.251.10/32"
       SECRET_KEY_BASE: "${SECRET_KEY_BASE:?SECRET_KEY_BASE não configurado no .env}"
       OPENPROJECT_DEFAULT__LANGUAGE: pt-BR
       OPENPROJECT_SEED__ADMIN__USER__PASSWORD: ${OPENPROJECT_ADMIN_PASSWORD}
@@ -88,10 +88,10 @@ services:
 
 networks:
   demandas:
-    name: demandas-mvp-network
+    name: demandas-hml1109-network
     ipam:
       config:
-        - subnet: 172.30.250.0/24
+        - subnet: 172.31.251.0/24
 
 volumes:
   glpi_db_data:
