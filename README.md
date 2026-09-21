@@ -10,7 +10,7 @@ Ambiente local de homologação para validar a integração entre tickets do GLP
 
 | Componente | Versão | Endereço local |
 |---|---:|---|
-| GLPI | 11.0.7 | <http://localhost:8180> |
+| GLPI | 11.0.9 | <http://localhost:8180> |
 | MariaDB | 11.4 | Somente na rede Docker |
 | OpenProject | 17.7.2 | <http://localhost:8280> |
 
@@ -126,11 +126,37 @@ Não utilize a conta `admin` como identidade permanente da integração.
 ## Preparação do GLPI para o MVP
 
 1. Altere as senhas dos usuários padrão.
-2. Crie uma entidade ou grupo de teste.
-3. Crie um perfil interno para requisitos.
-4. Crie um perfil de cliente para validar a visão restrita.
-5. Cadastre tickets fictícios sem informações reais ou sensíveis.
-6. Habilite a API e os webhooks necessários somente quando o plugin começar a utilizá-los.
+2. Execute o bootstrap para criar a massa de homologação semelhante à estrutura operacional.
+3. Valide os perfis interno, técnico e de cliente e suas visões do plugin.
+4. Habilite a API e os webhooks necessários somente quando o plugin começar a utilizá-los.
+
+### Massa de homologação do GLPI
+
+O comando `./configure-mvp.ps1` cria, de forma idempotente e sem utilizar dados
+reais de produção:
+
+- entidade raiz **PONTO ID**;
+- entidades de clientes: SEDUC-TO, GOIÂNIA-GO, SANTARÉM-PA,
+  ANGRA-DOS-REIS-RJ e JOÃO-PESSOA-PB;
+- duas unidades subordinadas para cada cliente, permitindo validar herança e
+  restrição por entidade;
+- grupos internos equivalentes aos principais papéis operacionais;
+- perfis de requisitos, suporte, QA e cliente;
+- usuários fictícios vinculados às entidades corretas;
+- chamados de melhoria, erro, integração e suporte distribuídos entre os
+  clientes, com diferentes estados e prioridades.
+
+A massa é representativa: ela reproduz relações e cenários relevantes sem copiar
+nomes, e-mails, descrições ou demais informações pessoais da produção.
+
+Depois do bootstrap, valide versão e quantidades mínimas com:
+
+```powershell
+.\validate-homologacao.ps1
+```
+
+O resultado esperado contém `"ready": true`, pelo menos 16 entidades (raiz,
+clientes e unidades), nove grupos e dez chamados fictícios.
 
 O diretório `plugins` já está montado no local esperado pelo GLPI. A primeira versão do plugin está em `plugins/demandas`.
 

@@ -10,7 +10,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.17.3` e dev
 
 | Componente | Versão de homologação | Endereço padrão |
 |---|---:|---|
-| GLPI | 11.0.7 | `http://localhost:8180` |
+| GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
 | Plugin Gestão de Demandas | 0.17.3 | `plugins/demandas` |
@@ -202,4 +202,3 @@ Uma solicitação deve informar:
 - se a tarefa autoriza somente diagnóstico ou também implementação.
 
 Peça ao Codex para ler `AGENTS.md` e este documento antes de agir, preservar alterações não relacionadas, executar as validações possíveis e declarar claramente qualquer teste que não pôde ser executado.
-

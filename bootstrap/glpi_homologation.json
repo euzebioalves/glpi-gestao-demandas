@@ -1,0 +1,33 @@
+{
+  "root_entity": "PONTO ID",
+  "entities": [
+    {"key": "seduc_to", "name": "SEDUC-TO", "units": ["ESCOLA ESTADUAL GIRASSOL", "COLEGIO ESTADUAL ARAGUAIA"]},
+    {"key": "goiania_go", "name": "GOIANIA-GO", "units": ["ESCOLA MUNICIPAL CERRADO", "CMEI VILA NOVA"]},
+    {"key": "santarem_pa", "name": "SANTAREM-PA", "units": ["ESCOLA MUNICIPAL TAPAJOS", "UMEI ALTER DO CHAO"]},
+    {"key": "angra_rj", "name": "ANGRA-DOS-REIS-RJ", "units": ["ESCOLA MUNICIPAL ILHA GRANDE", "CEMEI COSTA VERDE"]},
+    {"key": "joao_pessoa_pb", "name": "JOAO-PESSOA-PB", "units": ["ESCOLA MUNICIPAL TAMBAU", "CREI CABO BRANCO"]}
+  ],
+  "groups": [
+    "ANALISTA SUPORTE",
+    "SEDUC",
+    "SEDUC > SGE",
+    "SEDUC > RH",
+    "TECNICO LOCAL",
+    "QA",
+    "TECNICOS INTERNOS",
+    "SEDUC > ESTATISTICA",
+    "GAE"
+  ],
+  "tickets": [
+    {"entity": "seduc_to", "title": "[Melhoria] Alternancia semanal entre ensino e atividades complementares", "content": "Chamado ficticio para validar demanda funcional e criacao de Work Package.", "status": 1, "priority": 3},
+    {"entity": "seduc_to", "title": "[Erro] Divergencia no total mensal de frequencia", "content": "Cenario ficticio de investigacao de frequencia mensal.", "status": 2, "priority": 4},
+    {"entity": "goiania_go", "title": "[Melhoria] Exportacao do mapa educacional conforme filtros", "content": "Solicitacao ficticia de exportacao da tela filtrada.", "status": 3, "priority": 3},
+    {"entity": "goiania_go", "title": "[Suporte] Revisao do cadastro de programas financeiros", "content": "Cenario ficticio para validar classificacao e visao do cliente.", "status": 4, "priority": 2},
+    {"entity": "santarem_pa", "title": "[Melhoria] Relatorio de licitacao de alimentos", "content": "Chamado ficticio para distinguir unidades e localizacao diferenciada.", "status": 1, "priority": 3},
+    {"entity": "santarem_pa", "title": "[Integracao] Layout de exportacao para transporte escolar", "content": "Cenario ficticio de integracao com arquivo externo.", "status": 2, "priority": 3},
+    {"entity": "angra_rj", "title": "[Melhoria] Adequacao de carga horaria RTI e RETT", "content": "Cenario ficticio de regra funcional de carga horaria.", "status": 3, "priority": 4},
+    {"entity": "angra_rj", "title": "[Erro] Duplicidade de vinculo em turma multisseriada", "content": "Cenario ficticio de correcao de vinculo.", "status": 2, "priority": 4},
+    {"entity": "joao_pessoa_pb", "title": "[Integracao] Validacao mensal do programa de incentivo", "content": "Cenario ficticio de integracao e conferencia mensal.", "status": 1, "priority": 3},
+    {"entity": "joao_pessoa_pb", "title": "[Suporte] Orientacao para fechamento do periodo", "content": "Cenario ficticio de atendimento ao cliente.", "status": 5, "priority": 2}
+  ]
+}

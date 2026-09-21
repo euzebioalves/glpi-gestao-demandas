@@ -78,7 +78,7 @@ function ensureProfile(string $name, int $sourceProfileId, string $interface, ar
     return $profileId;
 }
 
-function ensureUser(string $login, string $firstName, string $lastName, string $email, string $password, int $profileId, array &$result): int
+function ensureUser(string $login, string $firstName, string $lastName, string $email, string $password, int $profileId, int $entityId, array &$result): int
 {
     $user = new User();
     $found = $user->find(['name' => $login]);
@@ -105,18 +105,106 @@ function ensureUser(string $login, string $firstName, string $lastName, string $
     $links = $profileUser->find([
         'users_id' => $userId,
         'profiles_id' => $profileId,
-        'entities_id' => 0,
+        'entities_id' => $entityId,
     ]);
     if (empty($links)) {
         $profileUser->add([
             'users_id' => $userId,
             'profiles_id' => $profileId,
-            'entities_id' => 0,
+            'entities_id' => $entityId,
             'is_recursive' => 1,
             'is_dynamic' => 0,
         ]);
     }
     return $userId;
+}
+
+function ensureEntity(string $name, int $parentId, array &$result): int
+{
+    $entity = new Entity();
+    $found = $entity->find(['name' => $name, 'entities_id' => $parentId]);
+    if ($found !== []) {
+        $id = (int) array_key_first($found);
+        $result['reused'][] = "entity:$id:$name";
+        return $id;
+    }
+
+    $id = (int) $entity->add([
+        'name' => $name,
+        'entities_id' => $parentId,
+        'comment' => 'Massa fictícia da homologação do plugin Gestão de Demandas.',
+    ]);
+    if ($id <= 0) {
+        throw new RuntimeException("Não foi possível criar a entidade $name.");
+    }
+    $result['created'][] = "entity:$id:$name";
+    return $id;
+}
+
+function ensureGroup(string $name, array &$result): int
+{
+    $group = new Group();
+    $found = $group->find(['name' => $name, 'entities_id' => 0]);
+    if ($found !== []) {
+        $id = (int) array_key_first($found);
+        $result['reused'][] = "group:$id:$name";
+        return $id;
+    }
+
+    $id = (int) $group->add([
+        'name' => $name,
+        'entities_id' => 0,
+        'is_recursive' => 1,
+    ]);
+    if ($id <= 0) {
+        throw new RuntimeException("Não foi possível criar o grupo $name.");
+    }
+    $result['created'][] = "group:$id:$name";
+    return $id;
+}
+
+function ensureGroupMembership(int $userId, int $groupId): void
+{
+    $membership = new Group_User();
+    if ($membership->find(['users_id' => $userId, 'groups_id' => $groupId]) === []) {
+        $membership->add([
+            'users_id' => $userId,
+            'groups_id' => $groupId,
+            'is_dynamic' => 0,
+        ]);
+    }
+}
+
+function ensureTicket(array $definition, int $entityId, int $requesterId, int $assigneeId, array &$result): int
+{
+    $ticket = new Ticket();
+    $found = $ticket->find([
+        'name' => (string) $definition['title'],
+        'entities_id' => $entityId,
+    ]);
+    if ($found !== []) {
+        $id = (int) array_key_first($found);
+        $result['reused'][] = "ticket:$id";
+        return $id;
+    }
+
+    $id = (int) $ticket->add([
+        'name' => (string) $definition['title'],
+        'content' => (string) $definition['content'],
+        'entities_id' => $entityId,
+        'status' => (int) $definition['status'],
+        'type' => 2,
+        'urgency' => (int) $definition['priority'],
+        'impact' => (int) $definition['priority'],
+        'priority' => (int) $definition['priority'],
+        '_users_id_requester' => $requesterId,
+        '_users_id_assign' => $assigneeId,
+    ]);
+    if ($id <= 0) {
+        throw new RuntimeException('Não foi possível criar o chamado fictício: ' . $definition['title']);
+    }
+    $result['created'][] = "ticket:$id";
+    return $id;
 }
 
 function ensureDemandasRights(int $profileId, array $enabledRights): void
@@ -168,8 +256,32 @@ function ensureDemandasRights(int $profileId, array $enabledRights): void
 }
 
 try {
+    $catalogPath = '/opt/demandas-bootstrap/glpi_homologation.json';
+    $catalog = json_decode((string) file_get_contents($catalogPath), true, 512, JSON_THROW_ON_ERROR);
+
+    // A entidade de ID zero é a raiz estrutural do GLPI e não pode ser recriada.
+    $rootName = (string) $catalog['root_entity'];
+    $escapedRootName = $DB->escape($rootName);
+    $DB->doQuery("UPDATE glpi_entities SET name = '$escapedRootName' WHERE id = 0");
+
+    $entityIds = [];
+    foreach ($catalog['entities'] as $entityDefinition) {
+        $clientId = ensureEntity((string) $entityDefinition['name'], 0, $result);
+        $entityIds[(string) $entityDefinition['key']] = $clientId;
+        foreach ($entityDefinition['units'] as $unitName) {
+            ensureEntity((string) $unitName, $clientId, $result);
+        }
+    }
+
+    $groupIds = [];
+    foreach ($catalog['groups'] as $groupName) {
+        $groupIds[(string) $groupName] = ensureGroup((string) $groupName, $result);
+    }
+
     $requirementsProfileId = ensureProfile('Requisitos — Gestão de Demandas', 6, 'central', $result);
     $customerProfileId = ensureProfile('Cliente — Gestão de Demandas', 1, 'helpdesk', $result);
+    $supportProfileId = ensureProfile('Analista de suporte — Homologação', 6, 'central', $result);
+    $qaProfileId = ensureProfile('QA — Homologação', 6, 'central', $result);
     ensureDemandasRights($requirementsProfileId, [
         'demandas_view_public',
         'demandas_view_technical',
@@ -194,49 +306,82 @@ try {
         'requisitos.mvp@mvp.local',
         $requirementsPassword,
         $requirementsProfileId,
+        0,
         $result
     );
+    $supportUserId = ensureUser(
+        'suporte.hml',
+        'Analista',
+        'Suporte HML',
+        'suporte.hml@example.invalid',
+        $requirementsPassword,
+        $supportProfileId,
+        0,
+        $result
+    );
+    $qaUserId = ensureUser(
+        'qa.hml',
+        'Analista',
+        'QA HML',
+        'qa.hml@example.invalid',
+        $requirementsPassword,
+        $qaProfileId,
+        0,
+        $result
+    );
+    ensureGroupMembership($requirementsUserId, $groupIds['TECNICOS INTERNOS']);
+    ensureGroupMembership($supportUserId, $groupIds['ANALISTA SUPORTE']);
+    ensureGroupMembership($qaUserId, $groupIds['QA']);
+
+    $customerUsers = [];
+    foreach ($catalog['entities'] as $entityDefinition) {
+        $key = (string) $entityDefinition['key'];
+        $customerUsers[$key] = ensureUser(
+            'cliente.' . $key,
+            'Cliente',
+            (string) $entityDefinition['name'],
+            'cliente.' . $key . '@example.invalid',
+            $customerPassword,
+            $customerProfileId,
+            $entityIds[$key],
+            $result
+        );
+        ensureGroupMembership($customerUsers[$key], $groupIds['SEDUC']);
+    }
+
+    // Mantém o usuário genérico usado por versões anteriores do pacote.
     $customerUserId = ensureUser(
         'cliente.mvp',
         'Cliente',
         'MVP',
-        'cliente.mvp@mvp.local',
+        'cliente.mvp@example.invalid',
         $customerPassword,
         $customerProfileId,
+        0,
         $result
     );
 
-    $ticket = new Ticket();
-    $tickets = $ticket->find(['name' => '[MVP] Solicitação para integração GLPI e OpenProject']);
-    if (empty($tickets)) {
-        $ticketId = (int) $ticket->add([
-            'name' => '[MVP] Solicitação para integração GLPI e OpenProject',
-            'content' => 'Ticket fictício criado pelo bootstrap para validar a criação e a rastreabilidade de Work Packages.',
-            'entities_id' => 0,
-            'status' => 1,
-            'type' => 2,
-            'urgency' => 3,
-            'impact' => 3,
-            'priority' => 3,
-            '_users_id_requester' => $customerUserId,
-            '_users_id_assign' => $requirementsUserId,
-        ]);
-        if ($ticketId <= 0) {
-            $result['warnings'][] = 'Os usuários e perfis foram criados, mas o ticket fictício não pôde ser criado.';
-        } else {
-            $result['created'][] = "ticket:$ticketId";
-            $result['ticket_id'] = $ticketId;
-        }
-    } else {
-        $ticketId = (int) array_key_first($tickets);
-        $result['reused'][] = "ticket:$ticketId";
-        $result['ticket_id'] = $ticketId;
+    $ticketIds = [];
+    foreach ($catalog['tickets'] as $ticketDefinition) {
+        $key = (string) $ticketDefinition['entity'];
+        $ticketIds[] = ensureTicket(
+            $ticketDefinition,
+            $entityIds[$key],
+            $customerUsers[$key],
+            $requirementsUserId,
+            $result
+        );
     }
+    $result['ticket_id'] = $ticketIds[0] ?? null;
+    $result['ticket_ids'] = $ticketIds;
+    $result['entity_ids'] = $entityIds;
 
     $result['requirements_profile_id'] = $requirementsProfileId;
     $result['customer_profile_id'] = $customerProfileId;
     $result['requirements_user_id'] = $requirementsUserId;
     $result['customer_user_id'] = $customerUserId;
+    $result['support_user_id'] = $supportUserId;
+    $result['qa_user_id'] = $qaUserId;
     echo 'MVP_RESULT=' . json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 } catch (Throwable $exception) {
     fwrite(STDERR, 'MVP_ERROR=' . $exception->getMessage() . PHP_EOL);
