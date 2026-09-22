@@ -1,8 +1,8 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
-## Plugin 0.17.6
+## Plugin 0.17.7
 
-A versão 0.17.6 disponibiliza o token pessoal do OpenProject em **Minhas configurações** para todos os usuários, sem expor as configurações globais.
+A versão 0.17.7 organiza o calendário de ponto no padrão brasileiro (domingo a sábado) e mostra o intervalo de almoço registrado em cada dia.
 
 Ambiente local de homologação para validar a integração entre tickets do GLPI e Work Packages do OpenProject.
 

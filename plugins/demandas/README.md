@@ -1,5 +1,11 @@
 # Gestão de Demandas
 
+## Versão 0.17.7
+
+- organiza o calendário de ponto no padrão brasileiro, de domingo a sábado;
+- apresenta o intervalo de almoço registrado entre **Saída Manhã** e **Entrada Tarde**, com ícone e duração;
+- mantém o cálculo de jornada e do banco de horas inalterado.
+
 ## Versão 0.17.6
 
 - adiciona a aba pessoal **OpenProject** em **Minhas configurações** para todos os usuários autenticados;
