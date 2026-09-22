@@ -47,6 +47,7 @@ Antes de alterar o código, leia integralmente:
 6. Teste com perfil administrativo, equipe interna e perfil de cliente.
 7. Quando houver integração, teste sucesso, indisponibilidade, 401/403, validação e repetição da operação.
 8. Atualize `plugins/demandas/README.md`, o número em `setup.php` e a documentação afetada.
+9. Sempre que uma novidade alterar o processo de configuração, tokens, webhook ou fluxo administrativo, atualize também a aba **Tutorial** da configuração do plugin.
 
 ## Critérios mínimos antes de entregar
 

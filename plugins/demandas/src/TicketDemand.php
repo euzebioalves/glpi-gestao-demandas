@@ -211,6 +211,9 @@ final class TicketDemand extends CommonDBTM
         echo '</div>';
 
         if ($isInternal) {
+            if ((Profile::has(Profile::CREATE_WORK_PACKAGE) || Profile::has(Profile::SYNC_WORK_PACKAGE)) && !Config::hasPersonalToken()) {
+                echo "<div class='alert alert-warning mt-3 mb-0'>Configure seu token pessoal do OpenProject para criar ou sincronizar Work Packages manualmente. <a href='/front/preference.php?forcetab=GlpiPlugin%5CDemandas%5COpenProjectPersonalToken%241'>Configurar meu acesso</a>.</div>";
+            }
             echo "<hr><h4>Work Packages vinculadas</h4><div class='table-responsive'><table class='table table-sm table-vcenter'>";
             echo '<thead><tr><th>WP</th><th>Status</th><th>Atribuído para</th><th>Responsável</th><th>Data de abertura</th><th>Projeto</th><th>Prioridade</th><th>Cliente</th><th>Tempo</th></tr></thead><tbody>';
             foreach ($links as $linked) {
@@ -323,12 +326,12 @@ final class TicketDemand extends CommonDBTM
         }
 
         $wpId = (int) ($link['openproject_work_package_id'] ?? 0);
-        if ($wpId <= 0 || !Config::isReady()) {
+        if ($wpId <= 0 || !Config::hasPersonalToken()) {
             return [];
         }
 
         try {
-            $client = new OpenProjectClient();
+            $client = OpenProjectClient::forCurrentUser();
             $details = $client->summarizeWorkPackage($client->getWorkPackage($wpId));
             if ($details !== []) {
                 $db = \DBConnection::getReadConnection();
@@ -389,8 +392,8 @@ final class TicketDemand extends CommonDBTM
 
     private static function showCreateForm(Ticket $ticket, bool $hasLinkedWorkPackages = false): void
     {
-        if (!Config::isReady()) {
-            echo "<div class='alert alert-warning'>Configure a conexão com o OpenProject antes de criar uma Work Package.</div>";
+        if (!Config::hasPersonalToken()) {
+            echo "<div class='alert alert-warning'>Configure o seu token de acesso ao OpenProject antes de criar uma Work Package. <a href='/front/preference.php?forcetab=GlpiPlugin%5CDemandas%5COpenProjectPersonalToken%241'>Configurar meu acesso</a>.</div>";
             return;
         }
 
@@ -400,7 +403,7 @@ final class TicketDemand extends CommonDBTM
         }
 
         try {
-            $projects = (new OpenProjectClient())->getProjects();
+            $projects = OpenProjectClient::forCurrentUser()->getProjects();
         } catch (\Throwable $exception) {
             echo "<div class='alert alert-danger'>" . htmlspecialchars($exception->getMessage()) . '</div>';
             return;

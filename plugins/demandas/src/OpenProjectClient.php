@@ -12,24 +12,42 @@ final class OpenProjectClient
 {
     private Client $client;
     private array $creationSchemas = [];
+    private bool $allowsWorkPackageCreation;
 
-    public function __construct()
+    private function __construct(string $token, bool $allowsWorkPackageCreation)
     {
-        if (!Config::isReady()) {
-            throw new RuntimeException('A integração com o OpenProject ainda não foi configurada.');
+        if (trim($token) === '' || trim((string) Config::get('openproject_internal_url', '')) === '') {
+            throw new RuntimeException('O token de acesso ao OpenProject ainda não foi configurado.');
         }
+
+        $this->allowsWorkPackageCreation = $allowsWorkPackageCreation;
 
         $this->client = new Client([
             'base_uri' => rtrim((string) Config::get('openproject_internal_url'), '/') . '/',
             'timeout' => max(2, (int) Config::get('request_timeout', 15)),
             'connect_timeout' => 5,
-            'auth' => ['apikey', Config::get('openproject_api_token')],
+            'auth' => ['apikey', $token],
             'headers' => [
                 'Accept' => 'application/hal+json',
                 'Content-Type' => 'application/json',
                 'User-Agent' => 'GLPI-Demandas/' . PLUGIN_DEMANDAS_VERSION,
             ],
         ]);
+    }
+
+    public static function forCurrentUser(): self
+    {
+        return new self(Config::personalToken(), true);
+    }
+
+    public static function forUser(int $userId): self
+    {
+        return new self(Config::personalToken($userId), true);
+    }
+
+    public static function forAutomation(): self
+    {
+        return new self(Config::automationToken(), false);
     }
 
     public function testConnection(): array
@@ -108,6 +126,9 @@ final class OpenProjectClient
         string $additionalReason = ''
     ): array
     {
+        if (!$this->allowsWorkPackageCreation) {
+            throw new RuntimeException('O token automático não pode ser utilizado para criar Work Packages.');
+        }
         $project = $this->request('GET', 'projects/' . $projectId);
         $types = $this->getTypesForProject($projectId);
         $allowedType = null;

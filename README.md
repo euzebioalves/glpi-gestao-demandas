@@ -1,8 +1,8 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
-## Plugin 0.17.3
+## Plugin 0.17.6
 
-A versão 0.17.3 move o lançamento de entradas de tempo para um modal, permite finalizar diretamente na grid uma entrada em andamento e transforma o número da WP em link direto para o OpenProject.
+A versão 0.17.6 disponibiliza o token pessoal do OpenProject em **Minhas configurações** para todos os usuários, sem expor as configurações globais.
 
 Ambiente local de homologação para validar a integração entre tickets do GLPI e Work Packages do OpenProject.
 
@@ -240,7 +240,7 @@ Este ambiente foi desenhado para homologação local. Antes de qualquer uso exte
 
 ## Plugin Gestão de Demandas
 
-A versão 0.8.0 do plugin inclui:
+O plugin inclui, entre outros recursos:
 
 1. página de configuração da conexão;
 2. teste de comunicação com a API do OpenProject;
@@ -276,7 +276,7 @@ docker compose up -d
 O comando `down` acima remove os contêineres e a rede antiga, mas preserva os
 volumes e os bancos. Não acrescente a opção `-v`.
 
-Para instalar, acesse **Configuração > Plugins** no GLPI, localize **Gestão de Demandas**, clique em **Instalar** e depois em **Ativar**. Abra a configuração do plugin e informe as URLs e o token presente no `integration.env`. Projetos, tipos e campos de origem são identificados automaticamente.
+Para instalar, acesse **Configuração > Plugins** no GLPI, localize **Gestão de Demandas**, clique em **Instalar** e depois em **Ativar**. Com o perfil ativo **Super-Admin**, abra a configuração do plugin e informe as URLs e o token do usuário técnico presente no `integration.env`; ele é usado exclusivamente nas sincronizações automáticas. Cada usuário que criar ou sincronizar Work Packages manualmente deve abrir a aba **Meu acesso ao OpenProject** e registrar seu próprio token. Projetos, tipos e campos de origem são identificados automaticamente.
 
 ## Configuração automatizada para o plugin
 

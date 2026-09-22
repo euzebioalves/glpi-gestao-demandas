@@ -10,10 +10,26 @@ use GlpiPlugin\Demandas\ClassificationPolicy;
 use GlpiPlugin\Demandas\FieldsClassificationProvider;
 use GlpiPlugin\Demandas\WorkPackageTemplate;
 
-DemandasProfile::checkRight(DemandasProfile::MANAGE_CONFIG);
+Session::checkLoginUser();
+$isSuperAdmin = DemandasConfig::isActiveSuperAdmin();
+$currentUserId = (int) Session::getLoginUserID();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
+        if (isset($_POST['save_personal_token']) || isset($_POST['test_personal_token'])) {
+            DemandasConfig::savePersonalToken($currentUserId, (string) ($_POST['personal_openproject_api_token'] ?? ''));
+            if (isset($_POST['test_personal_token'])) {
+                OpenProjectClient::forCurrentUser()->testConnection();
+                Session::addMessageAfterRedirect('Seu token foi salvo e a conexão com o OpenProject foi validada.', true, INFO);
+            } else {
+                Session::addMessageAfterRedirect('Seu token de acesso ao OpenProject foi salvo.', true, INFO);
+            }
+            Html::redirect('/plugins/demandas/front/config.form.php?tab=my-access');
+        }
+
+        if (!$isSuperAdmin) {
+            throw new Glpi\Exception\Http\AccessDeniedHttpException();
+        }
         $input = $_POST;
         $input['ticket_log_enabled'] = isset($_POST['ticket_log_enabled']) ? '1' : '0';
         $phases = [];
@@ -94,9 +110,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         DemandasConfig::save($input);
         if (isset($_POST['test_connection'])) {
-            (new OpenProjectClient())->testConnection();
+            OpenProjectClient::forAutomation()->testConnection();
             Session::addMessageAfterRedirect(
-                'Conexão realizada com sucesso. Projetos e tipos serão obtidos automaticamente no ticket.',
+                'Conexão automática realizada com sucesso. As ações manuais usarão o token pessoal de cada usuário.',
                 true,
                 INFO
             );
@@ -107,16 +123,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
     }
 
-    Html::redirect('/plugins/demandas/front/config.form.php');
+    $redirectTab = (string) ($_GET['tab'] ?? 'automation');
+    if (!in_array($redirectTab, ['automation', 'classification', 'templates'], true)) {
+        $redirectTab = 'automation';
+    }
+    Html::redirect('/plugins/demandas/front/config.form.php?tab=' . rawurlencode($redirectTab));
 }
 
 $config = DemandasConfig::all();
 $config['webhook_secret'] = DemandasConfig::webhookSecret();
 $statuses = [];
 $statusLoadError = null;
-if (DemandasConfig::isReady()) {
+if ($isSuperAdmin && DemandasConfig::isAutomationReady()) {
     try {
-        $statuses = (new OpenProjectClient())->getStatuses();
+        $statuses = OpenProjectClient::forAutomation()->getStatuses();
     } catch (Throwable $exception) {
         $statusLoadError = $exception->getMessage();
     }
@@ -136,9 +156,9 @@ foreach (array_keys($fieldsPluginFields) as $fieldId) {
     }
 }
 $typeNames = [];
-if (DemandasConfig::isReady()) {
+if ($isSuperAdmin && DemandasConfig::isAutomationReady()) {
     try {
-        foreach ((new OpenProjectClient())->getTypes() as $type) {
+        foreach (OpenProjectClient::forAutomation()->getTypes() as $type) {
             $name = trim((string) ($type['name'] ?? ''));
             if ($name !== '') $typeNames[$name] = $name;
         }
@@ -158,13 +178,97 @@ function demandasField(string $name, string $label, array $config, string $type 
     echo "<input class='form-control' id='{$name}' name='{$name}' type='{$type}' value='{$value}'></div>";
 }
 
-echo "<div class='container-xl'><div class='card'><div class='card-header'><h3 class='card-title'>Integração com OpenProject</h3></div><div class='card-body'>";
-echo "<form method='post'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><div class='row g-3'>";
+function demandasTabPaneAttributes(string $id, bool $isActive): string
+{
+    return " id='{$id}' class='tab-pane' role='tabpanel' style='display: " . ($isActive ? 'block' : 'none') . "'";
+}
+
+function demandasRenderConfigurationTutorial(): void
+{
+    echo <<<'HTML'
+<div class="card">
+  <div class="card-header"><h3 class="card-title">Tutorial de configuração</h3></div>
+  <div class="card-body">
+    <div class="alert alert-info">
+      <strong>Quem configura:</strong> somente o perfil ativo <strong>Super-Admin</strong>. O token automático é exclusivo da automação; cada pessoa que cria ou sincroniza Work Packages manualmente configura o próprio token na aba <strong>Meu acesso ao OpenProject</strong>.
+    </div>
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <h3 class="h4">Configuração inicial</h3>
+        <ol class="mb-0">
+          <li class="mb-3"><strong>Prepare o usuário técnico no OpenProject.</strong> Crie um usuário de serviço com as permissões mínimas necessárias para consultar e atualizar Work Packages. Gere o token dele e não use uma conta pessoal ou a conta <code>admin</code>.</li>
+          <li class="mb-3"><strong>Conecte o plugin.</strong> Na aba <strong>Integração e automação</strong>, informe a URL interna da API, a URL externa de navegação, a URL externa do GLPI e o token automático do bot. Clique em <strong>Salvar e testar conexão</strong>.</li>
+          <li class="mb-3"><strong>Defina a comunicação com o cliente.</strong> Cadastre as fases públicas e, no <strong>De/Para de status</strong>, escolha a fase, a mensagem padrão, o envio automático e a privacidade para cada status técnico do OpenProject.</li>
+          <li class="mb-3"><strong>Configure o webhook.</strong> No OpenProject, crie o webhook para <em>Work package atualizada</em>, usando a URL interna exibida nesta tela e o mesmo segredo de assinatura. Restrinja-o ao projeto necessário.</li>
+          <li class="mb-3"><strong>Revise a classificação.</strong> Na aba <strong>Classificação</strong>, escolha a origem e libere os tipos de Work Package para cada classificação. Uma classificação sem regra não poderá criar WP.</li>
+          <li class="mb-3"><strong>Preencha os templates.</strong> Na aba <strong>Templates</strong>, cadastre o Markdown de cada tipo de WP que poderá ser criado. O plugin bloqueia a criação quando o tipo não possui template.</li>
+          <li><strong>Oriente os operadores.</strong> Cada usuário que cria, sincroniza ou lança tempo manualmente deve abrir <strong>Minhas configurações &gt; OpenProject</strong> e informar o próprio token.</li>
+        </ol>
+      </div>
+      <div class="col-lg-5">
+        <div class="border rounded p-3 h-100">
+          <h3 class="h4">Roteiro visual</h3>
+          <p class="text-muted small">Siga as abas da esquerda para a direita. Elas foram organizadas para evitar rolagem entre configurações não relacionadas.</p>
+          <div class="d-flex flex-column gap-2">
+            <div class="p-2 border rounded"><strong>1. Integração e automação</strong><br><span class="text-muted small">URLs, token do bot, fases, webhook e status.</span></div>
+            <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
+            <div class="p-2 border rounded"><strong>2. Classificação</strong><br><span class="text-muted small">Origem e tipos permitidos por classificação.</span></div>
+            <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
+            <div class="p-2 border rounded"><strong>3. Templates</strong><br><span class="text-muted small">Descrição Markdown obrigatória por tipo de WP.</span></div>
+            <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
+            <div class="p-2 border rounded"><strong>4. Minhas configurações &gt; OpenProject</strong><br><span class="text-muted small">Token individual de quem executa ações manuais.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <hr class="my-4">
+    <h3 class="h4">Checklist de validação</h3>
+    <ul class="mb-0">
+      <li>o teste de conexão automática foi concluído sem erro;</li>
+      <li>o webhook usa o segredo correto e o evento <em>Work package atualizada</em>;</li>
+      <li>cada status relevante possui uma fase pública e, quando aplicável, uma mensagem revisada;</li>
+      <li>os tipos liberados por classificação têm template configurado;</li>
+      <li>o usuário técnico não é usado para criar Work Packages e cada operador possui token pessoal.</li>
+    </ul>
+    <p class="form-hint mt-4 mb-0">Este tutorial é parte da configuração do plugin. Toda nova funcionalidade que altere o processo de configuração deve atualizar esta aba e o histórico do plugin.</p>
+  </div>
+</div>
+HTML;
+}
+
+$activeTab = (string) ($_GET['tab'] ?? ($isSuperAdmin ? 'automation' : 'my-access'));
+if (!$isSuperAdmin || !in_array($activeTab, ['automation', 'classification', 'templates', 'tutorial'], true)) {
+    $activeTab = 'my-access';
+}
+echo <<<'HTML'
+<style>
+.demandas-status-mapping-table { min-width: 980px; table-layout: fixed; }
+.demandas-status-mapping-table textarea { min-height: 5.75rem; resize: vertical; }
+</style>
+HTML;
+echo "<div class='container-xl'><ul class='nav nav-tabs mb-4' role='tablist'>";
+echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'my-access' ? ' active' : '') . "' href='?tab=my-access' role='tab'>Meu acesso ao OpenProject</a></li>";
+if ($isSuperAdmin) {
+    echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'automation' ? ' active' : '') . "' href='?tab=automation' role='tab'>Integração e automação</a></li>";
+    echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'classification' ? ' active' : '') . "' href='?tab=classification' role='tab'>Classificação</a></li>";
+    echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'templates' ? ' active' : '') . "' href='?tab=templates' role='tab'>Templates</a></li>";
+    echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'tutorial' ? ' active' : '') . "' href='?tab=tutorial' role='tab'>Tutorial</a></li>";
+}
+echo "</ul><div class='tab-content'>";
+echo '<div' . demandasTabPaneAttributes('demandas-my-access', $activeTab === 'my-access') . "><div class='card'><div class='card-header'><h3 class='card-title'>Meu acesso ao OpenProject</h3></div><div class='card-body'>";
+echo "<p class='text-muted'>Este token é pessoal e será usado nas suas criações, sincronizações manuais e lançamentos de tempo. O token automático do plugin não é usado nessas ações.</p>";
+echo "<form method='post' class='row g-3'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
+echo "<div class='col-md-8'><label class='form-label' for='personal_openproject_api_token'>Meu token da API</label><input class='form-control' id='personal_openproject_api_token' name='personal_openproject_api_token' type='password' autocomplete='new-password' placeholder='" . (DemandasConfig::hasPersonalToken($currentUserId) ? 'Token já configurado — informe outro valor para substituí-lo' : 'Informe o token de acesso do OpenProject') . "'><div class='form-hint'>O valor não é exibido novamente. Deixe em branco para manter o token atual.</div></div>";
+echo "<div class='col-md-4 d-flex align-items-end gap-2'><button class='btn btn-primary' name='save_personal_token' value='1'>Salvar meu token</button><button class='btn btn-outline-primary' name='test_personal_token' value='1'>Salvar e testar</button></div></form>";
+echo "</div></div></div>";
+
+if ($isSuperAdmin) {
+echo "<form method='post'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><div" . demandasTabPaneAttributes('demandas-automation', $activeTab === 'automation') . "><div class='card'><div class='card-header'><h3 class='card-title'>Integração com OpenProject</h3></div><div class='card-body'><div class='row g-3'>";
 demandasField('openproject_internal_url', 'URL interna da API', $config);
 demandasField('openproject_external_url', 'URL externa para navegação', $config);
 demandasField('glpi_external_url', 'URL externa do GLPI', $config);
 demandasField('request_timeout', 'Timeout em segundos', $config, 'number');
-demandasField('openproject_api_token', 'Token da API', $config, 'password');
+echo "<div class='col-md-6'><label class='form-label' for='openproject_automation_api_token'>Token automático do bot</label><input class='form-control' id='openproject_automation_api_token' name='openproject_automation_api_token' type='password' autocomplete='new-password' placeholder='" . (DemandasConfig::automationToken() !== '' ? 'Token já configurado — informe outro valor para substituí-lo' : 'Informe o token do usuário técnico') . "'><div class='form-hint'>Usado somente por webhook e sincronizações automáticas. O plugin bloqueia seu uso para criar Work Packages.</div></div>";
 echo '</div>';
 
 echo "<hr class='my-4'><h3 class='h4'>Nomenclaturas da interface</h3>";
@@ -181,7 +285,8 @@ echo "<div class='row g-3 align-items-end'>";
 demandasField('label_ticket_log', 'Nome da aba de log', $config);
 echo "<div class='col-md-6 pb-2'><label class='form-check form-switch'><input class='form-check-input' type='checkbox' name='ticket_log_enabled' value='1'{$ticketLogEnabled}><span class='form-check-label'>Ativar o log organizado nos chamados</span></label></div></div>";
 
-echo "<hr class='my-4'><h3 class='h4'>Fases públicas</h3>";
+echo "</div></div><div class='card mt-4'><div class='card-header'><h3 class='card-title'>Fases públicas e sincronização automática</h3></div><div class='card-body'>";
+echo "<h3 class='h4'>Fases públicas</h3>";
 echo "<p class='text-muted'>Cadastre os nomes apresentados ao cliente. Eles não dependem dos status técnicos do OpenProject.</p>";
 echo "<div class='table-responsive'><table class='table table-sm align-middle' id='demandas-phases-table'><thead><tr><th>Nome da fase</th><th class='w-1'>Ação</th></tr></thead><tbody>";
 $phaseIndex = 0;
@@ -216,7 +321,7 @@ if ($statusLoadError !== null) {
 } elseif ($statuses === []) {
     echo "<div class='alert alert-info'>Salve e teste a conexão para carregar os status do OpenProject.</div>";
 } else {
-    echo "<div class='table-responsive'><table class='table table-sm align-middle'><thead><tr><th>ID</th><th>Status do OpenProject</th><th>" . htmlspecialchars(DemandasConfig::label('public_phase')) . "</th><th>Mensagem padrão</th><th>Automático</th><th>Privado</th></tr></thead><tbody>";
+    echo "<div class='table-responsive'><table class='table table-sm align-middle demandas-status-mapping-table'><colgroup><col style='width:4%'><col style='width:15%'><col style='width:25%'><col style='width:42%'><col style='width:7%'><col style='width:7%'></colgroup><thead><tr><th>ID</th><th>Status do OpenProject</th><th>" . htmlspecialchars(DemandasConfig::label('public_phase')) . "</th><th>Mensagem padrão</th><th>Automático</th><th>Privado</th></tr></thead><tbody>";
     foreach ($statuses as $status) {
         $statusId = (int) ($status['id'] ?? 0);
         $statusName = (string) ($status['name'] ?? $status['_links']['self']['title'] ?? ('Status #' . $statusId));
@@ -237,14 +342,14 @@ if ($statusLoadError !== null) {
         $message = htmlspecialchars((string) ($rule['message'] ?? ''), ENT_QUOTES);
         $auto = !empty($rule['auto_followup']) ? ' checked' : '';
         $private = !empty($rule['private_followup']) ? ' checked' : '';
-        echo "</select></td><td><textarea class='form-control' rows='2' name='status_message[{$statusId}]' placeholder='Ex.: Chamado #{{ticket.id}} avançou para {{phase.current}}.'>{$message}</textarea></td>";
+        echo "</select></td><td><textarea class='form-control' rows='3' name='status_message[{$statusId}]' placeholder='Ex.: Chamado #{{ticket.id}} avançou para {{phase.current}}.'>{$message}</textarea></td>";
         echo "<td class='text-center'><input class='form-check-input' type='checkbox' name='status_auto_followup[{$statusId}]' value='1'{$auto}></td>";
         echo "<td class='text-center'><input class='form-check-input' type='checkbox' name='status_private_followup[{$statusId}]' value='1'{$private}></td></tr>";
     }
 echo '</tbody></table></div>';
 }
 
-echo "<hr class='my-4'><h3 class='h4'>Classificação do chamado e tipos de Work Package</h3>";
+echo "</div></div></div><div" . demandasTabPaneAttributes('demandas-classification', $activeTab === 'classification') . "><div class='card'><div class='card-header'><h3 class='card-title'>Classificação do chamado e tipos de Work Package</h3></div><div class='card-body'>";
 echo "<p class='text-muted'>Defina de onde vem a classificação e quais tipos do OpenProject são permitidos para cada valor. Uma classificação configurada sem regra correspondente não poderá criar WP.</p>";
 $mode = (string) ($classificationSource['mode'] ?? 'none');
 echo "<div class='row g-3'><div class='col-md-6'><label class='form-label' for='classification_mode'>Origem da classificação</label><select class='form-select' id='classification_mode' name='classification_mode'>";
@@ -315,7 +420,7 @@ if ($mode === 'fields_plugin' && $selectedFieldsPluginId > 0) {
 }
 echo "</tbody></table></div><button class='btn btn-outline-secondary' id='demandas-add-classification' type='button'><i class='ti ti-plus'></i> Adicionar regra manual</button>";
 
-echo "<hr class='my-4'><h3 class='h4'>Templates de Work Package</h3>";
+echo "</div></div></div><div" . demandasTabPaneAttributes('demandas-templates', $activeTab === 'templates') . "><div class='card'><div class='card-header'><h3 class='card-title'>Templates de Work Package</h3></div><div class='card-body'>";
 echo "<p class='text-muted'>Configure o Markdown enviado como descrição para cada tipo permitido. O conteúdo bruto do chamado não é copiado automaticamente.</p>";
 echo "<p class='form-hint'>Variáveis disponíveis: <code>{" . implode('}</code>, <code>{', WorkPackageTemplate::availableVariables()) . "}</code>. As variáveis <code>{descricao}</code>, <code>{{descricao}}</code>, <code>{conteudo}</code> e equivalentes são bloqueadas por segurança.</p>";
 if ($typeNames === []) {
@@ -344,8 +449,15 @@ echo '<script>window.demandasClassificationData = ' . json_encode([
     'typeNames' => array_values($typeNames),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';</script>';
 
-echo "<div class='mt-4 d-flex gap-2'><button class='btn btn-primary' name='save' value='1'>Salvar</button>";
+echo "<div class='mt-4 d-flex gap-2'><button class='btn btn-primary' name='save' value='1'>Salvar todas as configurações administrativas</button>";
 echo "<button class='btn btn-outline-primary' name='test_connection' value='1'>Salvar e testar conexão</button></div></form></div></div></div>";
+
+echo '<div' . demandasTabPaneAttributes('demandas-tutorial', $activeTab === 'tutorial') . '>';
+demandasRenderConfigurationTutorial();
+echo '</div>';
+}
+
+echo '</div></div>';
 
 echo <<<'HTML'
 <script>

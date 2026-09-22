@@ -49,7 +49,10 @@ final class SynchronizationService
         $ticketId = (int) $link['tickets_id'];
         $wpId = (int) $link['openproject_work_package_id'];
         try {
-            $client = new OpenProjectClient();
+            $isAutomatic = !in_array($source, ['manual', 'creation'], true);
+            $client = $isAutomatic
+                ? OpenProjectClient::forAutomation()
+                : OpenProjectClient::forCurrentUser();
             $workPackage = $client->getWorkPackage($wpId);
             $status = (string) ($workPackage['_links']['status']['title'] ?? 'Não informado');
             $statusHref = (string) ($workPackage['_links']['status']['href'] ?? '');

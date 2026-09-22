@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.17.3` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.17.6` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.17.3` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.17.3 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.17.6 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -108,7 +108,7 @@ Dentro do Docker, `localhost` não deve ser usado entre contêineres.
 
 ### Identidade e token
 
-Use usuário técnico dedicado e com o menor conjunto de permissões necessário. Nunca use a conta `admin` permanentemente. Tokens devem permanecer no ambiente/configuração do GLPI e fora do Git.
+Use usuário técnico dedicado e com o menor conjunto de permissões necessário. Nunca use a conta `admin` permanentemente. O token automático desse usuário é configurado somente pelo perfil ativo **Super-Admin**, é reservado a webhooks e outras sincronizações automáticas e o código do plugin o bloqueia na criação de Work Packages. Cada usuário que execute criação, sincronização manual ou lançamento manual de tempo deve registrar seu token pessoal em **Minhas configurações > OpenProject**. Tokens devem permanecer no ambiente/configuração do GLPI e fora do Git.
 
 Para entradas de tempo, o plugin também admite o vínculo do usuário do GLPI com o usuário correspondente do OpenProject. Revise sempre os direitos de visualizar e registrar horas no projeto.
 
@@ -133,6 +133,7 @@ Nunca confirme `APAGAR` no script de reset sem entender que os volumes e dados d
 
 - versão declarada em `plugins/demandas/setup.php`;
 - histórico funcional em `plugins/demandas/README.md`;
+- o roteiro exibido na aba **Tutorial** deve ser atualizado quando uma novidade alterar a configuração, os tokens, o webhook ou o fluxo administrativo;
 - alterações incompatíveis ou com migração devem elevar a versão;
 - atualizações precisam ser idempotentes e compatíveis com bancos originados em versões anteriores;
 - prefira branches curtas e Pull Requests pequenos, com descrição do cenário, regra, testes e risco.

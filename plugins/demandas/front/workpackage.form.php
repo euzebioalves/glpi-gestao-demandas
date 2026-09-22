@@ -40,7 +40,7 @@ if (mb_strlen($additionalReason) > 2000) {
     Html::redirect('/front/ticket.form.php?id=' . $ticketId . '&forcetab=GlpiPlugin\\Demandas\\TicketDemand$1');
 }
 try {
-    $workPackage = (new OpenProjectClient())->createWorkPackage(
+    $workPackage = OpenProjectClient::forCurrentUser()->createWorkPackage(
         $ticket,
         $projectId,
         $typeId,

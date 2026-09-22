@@ -1,5 +1,26 @@
 # Gestão de Demandas
 
+## Versão 0.17.6
+
+- adiciona a aba pessoal **OpenProject** em **Minhas configurações** para todos os usuários autenticados;
+- permite salvar e testar o token pessoal sem conceder acesso às configurações globais do plugin;
+- direciona os avisos de criação e sincronização manual para a aba pessoal correta.
+
+## Versão 0.17.5
+
+- corrige a rolagem excessiva das abas de configuração ao ocultar explicitamente os painéis inativos;
+- amplia a coluna e a altura inicial de **Mensagem padrão** no De/Para de status;
+- adiciona a aba **Tutorial**, exclusiva ao perfil ativo **Super-Admin**, com o roteiro de configuração, webhook, tokens, classificação, templates e checklist de validação;
+- estabelece que novidades que alterem o processo de configuração devem atualizar o tutorial integrado.
+
+## Versão 0.17.4
+
+- separa o token automático do usuário técnico, usado apenas por webhook e outras sincronizações automáticas;
+- bloqueia programaticamente a criação de Work Packages quando o cliente foi aberto com o token automático;
+- adiciona token pessoal por usuário para criação, sincronização manual e entradas de tempo;
+- restringe as configurações globais e o token automático ao perfil ativo **Super-Admin**;
+- reorganiza a página de configuração em abas de acesso pessoal, integração e automação, classificação e templates.
+
 ## Versão 0.17.3
 
 - O formulário de nova entrada de tempo é aberto em modal.

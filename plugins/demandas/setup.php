@@ -11,8 +11,9 @@ use GlpiPlugin\Demandas\TicketLog;
 use GlpiPlugin\Demandas\WorkforceHub;
 use GlpiPlugin\Demandas\TimeEntryHub;
 use GlpiPlugin\Demandas\UserTimeProfile;
+use GlpiPlugin\Demandas\OpenProjectPersonalToken;
 
-define('PLUGIN_DEMANDAS_VERSION', '0.17.3');
+define('PLUGIN_DEMANDAS_VERSION', '0.17.6');
 define('PLUGIN_DEMANDAS_MIN_GLPI', '11.0.0');
 define('PLUGIN_DEMANDAS_MAX_GLPI', '11.0.99');
 
@@ -45,6 +46,9 @@ function plugin_init_demandas(): void
     ]);
     Plugin::registerClass(UserTimeProfile::class, [
         'addtabon' => User::class,
+    ]);
+    Plugin::registerClass(OpenProjectPersonalToken::class, [
+        'addtabon' => Preference::class,
     ]);
 
     // GLPI resolves plugin assets against the plugin's /public directory.

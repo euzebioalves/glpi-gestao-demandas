@@ -154,12 +154,18 @@ function plugin_demandas_install(): bool
         `target_users_id` int unsigned DEFAULT NULL, `details_json` longtext DEFAULT NULL, `date_creation` datetime DEFAULT NULL,
         PRIMARY KEY (`id`), KEY `idx_actor_date` (`actor_users_id`,`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_user_tokens` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL,
+        `openproject_api_token` text NOT NULL, `date_creation` datetime DEFAULT NULL,
+        `date_mod` datetime DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_user` (`users_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $defaults = [
         'openproject_internal_url' => 'http://openproject/api/v3',
         'openproject_external_url' => 'http://localhost:8280',
         'glpi_external_url' => 'http://localhost:8180',
-        'openproject_api_token' => '',
+        'openproject_api_token' => '', // Legado; preservado para atualizar instalações anteriores.
+        'openproject_automation_api_token' => '',
         'status_mapping_json' => '{}',
         'public_phases_json' => json_encode([
             ['id' => 'analysis', 'name' => 'Em análise'],
@@ -186,6 +192,14 @@ function plugin_demandas_install(): bool
     ];
     $current = Config::getConfigurationValues('plugin:demandas');
     Config::setConfigurationValues('plugin:demandas', $current + $defaults);
+    if (
+        trim((string) ($current['openproject_automation_api_token'] ?? '')) === ''
+        && trim((string) ($current['openproject_api_token'] ?? '')) !== ''
+    ) {
+        Config::setConfigurationValues('plugin:demandas', [
+            'openproject_automation_api_token' => (string) $current['openproject_api_token'],
+        ]);
+    }
 
     $profileRight = new ProfileRight();
     foreach (DemandasProfile::getAllRights() as $right) {
@@ -295,7 +309,7 @@ function plugin_demandas_install(): bool
 function plugin_demandas_uninstall(): bool
 {
     $db = DBConnection::getReadConnection();
-    foreach (['time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
+    foreach (['user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
         $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_' . $table . '`');
     }
     $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_events`');

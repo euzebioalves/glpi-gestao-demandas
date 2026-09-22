@@ -168,7 +168,7 @@ final class TimeManagementService
         $data=['users_id'=>$user,'tickets_id'=>$ticket,'openproject_work_package_id'=>$wp,'spent_on'=>$spent,'started_at'=>$started.':00','ended_at'=>$ended===''?null:$ended.':00','minutes'=>$minutes,'activity_href'=>$activityHref,'activity_name'=>mb_substr($activityName,0,255),'comment'=>mb_substr(trim((string)($input['comment']??'')),0,2000),'date_mod'=>date('Y-m-d H:i:s')];
         if($entryId<=0){$data+=['sync_status'=>'pending','is_success'=>0,'error_message'=>null,'created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')];$this->db->insert('glpi_plugin_demandas_time_entries',$data);$entryId=(int)$this->db->insertId();$this->audit('time_entry.local_create',$user,['entry_id'=>$entryId,'wp'=>$wp]);return$entryId;}
         $entry=$this->timeEntry($entryId,$user);$opId=(int)($entry['openproject_time_entry_id']??0);
-        if($opId>0){if($minutes<=0)throw new RuntimeException('Informe o horário final antes de atualizar uma entrada sincronizada.');$settings=$this->settings($user);(new OpenProjectClient())->updateTimeEntry($opId,$wp,$spent,$minutes,$activityHref,(string)$data['comment'],(string)($settings['openproject_user_href']??''));$data+=['sync_status'=>'synced','is_success'=>1,'error_message'=>null];}
+        if($opId>0){if($minutes<=0)throw new RuntimeException('Informe o horário final antes de atualizar uma entrada sincronizada.');$settings=$this->settings($user);OpenProjectClient::forCurrentUser()->updateTimeEntry($opId,$wp,$spent,$minutes,$activityHref,(string)$data['comment'],(string)($settings['openproject_user_href']??''));$data+=['sync_status'=>'synced','is_success'=>1,'error_message'=>null];}
         else{$data+=['sync_status'=>'pending','is_success'=>0,'error_message'=>null];}
         $this->db->update('glpi_plugin_demandas_time_entries',$data,['id'=>$entryId,'users_id'=>$user]);$this->audit('time_entry.update',$user,['entry_id'=>$entryId,'synced'=>$opId>0]);return$entryId;
     }
@@ -177,7 +177,7 @@ final class TimeManagementService
     {
         $this->checkTimeEntryPermission($userId);$entry=$this->timeEntry($entryId,$userId);if((int)($entry['openproject_time_entry_id']??0)>0)return;if((int)$entry['minutes']<=0||empty($entry['ended_at']))throw new RuntimeException('Finalize a entrada informando o horário de término antes de sincronizar.');
         $settings=$this->settings($userId);
-        try{$created=(new OpenProjectClient())->createTimeEntry((int)$entry['openproject_work_package_id'],(string)$entry['spent_on'],(int)$entry['minutes'],(string)$entry['activity_href'],(string)$entry['comment'],(string)($settings['openproject_user_href']??''));$opId=(int)($created['id']??0);if($opId<=0)throw new RuntimeException('O OpenProject não retornou o identificador da entrada de tempo.');$this->db->update('glpi_plugin_demandas_time_entries',['openproject_time_entry_id'=>$opId,'sync_status'=>'synced','is_success'=>1,'error_message'=>null,'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);$this->audit('time_entry.sync',$userId,['entry_id'=>$entryId,'openproject_id'=>$opId]);}
+        try{$created=OpenProjectClient::forCurrentUser()->createTimeEntry((int)$entry['openproject_work_package_id'],(string)$entry['spent_on'],(int)$entry['minutes'],(string)$entry['activity_href'],(string)$entry['comment'],(string)($settings['openproject_user_href']??''));$opId=(int)($created['id']??0);if($opId<=0)throw new RuntimeException('O OpenProject não retornou o identificador da entrada de tempo.');$this->db->update('glpi_plugin_demandas_time_entries',['openproject_time_entry_id'=>$opId,'sync_status'=>'synced','is_success'=>1,'error_message'=>null,'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);$this->audit('time_entry.sync',$userId,['entry_id'=>$entryId,'openproject_id'=>$opId]);}
         catch(\Throwable$e){$this->db->update('glpi_plugin_demandas_time_entries',['sync_status'=>'error','is_success'=>0,'error_message'=>$e->getMessage(),'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);throw$e;}
     }
 
@@ -188,7 +188,7 @@ final class TimeManagementService
 
     public function deleteTimeEntry(int $entryId,int $userId):void
     {
-        $this->checkTimeEntryPermission($userId);$entry=$this->timeEntry($entryId,$userId);$opId=(int)($entry['openproject_time_entry_id']??0);if($opId>0)(new OpenProjectClient())->deleteTimeEntry($opId);$this->db->delete('glpi_plugin_demandas_time_entries',['id'=>$entryId,'users_id'=>$userId]);$this->audit('time_entry.delete',$userId,['entry_id'=>$entryId,'openproject_id'=>$opId]);
+        $this->checkTimeEntryPermission($userId);$entry=$this->timeEntry($entryId,$userId);$opId=(int)($entry['openproject_time_entry_id']??0);if($opId>0)OpenProjectClient::forCurrentUser()->deleteTimeEntry($opId);$this->db->delete('glpi_plugin_demandas_time_entries',['id'=>$entryId,'users_id'=>$userId]);$this->audit('time_entry.delete',$userId,['entry_id'=>$entryId,'openproject_id'=>$opId]);
     }
 
     private function timeEntry(int$id,int$userId):array{foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_time_entries','WHERE'=>['id'=>$id,'users_id'=>$userId],'LIMIT'=>1])as$row)return$row;throw new RuntimeException('Entrada de tempo não encontrada.');}

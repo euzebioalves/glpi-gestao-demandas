@@ -22,7 +22,7 @@ try {
         throw new Glpi\Exception\Http\AccessDeniedHttpException();
     }
 
-    $client = new OpenProjectClient();
+    $client = OpenProjectClient::forCurrentUser();
     if ($action === 'types') {
         $types = [];
         foreach (ClassificationPolicy::filterTypes($ticket, $client->getTypesForProject($projectId)) as $type) {
