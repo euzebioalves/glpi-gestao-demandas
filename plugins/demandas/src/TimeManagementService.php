@@ -30,6 +30,17 @@ final class TimeManagementService
         if ($end <= $start) throw new RuntimeException('A hora de saída deve ser posterior à entrada.');
         $current = $this->settings($userId);
         $canMap = AccessPolicy::has(Profile::MANAGE_ATTENDANCE);
+        $bankInitial=(int)($current['bank_initial_minutes']??0);
+        $bankStart=(string)($current['bank_start_date']??'');
+        if(array_key_exists('bank_initial_balance',$input)){
+            $bankInitial=$this->historicalBalance((string)$input['bank_initial_balance']);
+            if($bankInitial===0)$bankStart='';
+            else{
+                $bankStart=trim((string)($input['bank_start_date']??''));
+                if($bankStart==='')throw new RuntimeException('Informe a data a partir da qual o saldo histórico será acumulado.');
+                $bankStart=$this->date($bankStart);
+            }
+        }
         $data = [
             'users_id'=>$userId,'work_start'=>$start . ':00','work_end'=>$end . ':00',
             'lunch_minutes'=>max(0,min(360,(int)($input['lunch_minutes'] ?? 60))),
@@ -37,6 +48,7 @@ final class TimeManagementService
             'working_days_json'=>json_encode(array_values(array_intersect([1,2,3,4,5,6,7],array_map('intval',(array)($input['working_days'] ?? [1,2,3,4,5]))))),
             'state_code'=>mb_strtoupper(mb_substr(trim((string)($input['state_code'] ?? '')),0,2)),
             'municipality'=>mb_substr(trim((string)($input['municipality'] ?? '')),0,120),
+            'bank_initial_minutes'=>$bankInitial,'bank_start_date'=>$bankStart?:null,
             'openproject_user_href'=>$canMap ? trim((string)($input['openproject_user_href'] ?? '')) : (string)($current['openproject_user_href'] ?? ''),
             'openproject_user_name'=>$canMap ? mb_substr(trim((string)($input['openproject_user_name'] ?? '')),0,255) : (string)($current['openproject_user_name'] ?? ''),
             'date_mod'=>date('Y-m-d H:i:s'),
@@ -200,6 +212,14 @@ final class TimeManagementService
     private function holidayFor(int $u,string $d):?array{$s=$this->settings($u);foreach($this->holidayRows()as$r){if((string)$r['holiday_date']!==$d)continue;if($r['scope']==='state'&&$r['state_code']!==$s['state_code'])continue;if($r['scope']==='municipal'&&mb_strtolower((string)$r['municipality'])!==mb_strtolower((string)$s['municipality']))continue;return$r;}return null;}
     private function isSubstituteDate(string $d):bool{foreach($this->holidayRows()as$r)if((string)($r['substitute_date']??'')===$d)return true;return false;}
     private function minutesBetween(string $a,string $b):int{[$ah,$am]=array_map('intval',explode(':',$a));[$bh,$bm]=array_map('intval',explode(':',$b));return max(0,$bh*60+$bm-$ah*60-$am);}
+    private function historicalBalance(string $value):int
+    {
+        $value=str_replace(' ','',trim($value));
+        if($value==='')return 0;
+        if(!preg_match('/^(?<sign>[+-]?)(?<hours>\d{1,4})h(?<minutes>[0-5]\d)min$/i',$value,$matches))throw new RuntimeException('Informe o saldo histórico no formato +1h30min ou -0h45min.');
+        $minutes=((int)$matches['hours']*60)+(int)$matches['minutes'];
+        return ($matches['sign']??'')==='-'?-$minutes:$minutes;
+    }
     private function time(string $v):string{if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/',$v))throw new RuntimeException('Horário inválido.');return$v;}
     private function punchType(string $v):string{$allowed=['entrada_manha','saida_manha','entrada_tarde','saida_tarde','entrada_intermediaria','saida_intermediaria'];return in_array($v,$allowed,true)?$v:'';}
     private function date(string $v):string{$d=DateTimeImmutable::createFromFormat('!Y-m-d',$v);if(!$d||$d->format('Y-m-d')!==$v)throw new RuntimeException('Data inválida.');return$v;}

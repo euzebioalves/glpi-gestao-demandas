@@ -1,5 +1,16 @@
 # Gestão de Demandas
 
+## Versão 0.17.9
+
+- preenche novas marcações com a sequência **Entrada Manhã**, **Saída Manhã**, **Entrada Tarde** e **Saída Tarde**;
+- preserva o tipo de marcações já registradas.
+
+## Versão 0.17.8
+
+- recolhe as marcações de ponto ao registrar ou editar uma ausência e expande automaticamente a ausência já existente;
+- destaca visualmente o dia atual no calendário de ponto;
+- permite informar saldo histórico positivo ou negativo e a data a partir da qual ele será acumulado com os novos registros.
+
 ## Versão 0.17.7
 
 - organiza o calendário de ponto no padrão brasileiro, de domingo a sábado;

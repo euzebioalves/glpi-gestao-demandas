@@ -1,8 +1,8 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
-## Plugin 0.17.7
+## Plugin 0.17.9
 
-A versão 0.17.7 organiza o calendário de ponto no padrão brasileiro (domingo a sábado) e mostra o intervalo de almoço registrado em cada dia.
+A versão 0.17.9 preenche a sequência padrão de tipos ao incluir novas marcações de ponto.
 
 Ambiente local de homologação para validar a integração entre tickets do GLPI e Work Packages do OpenProject.
 
