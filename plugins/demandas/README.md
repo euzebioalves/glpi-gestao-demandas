@@ -1,5 +1,9 @@
 # Gestão de Demandas
 
+## Versão 0.18.1
+
+- exibe no cabeçalho de **Horas e Ponto** os acessos diretos à auditoria do banco, às ausências e, para Super-Admin, à administração do ponto.
+
 ## Versão 0.18.0
 
 - adiciona o extrato de auditoria do banco de horas, com saldo histórico, créditos, débitos e saldo acumulado por lançamento;
