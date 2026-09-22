@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.18.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.18.2` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.18.1` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.18.1 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.18.2 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -55,7 +55,7 @@ As verificações devem ocorrer no backend, inclusive em endpoints de formulári
 - calendário mensal no padrão brasileiro (domingo a sábado), feriados e compensações;
 - indicador visual do intervalo de almoço, calculado exclusivamente entre as marcações de saída da manhã e entrada da tarde;
 - saldo histórico opcional, positivo ou negativo, acumulado com as marcações a partir da data-base informada;
-- extrato auditável do banco, com o saldo histórico e cada crédito ou débito que incidiu no acumulado;
+- extrato auditável do banco, com saldo histórico, cada crédito ou débito que incidiu no acumulado e faltas justificadas neutras para conferência;
 - faltas integrais ou parciais, justificadas ou não;
 - anexos de justificativa em formatos usuais, limitados a 15 MB por arquivo;
 - página de ausências por usuário, com filtro de justificativa e download autorizado dos comprovantes;

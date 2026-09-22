@@ -1,5 +1,9 @@
 # Gestão de Demandas
 
+## Versão 0.18.2
+
+- apresenta faltas justificadas no extrato de auditoria apenas para conferência, sem crédito ou débito no banco de horas.
+
 ## Versão 0.18.1
 
 - exibe no cabeçalho de **Horas e Ponto** os acessos diretos à auditoria do banco, às ausências e, para Super-Admin, à administração do ponto.

@@ -180,11 +180,20 @@ final class TimeManagementService
             $date=$cursor->format('Y-m-d');
             $day=$this->calculateDay($userId,$date,$punches[$date]??[],$absences[$date]??[]);
             $minutes=(int)$day['balance'];
+            foreach($day['absences'] as $absence){
+                if((string)$absence['kind']!=='justified')continue;
+                $period=(int)($absence['is_full_day']??1)===1
+                    ? 'Ausência justificada de dia inteiro.'
+                    : 'Ausência justificada de '.substr((string)($absence['starts_at']??''),0,5).' às '.substr((string)($absence['ends_at']??''),0,5).'.';
+                $reason=trim((string)($absence['reason']??''));
+                $entries[]=['date'=>$date,'kind'=>'justified_absence','label'=>'Falta justificada','details'=>$period.($reason!==''?' Motivo: '.$reason:'),'minutes'=>0,'balance_after'=>$running,'neutral'=>true];
+            }
             if($minutes!==0){
                 $label=$minutes>0?'Crédito de jornada':'Débito de jornada';
                 if(!empty($day['absences'])){
-                    $kinds=array_unique(array_map(static fn(array $absence):string=>$absence['kind']==='justified'?'falta justificada':'falta não justificada',$day['absences']));
-                    $label=implode(' e ',$kinds);
+                    $kinds=array_unique(array_map(static fn(array $absence):string=>$absence['kind']==='unjustified'?'falta não justificada':'',$day['absences']));
+                    $kinds=array_values(array_filter($kinds));
+                    if($kinds!==[])$label=implode(' e ',$kinds);
                 }elseif($day['incomplete']){
                     $label='Marcações incompletas';
                 }

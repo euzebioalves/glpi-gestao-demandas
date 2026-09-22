@@ -55,7 +55,8 @@ echo "<div class='row row-deck row-cards mb-4'><div class='col-sm-6 col-lg-4'><d
 echo "<div class='card'><div class='card-header'><h2 class='card-title'>Extrato detalhado</h2></div><div class='table-responsive'><table class='table table-vcenter card-table'><thead><tr><th>Data</th><th>Evento</th><th>Detalhes</th><th class='text-end'>Crédito</th><th class='text-end'>Débito</th><th class='text-end'>Saldo acumulado</th></tr></thead><tbody>";
 foreach ((array) $ledger['entries'] as $entry) {
     $minutes = (int) $entry['minutes'];
-    echo "<tr><td>" . date('d/m/Y', strtotime((string) $entry['date'])) . "</td><td>" . timeAuditEsc((string) $entry['label']) . "</td><td class='text-muted'>" . timeAuditEsc((string) $entry['details']) . "</td><td class='text-end text-success'>" . ($minutes > 0 ? timeAuditBalance($minutes) : '—') . "</td><td class='text-end text-danger'>" . ($minutes < 0 ? timeAuditBalance($minutes) : '—') . "</td><td class='text-end fw-bold'>" . timeAuditBalance((int) $entry['balance_after']) . "</td></tr>";
+    $neutral = !empty($entry['neutral']);
+    echo "<tr><td>" . date('d/m/Y', strtotime((string) $entry['date'])) . "</td><td>" . timeAuditEsc((string) $entry['label']) . "</td><td class='text-muted'>" . timeAuditEsc((string) $entry['details']) . "</td><td class='text-end text-success'>" . ($neutral ? '' : ($minutes > 0 ? timeAuditBalance($minutes) : '—')) . "</td><td class='text-end text-danger'>" . ($neutral ? '' : ($minutes < 0 ? timeAuditBalance($minutes) : '—')) . "</td><td class='text-end fw-bold'>" . timeAuditBalance((int) $entry['balance_after']) . "</td></tr>";
 }
-echo "</tbody></table></div></div><p class='form-hint mt-3'>Marcação incompleta e ausência não justificada podem gerar débito. Dias sem fatos, faltas justificadas, feriados e dias não úteis são neutros.</p></div>";
+echo "</tbody></table></div></div><p class='form-hint mt-3'>Faltas justificadas aparecem no extrato somente para conferência e mantêm crédito e débito vazios. Marcação incompleta e ausência não justificada podem gerar débito; feriados e dias não úteis são neutros.</p></div>";
 Html::footer();
