@@ -13,7 +13,7 @@ use GlpiPlugin\Demandas\TimeEntryHub;
 use GlpiPlugin\Demandas\UserTimeProfile;
 use GlpiPlugin\Demandas\OpenProjectPersonalToken;
 
-define('PLUGIN_DEMANDAS_VERSION', '0.17.6');
+define('PLUGIN_DEMANDAS_VERSION', '0.18.2');
 define('PLUGIN_DEMANDAS_MIN_GLPI', '11.0.0');
 define('PLUGIN_DEMANDAS_MAX_GLPI', '11.0.99');
 

@@ -1,5 +1,38 @@
 # Gestão de Demandas
 
+## Versão 0.18.2
+
+- apresenta faltas justificadas no extrato de auditoria apenas para conferência, sem crédito ou débito no banco de horas.
+
+## Versão 0.18.1
+
+- exibe no cabeçalho de **Horas e Ponto** os acessos diretos à auditoria do banco, às ausências e, para Super-Admin, à administração do ponto.
+
+## Versão 0.18.0
+
+- adiciona o extrato de auditoria do banco de horas, com saldo histórico, créditos, débitos e saldo acumulado por lançamento;
+- adiciona a página **Minhas ausências**, com filtros para justificadas e não justificadas e download autorizado dos comprovantes;
+- restringe o cadastro, a edição e a exclusão de feriados e dias não úteis ao perfil ativo **Super-Admin**;
+- torna feriados, dias não úteis e suas compensações neutros no banco de horas, sem crédito ou débito mesmo se houver registros no dia;
+- atualiza o tutorial administrativo com a configuração de dias sem expediente.
+
+## Versão 0.17.9
+
+- preenche novas marcações com a sequência **Entrada Manhã**, **Saída Manhã**, **Entrada Tarde** e **Saída Tarde**;
+- preserva o tipo de marcações já registradas.
+
+## Versão 0.17.8
+
+- recolhe as marcações de ponto ao registrar ou editar uma ausência e expande automaticamente a ausência já existente;
+- destaca visualmente o dia atual no calendário de ponto;
+- permite informar saldo histórico positivo ou negativo e a data a partir da qual ele será acumulado com os novos registros.
+
+## Versão 0.17.7
+
+- organiza o calendário de ponto no padrão brasileiro, de domingo a sábado;
+- apresenta o intervalo de almoço registrado entre **Saída Manhã** e **Entrada Tarde**, com ícone e duração;
+- mantém o cálculo de jornada e do banco de horas inalterado.
+
 ## Versão 0.17.6
 
 - adiciona a aba pessoal **OpenProject** em **Minhas configurações** para todos os usuários autenticados;

@@ -202,7 +202,8 @@ function demandasRenderConfigurationTutorial(): void
           <li class="mb-3"><strong>Configure o webhook.</strong> No OpenProject, crie o webhook para <em>Work package atualizada</em>, usando a URL interna exibida nesta tela e o mesmo segredo de assinatura. Restrinja-o ao projeto necessário.</li>
           <li class="mb-3"><strong>Revise a classificação.</strong> Na aba <strong>Classificação</strong>, escolha a origem e libere os tipos de Work Package para cada classificação. Uma classificação sem regra não poderá criar WP.</li>
           <li class="mb-3"><strong>Preencha os templates.</strong> Na aba <strong>Templates</strong>, cadastre o Markdown de cada tipo de WP que poderá ser criado. O plugin bloqueia a criação quando o tipo não possui template.</li>
-          <li><strong>Oriente os operadores.</strong> Cada usuário que cria, sincroniza ou lança tempo manualmente deve abrir <strong>Minhas configurações &gt; OpenProject</strong> e informar o próprio token.</li>
+          <li class="mb-3"><strong>Oriente os operadores.</strong> Cada usuário que cria, sincroniza ou lança tempo manualmente deve abrir <strong>Minhas configurações &gt; OpenProject</strong> e informar o próprio token.</li>
+          <li><strong>Configure os dias sem expediente.</strong> Em <strong>Gerência &gt; Horas e Ponto &gt; Administração do ponto</strong>, o Super-Admin cadastra feriados e dias não úteis. Eles são neutros e não geram crédito ou débito no banco de horas.</li>
         </ol>
       </div>
       <div class="col-lg-5">
@@ -217,6 +218,8 @@ function demandasRenderConfigurationTutorial(): void
             <div class="p-2 border rounded"><strong>3. Templates</strong><br><span class="text-muted small">Descrição Markdown obrigatória por tipo de WP.</span></div>
             <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
             <div class="p-2 border rounded"><strong>4. Minhas configurações &gt; OpenProject</strong><br><span class="text-muted small">Token individual de quem executa ações manuais.</span></div>
+            <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
+            <div class="p-2 border rounded"><strong>5. Administração do ponto</strong><br><span class="text-muted small">Feriados e dias não úteis, exclusivos do Super-Admin.</span></div>
           </div>
         </div>
       </div>
@@ -229,6 +232,7 @@ function demandasRenderConfigurationTutorial(): void
       <li>cada status relevante possui uma fase pública e, quando aplicável, uma mensagem revisada;</li>
       <li>os tipos liberados por classificação têm template configurado;</li>
       <li>o usuário técnico não é usado para criar Work Packages e cada operador possui token pessoal.</li>
+      <li>os feriados e dias não úteis locais foram cadastrados antes da conferência do banco de horas.</li>
     </ul>
     <p class="form-hint mt-4 mb-0">Este tutorial é parte da configuração do plugin. Toda nova funcionalidade que altere o processo de configuração deve atualizar esta aba e o histórico do plugin.</p>
   </div>
