@@ -149,25 +149,140 @@ final class TimeManagementService
         return $total;
     }
 
+    /**
+     * Retorna os fatos que efetivamente alteraram o banco de horas desde a
+     * data-base configurada. O saldo histórico é mantido como o primeiro
+     * lançamento para que a conferência tenha uma trilha contínua.
+     */
+    public function bankLedger(int $userId): array
+    {
+        $settings=$this->settings($userId);
+        $start=(string)($settings['bank_start_date']?:date('Y-01-01'));
+        $today=date('Y-m-d');
+        $punches=[];
+        foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_punches','WHERE'=>['users_id'=>$userId,['punch_at'=>['>=',$start.' 00:00:00']],['punch_at'=>['<=',$today.' 23:59:59']]],'ORDER'=>['punch_at ASC']]) as $row)$punches[substr((string)$row['punch_at'],0,10)][]=$row;
+        $absences=[];
+        foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absences','WHERE'=>['users_id'=>$userId,['absence_date'=>['>=',$start]],['absence_date'=>['<=',$today]]],'ORDER'=>['absence_date ASC']]) as $row)$absences[(string)$row['absence_date']][]=$row;
+
+        $historical=(int)($settings['bank_initial_minutes']??0);
+        $running=$historical;
+        $entries=[[
+            'date'=>$start,
+            'kind'=>'historical',
+            'label'=>'Saldo histórico informado',
+            'details'=>'Saldo-base definido na jornada do usuário.',
+            'minutes'=>$historical,
+            'balance_after'=>$running,
+        ]];
+        $cursor=new DateTimeImmutable($start);
+        $end=new DateTimeImmutable($today);
+        while($cursor<=$end){
+            $date=$cursor->format('Y-m-d');
+            $day=$this->calculateDay($userId,$date,$punches[$date]??[],$absences[$date]??[]);
+            $minutes=(int)$day['balance'];
+            if($minutes!==0){
+                $label=$minutes>0?'Crédito de jornada':'Débito de jornada';
+                if(!empty($day['absences'])){
+                    $kinds=array_unique(array_map(static fn(array $absence):string=>$absence['kind']==='justified'?'falta justificada':'falta não justificada',$day['absences']));
+                    $label=implode(' e ',$kinds);
+                }elseif($day['incomplete']){
+                    $label='Marcações incompletas';
+                }
+                $times=array_map(static fn(array $punch):string=>substr((string)$punch['punch_at'],11,5),$day['punches']);
+                $details=$times!==[]?'Marcações: '.implode(' · ',$times).'.':'Sem marcação de ponto.';
+                $running+=$minutes;
+                $entries[]=['date'=>$date,'kind'=>'daily','label'=>$label,'details'=>$details,'minutes'=>$minutes,'balance_after'=>$running];
+            }
+            $cursor=$cursor->modify('+1 day');
+        }
+        return ['start_date'=>$start,'historical_minutes'=>$historical,'current_minutes'=>$running,'entries'=>$entries];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function absences(int $userId,string $filter='all'): array
+    {
+        $where=['users_id'=>$userId];
+        if(in_array($filter,['justified','unjustified'],true))$where['kind']=$filter;
+        $rows=array_values(iterator_to_array($this->db->request(['FROM'=>'glpi_plugin_demandas_absences','WHERE'=>$where,'ORDER'=>['absence_date DESC','id DESC']])));
+        $ids=array_map(static fn(array $row):int=>(int)$row['id'],$rows);
+        $files=[];
+        if($ids!==[])foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absence_files','WHERE'=>['absences_id'=>$ids],'ORDER'=>['date_creation ASC','id ASC']])as$file)$files[(int)$file['absences_id']][]=$file;
+        foreach($rows as &$row)$row['files']=$files[(int)$row['id']]??[];
+        unset($row);
+        return $rows;
+    }
+
+    /** @return array<string, mixed> */
+    public function absenceFile(int $fileId,int $userId): array
+    {
+        foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absence_files','WHERE'=>['id'=>$fileId,'users_id'=>$userId],'LIMIT'=>1])as$file)return $file;
+        throw new RuntimeException('Anexo de ausência não encontrado.');
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function holidays(): array
+    {
+        $this->assertSuperAdmin();
+        return array_values(iterator_to_array($this->db->request(['FROM'=>'glpi_plugin_demandas_holidays','ORDER'=>['holiday_date DESC','id DESC']])));
+    }
+
+    public function saveHoliday(array $input): int
+    {
+        $this->assertSuperAdmin();
+        $name=mb_substr(trim((string)($input['name']??'')),0,255);
+        if($name==='')throw new RuntimeException('Informe o nome do feriado ou dia não útil.');
+        $date=$this->date((string)($input['holiday_date']??''));
+        $scope=(string)($input['scope']??'national');
+        if(!in_array($scope,['international','national','state','municipal'],true))throw new RuntimeException('Abrangência do dia não útil inválida.');
+        $state=mb_strtoupper(mb_substr(trim((string)($input['state_code']??'')),0,2));
+        $municipality=mb_substr(trim((string)($input['municipality']??'')),0,120);
+        if($scope==='state'&&$state==='')throw new RuntimeException('Informe a UF para um feriado estadual.');
+        if($scope==='municipal'&&($state===''||$municipality===''))throw new RuntimeException('Informe UF e município para um feriado municipal.');
+        $substitute=trim((string)($input['substitute_date']??''));
+        if($substitute!=='')$substitute=$this->date($substitute);
+        $data=['name'=>$name,'holiday_date'=>$date,'scope'=>$scope,'state_code'=>$state,'municipality'=>$municipality,'is_working_day'=>0,'substitute_date'=>$substitute?:null,'notes'=>mb_substr(trim((string)($input['notes']??'')),0,2000)];
+        $id=(int)($input['id']??0);
+        if($id>0){
+            $this->db->update('glpi_plugin_demandas_holidays',$data,['id'=>$id]);
+        }else{
+            $data+=['created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')];
+            $this->db->insert('glpi_plugin_demandas_holidays',$data);
+            $id=(int)$this->db->insertId();
+        }
+        $this->holidayRows=null;
+        $this->audit('holiday.save',0,['holiday_id'=>$id,'date'=>$date,'name'=>$name]);
+        return $id;
+    }
+
+    public function deleteHoliday(int $holidayId): void
+    {
+        $this->assertSuperAdmin();
+        if($holidayId<=0)throw new RuntimeException('Feriado inválido.');
+        $this->db->delete('glpi_plugin_demandas_holidays',['id'=>$holidayId]);
+        $this->holidayRows=null;
+        $this->audit('holiday.delete',0,['holiday_id'=>$holidayId]);
+    }
+
     private function calculateDay(int $userId,string $date,array $punches,array $absences): array
     {
         $punches=array_values($punches);$absences=array_values($absences);
         $s=$this->settings($userId); $weekday=(int)(new DateTimeImmutable($date))->format('N'); $workdays=json_decode((string)$s['working_days_json'],true)?:[1,2,3,4,5];
         $daily=max(0,$this->minutesBetween(substr($s['work_start'],0,5),substr($s['work_end'],0,5))-(int)$s['lunch_minutes']);
         $holiday=$this->holidayFor($userId,$date); $substitute=$this->isSubstituteDate($date);
-        $expected=in_array($weekday,$workdays,true)?$daily:0; $multiplier=1;
-        if($holiday){if((int)$holiday['is_working_day']===1){$expected=$daily;}else{$expected=0;$multiplier=2;}}
-        if($substitute)$expected=0;
+        $nonWorkingDay=$holiday!==null||$substitute;
+        $expected=in_array($weekday,$workdays,true)?$daily:0;
         $worked=0; for($i=0;$i+1<count($punches);$i+=2)$worked+=$this->minutesBetween(substr($punches[$i]['punch_at'],11,5),substr($punches[$i+1]['punch_at'],11,5));
         $hasJustified=false;$hasUnjustified=false;$justifiedMinutes=0;$unjustifiedMinutes=0;$fullJustified=false;
         foreach($absences as $absence){$hasJustified=$hasJustified||$absence['kind']==='justified';$hasUnjustified=$hasUnjustified||$absence['kind']==='unjustified';if($absence['kind']==='justified'){$justifiedMinutes+=max(0,(int)($absence['minutes']??0));$fullJustified=$fullJustified||(int)($absence['is_full_day']??1)===1;}if($absence['kind']==='unjustified')$unjustifiedMinutes+=max(0,(int)($absence['minutes']??0));}
+        // Feriados e dias não úteis configurados não geram crédito nem débito.
+        if($nonWorkingDay){$expected=0;$balance=0;}
         // Sem marcação ou ausência não há fato gerador para o banco de horas.
-        if(count($punches)===0&&!$hasUnjustified){$expected=0;$balance=0;}
+        elseif(count($punches)===0&&!$hasUnjustified){$expected=0;$balance=0;}
         elseif($fullJustified){$expected=0;$balance=0;}
-        elseif($hasJustified){$expected=max(0,$expected-$justifiedMinutes);$balance=($worked*$multiplier)-$expected;if(abs($balance)<=(int)$s['tolerance_minutes'])$balance=0;}
+        elseif($hasJustified){$expected=max(0,$expected-$justifiedMinutes);$balance=$worked-$expected;if(abs($balance)<=(int)$s['tolerance_minutes'])$balance=0;}
         elseif(count($punches)===0&&$hasUnjustified&&$unjustifiedMinutes>0){$expected=$unjustifiedMinutes;$balance=-$expected;}
-        else{$balance=($worked*$multiplier)-$expected;if(abs($balance)<=(int)$s['tolerance_minutes'])$balance=0;}
-        return ['date'=>$date,'punches'=>$punches,'absences'=>$absences,'worked'=>$worked,'expected'=>$expected,'balance'=>$balance,'incomplete'=>count($punches)%2!==0,'holiday'=>$holiday,'substitute'=>$substitute];
+        else{$balance=$worked-$expected;if(abs($balance)<=(int)$s['tolerance_minutes'])$balance=0;}
+        return ['date'=>$date,'punches'=>$punches,'absences'=>$absences,'worked'=>$worked,'expected'=>$expected,'balance'=>$balance,'incomplete'=>count($punches)%2!==0,'holiday'=>$holiday,'substitute'=>$substitute,'non_working'=>$nonWorkingDay];
     }
 
     public function saveLocalTimeEntry(array $input,int $entryId=0):int
@@ -219,6 +334,10 @@ final class TimeManagementService
         if(!preg_match('/^(?<sign>[+-]?)(?<hours>\d{1,4})h(?<minutes>[0-5]\d)min$/i',$value,$matches))throw new RuntimeException('Informe o saldo histórico no formato +1h30min ou -0h45min.');
         $minutes=((int)$matches['hours']*60)+(int)$matches['minutes'];
         return ($matches['sign']??'')==='-'?-$minutes:$minutes;
+    }
+    private function assertSuperAdmin():void
+    {
+        if(!Config::isActiveSuperAdmin())throw new \Glpi\Exception\Http\AccessDeniedHttpException();
     }
     private function time(string $v):string{if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/',$v))throw new RuntimeException('Horário inválido.');return$v;}
     private function punchType(string $v):string{$allowed=['entrada_manha','saida_manha','entrada_tarde','saida_tarde','entrada_intermediaria','saida_intermediaria'];return in_array($v,$allowed,true)?$v:'';}

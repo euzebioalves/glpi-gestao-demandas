@@ -1,5 +1,13 @@
 # Gestão de Demandas
 
+## Versão 0.18.0
+
+- adiciona o extrato de auditoria do banco de horas, com saldo histórico, créditos, débitos e saldo acumulado por lançamento;
+- adiciona a página **Minhas ausências**, com filtros para justificadas e não justificadas e download autorizado dos comprovantes;
+- restringe o cadastro, a edição e a exclusão de feriados e dias não úteis ao perfil ativo **Super-Admin**;
+- torna feriados, dias não úteis e suas compensações neutros no banco de horas, sem crédito ou débito mesmo se houver registros no dia;
+- atualiza o tutorial administrativo com a configuração de dias sem expediente.
+
 ## Versão 0.17.9
 
 - preenche novas marcações com a sequência **Entrada Manhã**, **Saída Manhã**, **Entrada Tarde** e **Saída Tarde**;
