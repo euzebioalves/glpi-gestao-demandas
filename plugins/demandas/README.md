@@ -1,5 +1,17 @@
 # Gestão de Demandas
 
+## Versão 0.19.0
+
+- adiciona **Monitoramento de Work Packages** no menu Gerência para qualquer usuário autenticado com token pessoal configurado;
+- consulta no OpenProject somente **User Story**, **Épico/Epic** e **Bug** abertos cujo usuário do token é o **Responsável**;
+- exibe cards por status, lista com identificador, título, criação, atualização, responsável, cliente e chamados vinculados; links de WP e chamado abrem em nova aba;
+- identifica vínculos pela tabela do plugin, pelo campo do plugin Fields rotulado **Atividade DevOps** e por URLs de Work Package em acompanhamentos de chamados;
+- grava o último resultado de cada consulta e disponibiliza o consolidado gerencial filtrável por responsável para perfis com **Acessar a visão gerencial**;
+- cria alertas deduplicados para WPs abertas, com prioridade para status Novo e Em especificação, e os exibe no sino do cabeçalho e na página **Alertas de Work Packages**;
+- cria as tabelas de monitoramento e alertas de forma idempotente. Atualize sem desinstalar e execute **Atualizar** em **Configuração > Plugins**.
+
+Consulte `docs/RELEASE_0.19.0.md` para roteiro de validação e limitações.
+
 ## Versão 0.18.5
 
 - disponibiliza **Salvar todas as configurações administrativas** e **Salvar e testar conexão** no início de Integração e automação, Classificação e Templates;

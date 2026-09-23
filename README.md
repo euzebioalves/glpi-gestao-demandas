@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.19.0
+
+A versão 0.19.0 adiciona o monitoramento de Work Packages abertas por token pessoal: o usuário consulta suas User Stories, Épicos e Bugs sob sua responsabilidade, visualiza indicadores por status, vínculos com chamados e alertas no cabeçalho. A visão gerencial consolida as consultas já realizadas e filtra por responsável. Consulte `docs/RELEASE_0.19.0.md`.
+
 ## Plugin 0.18.5
 
 A versão 0.18.5 corrige o salvamento da configuração: os botões ficam disponíveis nas três abas administrativas, e alternar entre abas preserva o preenchimento sem recarregar a página. Mantém a autorização por permissões da 0.18.4. Veja `docs/RELEASE_0.18.5.md` e `plugins/demandas/README.md`.

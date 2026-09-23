@@ -83,6 +83,72 @@ final class OpenProjectClient
         return is_array($elements) ? $elements : [];
     }
 
+    /**
+     * Returns the OpenProject identity represented by this client's token.
+     * The API accepts the special `me` identifier for the authenticated user.
+     */
+    public function getCurrentUser(): array
+    {
+        return $this->request('GET', 'users/me');
+    }
+
+    /**
+     * Lists all open User Stories, Epics and Bugs whose responsible is the
+     * owner of the personal token. Pagination is explicit because a personal
+     * backlog can be larger than OpenProject's default page size.
+     */
+    public function getOpenDemandWorkPackagesForCurrentUser(): array
+    {
+        $currentUser = $this->getCurrentUser();
+        $currentUserId = (int) ($currentUser['id'] ?? 0);
+        if ($currentUserId <= 0) {
+            throw new RuntimeException('O OpenProject não informou o usuário associado ao token pessoal.');
+        }
+
+        $typeIds = [];
+        foreach ($this->getTypes() as $type) {
+            $name = self::normalizeDemandType((string) ($type['name'] ?? ''));
+            if (in_array($name, ['userstory', 'epico', 'epic', 'bug'], true) && (int) ($type['id'] ?? 0) > 0) {
+                $typeIds[] = (string) (int) $type['id'];
+            }
+        }
+        if ($typeIds === []) {
+            return [];
+        }
+
+        $filters = json_encode([
+            ['type' => ['operator' => '=', 'values' => array_values(array_unique($typeIds))]],
+            ['responsible' => ['operator' => '=', 'values' => [(string) $currentUserId]]],
+            ['status' => ['operator' => 'o', 'values' => []]],
+        ], JSON_THROW_ON_ERROR);
+
+        $workPackages = [];
+        $offset = 1;
+        $pageSize = 100;
+        do {
+            $query = http_build_query([
+                'filters' => $filters,
+                'pageSize' => $pageSize,
+                'offset' => $offset,
+                'sortBy' => json_encode([['updatedAt', 'desc']], JSON_THROW_ON_ERROR),
+            ], '', '&', PHP_QUERY_RFC3986);
+            $collection = $this->request('GET', 'work_packages?' . $query);
+            $elements = $collection['_embedded']['elements'] ?? [];
+            if (!is_array($elements)) {
+                break;
+            }
+            foreach ($elements as $element) {
+                if (is_array($element)) {
+                    $workPackages[] = $element;
+                }
+            }
+            $received = count($elements);
+            $offset += $received;
+        } while ($received === $pageSize);
+
+        return $workPackages;
+    }
+
     public function getCreationOptions(int $projectId, int $typeId): array
     {
         $base = [
@@ -470,6 +536,13 @@ final class OpenProjectClient
             $href = $path . (is_string($query) && $query !== '' ? '?' . $query : '');
         }
         return str_starts_with($href, '/api/v3/') ? substr($href, strlen('/api/v3/')) : ltrim($href, '/');
+    }
+
+    private static function normalizeDemandType(string $value): string
+    {
+        $value = trim(mb_strtolower($value));
+        $value = strtr($value, ['á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'é' => 'e', 'ê' => 'e', 'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ú' => 'u', 'ç' => 'c']);
+        return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
     }
 
     private function request(string $method, string $uri, ?array $payload = null): array

@@ -21,6 +21,8 @@ function plugin_demandas_migrate_timestamps(DBmysql $db): void
         'time_entries' => ['date_creation', 'date_mod'],
         'time_audit' => ['date_creation'],
         'user_tokens' => ['date_creation', 'date_mod'],
+        'work_package_monitors' => ['last_queried_at', 'date_creation', 'date_mod'],
+        'work_package_notifications' => ['date_creation', 'date_mod'],
     ];
     $changes = [];
     foreach ($columns as $suffix => $names) {
@@ -214,6 +216,25 @@ function plugin_demandas_install(): bool
         `openproject_api_token` text NOT NULL, `date_creation` timestamp NULL DEFAULT NULL,
         `date_mod` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_user` (`users_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_work_package_monitors` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL,
+        `openproject_work_package_id` int unsigned NOT NULL, `responsible_name` varchar(255) DEFAULT NULL,
+        `status_name` varchar(120) DEFAULT NULL, `is_open` tinyint NOT NULL DEFAULT 1,
+        `details_json` longtext DEFAULT NULL, `ticket_ids_json` longtext DEFAULT NULL,
+        `last_queried_at` timestamp NULL DEFAULT NULL, `date_creation` timestamp NULL DEFAULT NULL,
+        `date_mod` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`),
+        UNIQUE KEY `uniq_user_work_package` (`users_id`,`openproject_work_package_id`),
+        KEY `idx_open_responsible` (`is_open`,`responsible_name`), KEY `idx_work_package` (`openproject_work_package_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_work_package_notifications` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL,
+        `openproject_work_package_id` int unsigned NOT NULL, `fingerprint` char(64) NOT NULL,
+        `priority` varchar(20) NOT NULL DEFAULT 'info', `title` varchar(255) NOT NULL,
+        `message` text NOT NULL, `details_json` longtext DEFAULT NULL, `is_read` tinyint NOT NULL DEFAULT 0,
+        `date_creation` timestamp NULL DEFAULT NULL, `date_mod` timestamp NULL DEFAULT NULL,
+        PRIMARY KEY (`id`), UNIQUE KEY `uniq_user_work_package_notice` (`users_id`,`openproject_work_package_id`,`fingerprint`),
+        KEY `idx_user_unread` (`users_id`,`is_read`,`date_creation`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $defaults = [
         'openproject_internal_url' => 'http://openproject/api/v3',
@@ -364,7 +385,7 @@ function plugin_demandas_install(): bool
 function plugin_demandas_uninstall(): bool
 {
     $db = DBConnection::getReadConnection();
-    foreach (['user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
+    foreach (['work_package_notifications','work_package_monitors','user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
         $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_' . $table . '`');
     }
     $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_events`');

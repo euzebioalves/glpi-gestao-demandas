@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.18.5` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.19.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.18.5` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.18.5 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.19.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -93,6 +93,8 @@ Somente essas entradas são enviadas ao OpenProject. Horas de ponto nunca devem 
 | `AccessPolicy.php` / `Profile.php` | autorização e direitos do plugin |
 | `TicketDemand.php` | apresentação da integração no chamado |
 | `ManagementDashboardService.php` | consultas e indicadores gerenciais |
+| `WorkPackageMonitoringService.php` | consulta pessoal de WPs abertas, snapshots, vínculos e alertas |
+| `WorkPackageMonitoringHub.php` | menu e acesso às páginas de monitoramento e alertas |
 | `TimeManagementService.php` | ponto, jornadas, ausências e entradas de tempo |
 | `WorkPackageTemplate.php` | templates e variáveis permitidas |
 | `hook.php` | instalação, atualização e hooks do GLPI |
@@ -115,6 +117,8 @@ Dentro do Docker, `localhost` não deve ser usado entre contêineres.
 ### Identidade e token
 
 Use usuário técnico dedicado e com o menor conjunto de permissões necessário. Nunca use a conta `admin` permanentemente. O token automático desse usuário é configurado somente por perfil ativo com **Administrar as configurações do plugin** (`MANAGE_CONFIG`), é reservado a webhooks e outras sincronizações automáticas e o código do plugin o bloqueia na criação de Work Packages. Cada usuário que execute criação, sincronização manual ou lançamento manual de tempo deve registrar seu token pessoal em **Minhas configurações > OpenProject**. Tokens devem permanecer no ambiente/configuração do GLPI e fora do Git.
+
+O menu **Gerência > Monitoramento de Work Packages** usa exclusivamente o token pessoal do usuário logado. A consulta identifica User Stories, Épicos e Bugs abertos nos quais aquele token é o Responsável; não cria nem altera WPs. O consolidado exige `VIEW_DASHBOARD` e mostra somente resultados efetivamente coletados por usuários. Alertas são gravados por usuário e versão observada da WP, evitando repetição da mesma mensagem em consultas subsequentes.
 
 Para entradas de tempo, o plugin também admite o vínculo do usuário do GLPI com o usuário correspondente do OpenProject. Revise sempre os direitos de visualizar e registrar horas no projeto.
 
@@ -236,3 +240,11 @@ A página `front/config.form.php` mantém as três abas administrativas em um ú
 O JavaScript alterna os painéis sem navegação HTTP e atualiza somente o parâmetro `tab` da URL com `history.replaceState`. Os campos permanecem no DOM até salvar; não são persistidos em localStorage/sessionStorage. Campos obrigatórios inválidos abrem a aba correspondente. Alterações de campos geram aviso antes de sair/recarregar; enviar o formulário válido segue o fluxo normal de POST e redirecionamento. O formulário pessoal tem destino explícito `?tab=my-access`, independente da aba administrativa anterior.
 
 Autorização MANAGE_CONFIG, CSRF, regras de salvamento e banco não foram alterados. Roteiro de regressão e limitações em `docs/RELEASE_0.18.5.md`.
+
+## 13. Monitoramento de Work Packages — 0.19.0
+
+O monitoramento usa `GET /api/v3/users/me` para identificar o dono do token e consulta `GET /api/v3/work_packages` com filtros de tipo, responsável e status aberto. Não substituir o filtro de status aberto por uma lista de nomes: a API do OpenProject usa o operador `o`, que preserva as configurações de status da instância.
+
+Os snapshots são por usuário e WP; uma consulta bem-sucedida marca como fora do escopo apenas WPs antes abertas naquele mesmo snapshot que não retornaram. Uma falha de API não limpa dados anteriores. A identificação de chamados reúne a tabela `glpi_plugin_demandas_links`, URLs `/work_packages/{id}` nos acompanhamentos e o campo Fields com rótulo “Atividade DevOps”. Alterações nessa heurística precisam preservar os três caminhos.
+
+As notificações possuem uma impressão digital de WP, status e atualização. Não remover a chave única: ela impede spam a cada clique de consulta. O feed do sino é um endpoint autenticado e nunca deve expor token, payload bruto do OpenProject ou notificações de outro usuário. Veja `docs/RELEASE_0.19.0.md`.
