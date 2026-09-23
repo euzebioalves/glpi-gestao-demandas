@@ -4,9 +4,64 @@ declare(strict_types=1);
 
 use GlpiPlugin\Demandas\Profile as DemandasProfile;
 
+/**
+ * Converte somente as colunas legadas do plugin, mantendo o fuso da sessão.
+ * A pré-validação ocorre antes de qualquer DDL: datas não representáveis não
+ * podem ser substituídas por zero/NULL, mesmo em bancos sem modo SQL estrito.
+ */
+function plugin_demandas_migrate_timestamps(DBmysql $db): void
+{
+    $columns = [
+        'user_time_settings' => ['date_creation', 'date_mod'],
+        'punches' => ['punch_at', 'date_creation'],
+        'absences' => ['date_creation'],
+        'absence_files' => ['date_creation'],
+        'holidays' => ['date_creation'],
+        'user_rights' => ['date_mod'],
+        'time_entries' => ['date_creation', 'date_mod'],
+        'time_audit' => ['date_creation'],
+        'user_tokens' => ['date_creation', 'date_mod'],
+    ];
+    $changes = [];
+    foreach ($columns as $suffix => $names) {
+        $table = 'glpi_plugin_demandas_' . $suffix;
+        if (!$db->tableExists($table, false)) {
+            continue;
+        }
+        $fields = $db->listFields($table, false);
+        foreach ($names as $name) {
+            if (strtolower((string) ($fields[$name]['Type'] ?? '')) !== 'datetime') {
+                continue;
+            }
+            $quotedTable = $db->quoteName($table);
+            $quotedColumn = $db->quoteName($name);
+            $invalid = $db->doQuery(
+                "SELECT 1 FROM {$quotedTable} WHERE {$quotedColumn} IS NOT NULL"
+                . " AND (UNIX_TIMESTAMP({$quotedColumn}) IS NULL OR UNIX_TIMESTAMP({$quotedColumn}) <= 0) LIMIT 1"
+            );
+            if ($invalid->num_rows > 0) {
+                throw new RuntimeException(
+                    'Atualização interrompida: existem datas fora do intervalo suportado em '
+                    . $table . '.' . $name . '. Nenhuma data foi descartada; solicite revisão ao administrador.'
+                );
+            }
+            // DEFAULT explícito impede ON UPDATE implícito em servidores legados.
+            $definition = $name === 'punch_at'
+                ? 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP'
+                : 'TIMESTAMP NULL DEFAULT NULL';
+            $changes[$table][] = "MODIFY COLUMN {$quotedColumn} {$definition}";
+        }
+    }
+    foreach ($changes as $table => $clauses) {
+        $db->doQuery('ALTER TABLE ' . $db->quoteName($table) . ' ' . implode(', ', $clauses));
+    }
+}
+
 function plugin_demandas_install(): bool
 {
-    $db = DBConnection::getReadConnection();
+    global $DB;
+    $db = $DB; // O instalador deve usar a conexão de escrita do GLPI.
+    plugin_demandas_migrate_timestamps($db);
 
     $db->doQuery(
         "CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_links` (
@@ -99,14 +154,14 @@ function plugin_demandas_install(): bool
         `working_days_json` varchar(100) NOT NULL DEFAULT '[1,2,3,4,5]', `state_code` varchar(2) DEFAULT NULL,
         `municipality` varchar(120) DEFAULT NULL, `bank_initial_minutes` int NOT NULL DEFAULT 0,
         `bank_start_date` date DEFAULT NULL, `openproject_user_href` varchar(255) DEFAULT NULL,
-        `openproject_user_name` varchar(255) DEFAULT NULL, `date_creation` datetime DEFAULT NULL, `date_mod` datetime DEFAULT NULL,
+        `openproject_user_name` varchar(255) DEFAULT NULL, `date_creation` timestamp NULL DEFAULT NULL, `date_mod` timestamp NULL DEFAULT NULL,
         PRIMARY KEY (`id`), UNIQUE KEY `uniq_user` (`users_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_punches` (
-        `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL, `punch_at` datetime NOT NULL,
+        `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL, `punch_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         `punch_type` varchar(30) DEFAULT NULL, `nsr` varchar(50) DEFAULT NULL,
         `source` varchar(30) NOT NULL DEFAULT 'manual', `note` varchar(500) DEFAULT NULL, `created_by` int unsigned NOT NULL,
-        `date_creation` datetime DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_punch` (`users_id`,`punch_at`),
+        `date_creation` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_punch` (`users_id`,`punch_at`),
         KEY `idx_user_date` (`users_id`,`punch_at`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_punches` ADD COLUMN IF NOT EXISTS `punch_type` varchar(30) DEFAULT NULL AFTER `punch_at`');
@@ -114,7 +169,7 @@ function plugin_demandas_install(): bool
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_absences` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL, `absence_date` date NOT NULL,
         `kind` varchar(20) NOT NULL, `minutes` smallint unsigned DEFAULT NULL, `reason` text DEFAULT NULL,
-        `created_by` int unsigned NOT NULL, `date_creation` datetime DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_user_date` (`users_id`,`absence_date`)
+        `created_by` int unsigned NOT NULL, `date_creation` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_user_date` (`users_id`,`absence_date`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_absences` ADD COLUMN IF NOT EXISTS `starts_at` time DEFAULT NULL AFTER `minutes`');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_absences` ADD COLUMN IF NOT EXISTS `ends_at` time DEFAULT NULL AFTER `starts_at`');
@@ -122,17 +177,17 @@ function plugin_demandas_install(): bool
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_absence_files` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `absences_id` int unsigned NOT NULL, `users_id` int unsigned NOT NULL,
         `original_name` varchar(255) NOT NULL, `stored_name` varchar(120) NOT NULL, `mime_type` varchar(120) DEFAULT NULL,
-        `file_size` int unsigned NOT NULL DEFAULT 0, `date_creation` datetime DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_absence` (`absences_id`)
+        `file_size` int unsigned NOT NULL DEFAULT 0, `date_creation` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_absence` (`absences_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_holidays` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `name` varchar(255) NOT NULL, `holiday_date` date NOT NULL,
         `scope` varchar(20) NOT NULL DEFAULT 'national', `state_code` varchar(2) DEFAULT NULL, `municipality` varchar(120) DEFAULT NULL,
         `is_working_day` tinyint NOT NULL DEFAULT 0, `substitute_date` date DEFAULT NULL, `notes` text DEFAULT NULL,
-        `created_by` int unsigned NOT NULL, `date_creation` datetime DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_date` (`holiday_date`)
+        `created_by` int unsigned NOT NULL, `date_creation` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_date` (`holiday_date`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_user_rights` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL, `right_name` varchar(120) NOT NULL,
-        `decision` tinyint NOT NULL, `date_mod` datetime DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_user_right` (`users_id`,`right_name`)
+        `decision` tinyint NOT NULL, `date_mod` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_user_right` (`users_id`,`right_name`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_time_entries` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL, `tickets_id` int unsigned DEFAULT NULL,
@@ -140,24 +195,24 @@ function plugin_demandas_install(): bool
         `spent_on` date NOT NULL, `started_at` time DEFAULT NULL, `ended_at` time DEFAULT NULL,
         `minutes` int unsigned NOT NULL DEFAULT 0, `activity_href` varchar(255) DEFAULT NULL, `activity_name` varchar(255) DEFAULT NULL,
         `comment` text DEFAULT NULL, `sync_status` varchar(20) NOT NULL DEFAULT 'pending', `is_success` tinyint NOT NULL DEFAULT 0, `error_message` text DEFAULT NULL,
-        `created_by` int unsigned NOT NULL, `date_creation` datetime DEFAULT NULL, `date_mod` datetime DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_user_date` (`users_id`,`spent_on`)
+        `created_by` int unsigned NOT NULL, `date_creation` timestamp NULL DEFAULT NULL, `date_mod` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), KEY `idx_user_date` (`users_id`,`spent_on`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `started_at` time DEFAULT NULL AFTER `spent_on`');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `ended_at` time DEFAULT NULL AFTER `started_at`');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` MODIFY COLUMN `minutes` int unsigned NOT NULL DEFAULT 0');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `activity_href` varchar(255) DEFAULT NULL AFTER `minutes`');
     $db->doQuery("ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `sync_status` varchar(20) NOT NULL DEFAULT 'pending' AFTER `comment`");
-    $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `date_mod` datetime DEFAULT NULL AFTER `date_creation`');
+    $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `date_mod` timestamp NULL DEFAULT NULL AFTER `date_creation`');
     $db->doQuery("UPDATE `glpi_plugin_demandas_time_entries` SET `sync_status`='synced' WHERE `openproject_time_entry_id` IS NOT NULL AND `openproject_time_entry_id` > 0");
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_time_audit` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `action` varchar(80) NOT NULL, `actor_users_id` int unsigned NOT NULL,
-        `target_users_id` int unsigned DEFAULT NULL, `details_json` longtext DEFAULT NULL, `date_creation` datetime DEFAULT NULL,
+        `target_users_id` int unsigned DEFAULT NULL, `details_json` longtext DEFAULT NULL, `date_creation` timestamp NULL DEFAULT NULL,
         PRIMARY KEY (`id`), KEY `idx_actor_date` (`actor_users_id`,`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_user_tokens` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL,
-        `openproject_api_token` text NOT NULL, `date_creation` datetime DEFAULT NULL,
-        `date_mod` datetime DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_user` (`users_id`)
+        `openproject_api_token` text NOT NULL, `date_creation` timestamp NULL DEFAULT NULL,
+        `date_mod` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_user` (`users_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $defaults = [

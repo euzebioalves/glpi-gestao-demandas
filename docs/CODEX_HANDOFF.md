@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.18.2` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.18.5` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.18.2` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.18.2 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.18.5 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -59,7 +59,7 @@ As verificações devem ocorrer no backend, inclusive em endpoints de formulári
 - faltas integrais ou parciais, justificadas ou não;
 - anexos de justificativa em formatos usuais, limitados a 15 MB por arquivo;
 - página de ausências por usuário, com filtro de justificativa e download autorizado dos comprovantes;
-- feriados, compensações e dias não úteis configurados apenas pelo perfil ativo Super-Admin;
+- feriados, compensações e dias não úteis configurados com a permissão `MANAGE_HOLIDAYS` (respeitando a política de exceções de horas);
 - auditoria das alterações;
 - cálculo de jornada e banco de horas.
 
@@ -114,7 +114,7 @@ Dentro do Docker, `localhost` não deve ser usado entre contêineres.
 
 ### Identidade e token
 
-Use usuário técnico dedicado e com o menor conjunto de permissões necessário. Nunca use a conta `admin` permanentemente. O token automático desse usuário é configurado somente pelo perfil ativo **Super-Admin**, é reservado a webhooks e outras sincronizações automáticas e o código do plugin o bloqueia na criação de Work Packages. Cada usuário que execute criação, sincronização manual ou lançamento manual de tempo deve registrar seu token pessoal em **Minhas configurações > OpenProject**. Tokens devem permanecer no ambiente/configuração do GLPI e fora do Git.
+Use usuário técnico dedicado e com o menor conjunto de permissões necessário. Nunca use a conta `admin` permanentemente. O token automático desse usuário é configurado somente por perfil ativo com **Administrar as configurações do plugin** (`MANAGE_CONFIG`), é reservado a webhooks e outras sincronizações automáticas e o código do plugin o bloqueia na criação de Work Packages. Cada usuário que execute criação, sincronização manual ou lançamento manual de tempo deve registrar seu token pessoal em **Minhas configurações > OpenProject**. Tokens devem permanecer no ambiente/configuração do GLPI e fora do Git.
 
 Para entradas de tempo, o plugin também admite o vínculo do usuário do GLPI com o usuário correspondente do OpenProject. Revise sempre os direitos de visualizar e registrar horas no projeto.
 
@@ -216,3 +216,23 @@ Uma solicitação deve informar:
 - se a tarefa autoriza somente diagnóstico ou também implementação.
 
 Peça ao Codex para ler `AGENTS.md` e este documento antes de agir, preservar alterações não relacionadas, executar as validações possíveis e declarar claramente qualquer teste que não pôde ser executado.
+
+
+## 11. Correção de autorização — 0.18.4
+
+`Config::canManageConfiguration()` consulta `Profile::has(Profile::MANAGE_CONFIG)` / `Session::haveRight(..., READ)`. Nenhuma autorização em tempo de execução depende de nome, idioma ou ID fixo de perfil. A configuração global ignora exceções individuais: usa exclusivamente os direitos do perfil ativo. Menus e operações de feriados usam `MANAGE_HOLIDAYS`; gestão de exceções usa `MANAGE_TIME_ACCESS`, com lista de direitos de horas permitidos no backend. Alterar perfis continua exigindo `profile/UPDATE` nativo.
+
+URLs das abas administrativas e POST global sem permissão retornam HTTP 403 antes de qualquer escrita. Token pessoal usa sempre o usuário autenticado e não concede acesso global. Erros no teste pessoal retornam à própria aba. O tutorial explica como conceder a permissão a perfis personalizados. Não há alteração do esquema, de fases públicas, de saldos ou de vínculos nesta release.
+
+Ocorrências de nomes em `hook.php` são concessões iniciais/migrações históricas protegidas por marcadores; não constituem autorização dos endpoints. Não alterar esses marcadores para atualizar. Histórico das versões anteriores foi mantido no README do plugin.
+
+Consulte `docs/RELEASE_0.18.4.md` para testes em GLPI 11.0.9, preservação de dados, segurança, roteiro de homologação e limitações.
+
+
+## 12. Navegação e salvamento da configuração — 0.18.5
+
+A página `front/config.form.php` mantém as três abas administrativas em um único formulário HTML válido. Os botões ficam fora dos painéis, no início desse formulário, disponíveis em Integração e automação, Classificação e Templates. Não colocar os botões dentro de um painel nem fechar o formulário antes dos contêineres internos.
+
+O JavaScript alterna os painéis sem navegação HTTP e atualiza somente o parâmetro `tab` da URL com `history.replaceState`. Os campos permanecem no DOM até salvar; não são persistidos em localStorage/sessionStorage. Campos obrigatórios inválidos abrem a aba correspondente. Alterações de campos geram aviso antes de sair/recarregar; enviar o formulário válido segue o fluxo normal de POST e redirecionamento. O formulário pessoal tem destino explícito `?tab=my-access`, independente da aba administrativa anterior.
+
+Autorização MANAGE_CONFIG, CSRF, regras de salvamento e banco não foram alterados. Roteiro de regressão e limitações em `docs/RELEASE_0.18.5.md`.

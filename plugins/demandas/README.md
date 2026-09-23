@@ -1,5 +1,54 @@
 # Gestão de Demandas
 
+## Versão 0.18.5
+
+- disponibiliza **Salvar todas as configurações administrativas** e **Salvar e testar conexão** no início de Integração e automação, Classificação e Templates;
+- troca as abas na própria página, preservando o preenchimento e a aba selecionada após salvar;
+- corrige o fechamento do formulário compartilhado; as três abas administrativas são salvas juntas e o token pessoal continua separado;
+- abre a aba de um campo obrigatório inválido e avisa antes de sair/recarregar com campos alterados;
+- não armazena rascunhos ou tokens no armazenamento local do navegador e mantém autorização e CSRF no servidor.
+
+Atualize substituindo `plugins/demandas` e usando **Atualizar** em **Configuração > Plugins**, sem desinstalar. Consulte `docs/RELEASE_0.18.5.md` para os testes e o roteiro de conferência.
+
+## Versão 0.18.4
+
+- configurações globais, teste da automação e as abas Integração e automação, Classificação, Templates e Tutorial usam `MANAGE_CONFIG` do perfil ativo; o nome do perfil não concede nem restringe direitos;
+- sem essa permissão, somente o token pessoal fica disponível; URL administrativa e POST global retornam acesso negado;
+- feriados usam `MANAGE_HOLIDAYS` e exceções individuais usam `MANAGE_TIME_ACCESS`, mantendo a política própria de horas; nenhuma dessas permissões concede configuração global;
+- a gestão dos perfis continua exigindo o direito nativo do GLPI de alterar perfis;
+- corrige a gravação de novas exceções de horas e restringe no servidor os direitos que podem receber essas exceções;
+- preserva configurações, tokens, permissões e históricos; não cria migração de banco nem exige renomear perfis.
+
+### Atualização da 0.18.4
+
+Faça backup, substitua os arquivos de `plugins/demandas` pela pasta `demandas/` do ZIP e execute **Atualizar** em **Configuração > Plugins**. **Não desinstale**: isso remove dados. Em **Administração > Perfis > Gestão de Demandas**, confira **Administrar as configurações do plugin** e selecione o perfil autorizado na sessão. O GLPI recarrega os direitos após alterações feitas por sua interface nativa; o plugin consulta o perfil ativo em cada requisição. Tokens pessoais não autorizam configurações globais.
+
+Testes automatizados, roteiro manual e limitações: `docs/RELEASE_0.18.4.md` no repositório. As referências a Super-Admin nas versões abaixo descrevem o comportamento histórico, substituído na 0.18.4.
+
+## Versão 0.18.3
+
+- elimina os avisos de uso de `DATETIME` na instalação, utilizando `TIMESTAMP` nos campos de data e hora;
+- converte as colunas legadas durante a atualização, sem recriar tabelas, vínculos, tokens ou históricos;
+- verifica previamente datas não representáveis e interrompe a atualização em vez de descartá-las;
+- usa a conexão principal do GLPI no instalador e mantém a migração repetível;
+- preserva campos `DATE` e `TIME` e as regras de ponto e banco de horas.
+- corrige uma aspa ausente na descrição de faltas justificadas da auditoria, que impedia carregar o serviço de ponto na 0.18.2.
+
+### Atualização da 0.18.3
+
+Faça backup do banco e dos arquivos do GLPI. Substitua a pasta `plugins/demandas`
+pelo conteúdo `demandas/` do pacote e execute **Atualizar** em **Configuração >
+Plugins**; depois ative o plugin, se necessário. Não desinstale para atualizar:
+a desinstalação apaga os dados do plugin. Preserve o fuso horário configurado no
+GLPI durante a migração e confira os horários das marcações após atualizar.
+Se houver datas inválidas ou fora do intervalo de `TIMESTAMP` do servidor, a
+migração informa a coluna e para para revisão administrativa, sem corrigi-las
+automaticamente. Consulte `docs/RELEASE_0.18.3.md` no repositório para os testes.
+
+Os erros `plugin_propostas_index_exists` e `plugin_version_propostas` pertencem
+ao plugin **propostas**, que não integra este repositório nem este pacote.
+Esta release corrige o aviso referente ao plugin **demandas**.
+
 ## Versão 0.18.2
 
 - apresenta faltas justificadas no extrato de auditoria apenas para conferência, sem crédito ou débito no banco de horas.

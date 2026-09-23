@@ -1,8 +1,8 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
-## Plugin 0.17.9
+## Plugin 0.18.5
 
-A versão 0.17.9 preenche a sequência padrão de tipos ao incluir novas marcações de ponto.
+A versão 0.18.5 corrige o salvamento da configuração: os botões ficam disponíveis nas três abas administrativas, e alternar entre abas preserva o preenchimento sem recarregar a página. Mantém a autorização por permissões da 0.18.4. Veja `docs/RELEASE_0.18.5.md` e `plugins/demandas/README.md`.
 
 Ambiente local de homologação para validar a integração entre tickets do GLPI e Work Packages do OpenProject.
 
@@ -276,7 +276,7 @@ docker compose up -d
 O comando `down` acima remove os contêineres e a rede antiga, mas preserva os
 volumes e os bancos. Não acrescente a opção `-v`.
 
-Para instalar, acesse **Configuração > Plugins** no GLPI, localize **Gestão de Demandas**, clique em **Instalar** e depois em **Ativar**. Com o perfil ativo **Super-Admin**, abra a configuração do plugin e informe as URLs e o token do usuário técnico presente no `integration.env`; ele é usado exclusivamente nas sincronizações automáticas. Cada usuário que criar ou sincronizar Work Packages manualmente deve abrir a aba **Meu acesso ao OpenProject** e registrar seu próprio token. Projetos, tipos e campos de origem são identificados automaticamente.
+Para instalar, acesse **Configuração > Plugins** no GLPI, localize **Gestão de Demandas**, clique em **Instalar** e depois em **Ativar**. Com a permissão **Administrar as configurações do plugin** concedida ao perfil ativo em **Administração > Perfis > Gestão de Demandas**, abra a configuração do plugin e informe as URLs e o token do usuário técnico presente no `integration.env`; ele é usado exclusivamente nas sincronizações automáticas. Cada usuário que criar ou sincronizar Work Packages manualmente deve abrir a aba **Meu acesso ao OpenProject** e registrar seu próprio token. Projetos, tipos e campos de origem são identificados automaticamente.
 
 ## Configuração automatizada para o plugin
 
