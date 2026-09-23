@@ -1,5 +1,29 @@
 # Gestão de Demandas
 
+## Versão 0.18.3
+
+- elimina os avisos de uso de `DATETIME` na instalação, utilizando `TIMESTAMP` nos campos de data e hora;
+- converte as colunas legadas durante a atualização, sem recriar tabelas, vínculos, tokens ou históricos;
+- verifica previamente datas não representáveis e interrompe a atualização em vez de descartá-las;
+- usa a conexão principal do GLPI no instalador e mantém a migração repetível;
+- preserva campos `DATE` e `TIME` e as regras de ponto e banco de horas.
+- corrige uma aspa ausente na descrição de faltas justificadas da auditoria, que impedia carregar o serviço de ponto na 0.18.2.
+
+### Atualização da 0.18.3
+
+Faça backup do banco e dos arquivos do GLPI. Substitua a pasta `plugins/demandas`
+pelo conteúdo `demandas/` do pacote e execute **Atualizar** em **Configuração >
+Plugins**; depois ative o plugin, se necessário. Não desinstale para atualizar:
+a desinstalação apaga os dados do plugin. Preserve o fuso horário configurado no
+GLPI durante a migração e confira os horários das marcações após atualizar.
+Se houver datas inválidas ou fora do intervalo de `TIMESTAMP` do servidor, a
+migração informa a coluna e para para revisão administrativa, sem corrigi-las
+automaticamente. Consulte `docs/RELEASE_0.18.3.md` no repositório para os testes.
+
+Os erros `plugin_propostas_index_exists` e `plugin_version_propostas` pertencem
+ao plugin **propostas**, que não integra este repositório nem este pacote.
+Esta release corrige o aviso referente ao plugin **demandas**.
+
 ## Versão 0.18.2
 
 - apresenta faltas justificadas no extrato de auditoria apenas para conferência, sem crédito ou débito no banco de horas.

@@ -186,7 +186,7 @@ final class TimeManagementService
                     ? 'Ausência justificada de dia inteiro.'
                     : 'Ausência justificada de '.substr((string)($absence['starts_at']??''),0,5).' às '.substr((string)($absence['ends_at']??''),0,5).'.';
                 $reason=trim((string)($absence['reason']??''));
-                $entries[]=['date'=>$date,'kind'=>'justified_absence','label'=>'Falta justificada','details'=>$period.($reason!==''?' Motivo: '.$reason:'),'minutes'=>0,'balance_after'=>$running,'neutral'=>true];
+                $entries[]=['date'=>$date,'kind'=>'justified_absence','label'=>'Falta justificada','details'=>$period.($reason!==''?' Motivo: '.$reason:''),'minutes'=>0,'balance_after'=>$running,'neutral'=>true];
             }
             if($minutes!==0){
                 $label=$minutes>0?'Crédito de jornada':'Débito de jornada';

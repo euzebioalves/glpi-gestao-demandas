@@ -1,8 +1,8 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
-## Plugin 0.17.9
+## Plugin 0.18.3
 
-A versão 0.17.9 preenche a sequência padrão de tipos ao incluir novas marcações de ponto.
+A versão 0.18.3 corrige os avisos de campos DATETIME no instalador e migra as colunas legadas para TIMESTAMP, preservando os dados. Veja o roteiro de atualização em `plugins/demandas/README.md`.
 
 Ambiente local de homologação para validar a integração entre tickets do GLPI e Work Packages do OpenProject.
 

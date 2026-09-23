@@ -225,6 +225,8 @@ function demandasRenderConfigurationTutorial(): void
       </div>
     </div>
     <hr class="my-4">
+    <h3 class="h4">Atualização do plugin</h3>
+    <p>Faça backup do banco e dos arquivos, substitua a pasta <code>plugins/demandas</code> pelo pacote novo e execute <strong>Atualizar</strong> em <strong>Configuração &gt; Plugins</strong>. Não desinstale para atualizar, pois isso apaga os dados do plugin. Na versão 0.18.3, mantenha o fuso horário do GLPI e confira os horários de ponto após a migração. Se a atualização indicar datas inválidas, solicite revisão ao administrador.</p>
     <h3 class="h4">Checklist de validação</h3>
     <ul class="mb-0">
       <li>o teste de conexão automática foi concluído sem erro;</li>
