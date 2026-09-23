@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.18.4` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.18.5` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.18.4` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.18.4 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.18.5 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -227,3 +227,12 @@ URLs das abas administrativas e POST global sem permissão retornam HTTP 403 ant
 Ocorrências de nomes em `hook.php` são concessões iniciais/migrações históricas protegidas por marcadores; não constituem autorização dos endpoints. Não alterar esses marcadores para atualizar. Histórico das versões anteriores foi mantido no README do plugin.
 
 Consulte `docs/RELEASE_0.18.4.md` para testes em GLPI 11.0.9, preservação de dados, segurança, roteiro de homologação e limitações.
+
+
+## 12. Navegação e salvamento da configuração — 0.18.5
+
+A página `front/config.form.php` mantém as três abas administrativas em um único formulário HTML válido. Os botões ficam fora dos painéis, no início desse formulário, disponíveis em Integração e automação, Classificação e Templates. Não colocar os botões dentro de um painel nem fechar o formulário antes dos contêineres internos.
+
+O JavaScript alterna os painéis sem navegação HTTP e atualiza somente o parâmetro `tab` da URL com `history.replaceState`. Os campos permanecem no DOM até salvar; não são persistidos em localStorage/sessionStorage. Campos obrigatórios inválidos abrem a aba correspondente. Alterações de campos geram aviso antes de sair/recarregar; enviar o formulário válido segue o fluxo normal de POST e redirecionamento. O formulário pessoal tem destino explícito `?tab=my-access`, independente da aba administrativa anterior.
+
+Autorização MANAGE_CONFIG, CSRF, regras de salvamento e banco não foram alterados. Roteiro de regressão e limitações em `docs/RELEASE_0.18.5.md`.

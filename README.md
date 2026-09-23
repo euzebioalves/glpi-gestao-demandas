@@ -1,8 +1,8 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
-## Plugin 0.18.4
+## Plugin 0.18.5
 
-A versão 0.18.4 autoriza as configurações pela permissão **Administrar as configurações do plugin** (`MANAGE_CONFIG`) do perfil ativo, independentemente do nome. Perfis como Master e Administrador Corporativo podem administrar o plugin quando autorizados. Sem essa permissão, permanece apenas o acesso ao próprio token. Mantém as correções de instalação da 0.18.3 e preserva dados e permissões. Veja `docs/RELEASE_0.18.4.md` e `plugins/demandas/README.md`.
+A versão 0.18.5 corrige o salvamento da configuração: os botões ficam disponíveis nas três abas administrativas, e alternar entre abas preserva o preenchimento sem recarregar a página. Mantém a autorização por permissões da 0.18.4. Veja `docs/RELEASE_0.18.5.md` e `plugins/demandas/README.md`.
 
 Ambiente local de homologação para validar a integração entre tickets do GLPI e Work Packages do OpenProject.
 

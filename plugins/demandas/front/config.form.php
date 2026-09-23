@@ -236,6 +236,8 @@ function demandasRenderConfigurationTutorial(): void
       </div>
     </div>
     <hr class="my-4">
+    <h3 class="h4">Salvar configurações</h3>
+    <p>Use os botões no início de Integração e automação, Classificação ou Templates. Eles salvam as três abas juntas. A troca de abas mantém os campos preenchidos sem recarregar a página; alterações só são gravadas ao salvar. O token de Meu acesso ao OpenProject é salvo separadamente. Antes de sair ou recarregar, salve suas alterações.</p>
     <h3 class="h4">Permissões administrativas</h3>
     <p>Em Administração &gt; Perfis &gt; Gestão de Demandas, conceda <strong>Administrar as configurações do plugin</strong> ao perfil desejado e selecione esse perfil na sessão. Nomes como Master ou Administrador não alteram os direitos. Sem essa permissão, somente o token pessoal fica disponível. Feriados e exceções de acesso usam permissões próprias.</p>
     <h3 class="h4">Atualização do plugin</h3>
@@ -265,7 +267,7 @@ echo <<<'HTML'
 .demandas-status-mapping-table textarea { min-height: 5.75rem; resize: vertical; }
 </style>
 HTML;
-echo "<div class='container-xl'><ul class='nav nav-tabs mb-4' role='tablist'>";
+echo "<div class='container-xl' id='demandas-configuration'><ul class='nav nav-tabs mb-4' role='tablist'>";
 echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'my-access' ? ' active' : '') . "' href='?tab=my-access' role='tab'>Meu acesso ao OpenProject</a></li>";
 if ($canManageConfiguration) {
     echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'automation' ? ' active' : '') . "' href='?tab=automation' role='tab'>Integração e automação</a></li>";
@@ -276,13 +278,18 @@ if ($canManageConfiguration) {
 echo "</ul><div class='tab-content'>";
 echo '<div' . demandasTabPaneAttributes('demandas-my-access', $activeTab === 'my-access') . "><div class='card'><div class='card-header'><h3 class='card-title'>Meu acesso ao OpenProject</h3></div><div class='card-body'>";
 echo "<p class='text-muted'>Este token é pessoal e será usado nas suas criações, sincronizações manuais e lançamentos de tempo. O token automático do plugin não é usado nessas ações.</p>";
-echo "<form method='post' class='row g-3'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
+echo "<form method='post' action='?tab=my-access' class='row g-3'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
 echo "<div class='col-md-8'><label class='form-label' for='personal_openproject_api_token'>Meu token da API</label><input class='form-control' id='personal_openproject_api_token' name='personal_openproject_api_token' type='password' autocomplete='new-password' placeholder='" . (DemandasConfig::hasPersonalToken($currentUserId) ? 'Token já configurado — informe outro valor para substituí-lo' : 'Informe o token de acesso do OpenProject') . "'><div class='form-hint'>O valor não é exibido novamente. Deixe em branco para manter o token atual.</div></div>";
 echo "<div class='col-md-4 d-flex align-items-end gap-2'><button class='btn btn-primary' name='save_personal_token' value='1'>Salvar meu token</button><button class='btn btn-outline-primary' name='test_personal_token' value='1'>Salvar e testar</button></div></form>";
 echo "</div></div></div>";
 
 if ($canManageConfiguration) {
-echo "<form method='post'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><div" . demandasTabPaneAttributes('demandas-automation', $activeTab === 'automation') . "><div class='card'><div class='card-header'><h3 class='card-title'>Integração com OpenProject</h3></div><div class='card-body'><div class='row g-3'>";
+$showAdministrativeForm = in_array($activeTab, ['automation', 'classification', 'templates'], true);
+echo "<form method='post' id='demandas-administrative-form' style='display: " . ($showAdministrativeForm ? 'block' : 'none') . "'>";
+echo "<input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
+echo "<div class='card card-body mb-3'><div class='d-flex flex-wrap gap-2'><button class='btn btn-primary' name='save' value='1'>Salvar todas as configurações administrativas</button>";
+echo "<button class='btn btn-outline-primary' name='test_connection' value='1'>Salvar e testar conexão</button></div><p class='form-hint mb-0 mt-2'>Você pode alternar entre as abas sem perder o preenchimento. Salvar grava Integração e automação, Classificação e Templates juntas. O token pessoal é salvo separadamente.</p></div>";
+echo '<div' . demandasTabPaneAttributes('demandas-automation', $activeTab === 'automation') . "><div class='card'><div class='card-header'><h3 class='card-title'>Integração com OpenProject</h3></div><div class='card-body'><div class='row g-3'>";
 demandasField('openproject_internal_url', 'URL interna da API', $config);
 demandasField('openproject_external_url', 'URL externa para navegação', $config);
 demandasField('glpi_external_url', 'URL externa do GLPI', $config);
@@ -468,8 +475,8 @@ echo '<script>window.demandasClassificationData = ' . json_encode([
     'typeNames' => array_values($typeNames),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ';</script>';
 
-echo "<div class='mt-4 d-flex gap-2'><button class='btn btn-primary' name='save' value='1'>Salvar todas as configurações administrativas</button>";
-echo "<button class='btn btn-outline-primary' name='test_connection' value='1'>Salvar e testar conexão</button></div></form></div></div></div>";
+// Fecha o painel de templates antes do formulário compartilhado.
+echo '</div></div></div></form>';
 
 echo '<div' . demandasTabPaneAttributes('demandas-tutorial', $activeTab === 'tutorial') . '>';
 demandasRenderConfigurationTutorial();
@@ -481,6 +488,52 @@ echo '</div></div>';
 echo <<<'HTML'
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    const configuration = document.getElementById('demandas-configuration');
+    const administrativeForm = document.getElementById('demandas-administrative-form');
+    const tabLinks = Array.from(configuration.querySelectorAll('[role="tab"]'));
+    const tabName = link => new URL(link.href).searchParams.get('tab');
+    const showTab = name => {
+        const selected = tabLinks.find(link => tabName(link) === name);
+        if (!selected) return;
+        tabLinks.forEach(link => {
+            const active = link === selected;
+            link.classList.toggle('active', active);
+            link.setAttribute('aria-selected', String(active));
+            link.setAttribute('aria-controls', 'demandas-' + tabName(link));
+            const pane = document.getElementById('demandas-' + tabName(link));
+            if (pane) pane.style.display = active ? 'block' : 'none';
+        });
+        if (administrativeForm) {
+            administrativeForm.style.display = ['automation', 'classification', 'templates'].includes(name) ? 'block' : 'none';
+        }
+        // Atualiza o destino do POST, sem recarregar nem armazenar dados/segredos.
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', name);
+        window.history.replaceState(null, '', url);
+    };
+    tabLinks.forEach(link => link.addEventListener('click', event => {
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        showTab(tabName(link));
+    }));
+    const initialTab = tabLinks.find(link => link.classList.contains('active'));
+    if (initialTab) showTab(tabName(initialTab));
+    // Campos obrigatórios em outra aba devem ficar visíveis para correção.
+    administrativeForm?.addEventListener('invalid', event => {
+        const pane = event.target.closest('.tab-pane');
+        if (pane) showTab(pane.id.replace('demandas-', ''));
+    }, true);
+
+    let hasUnsavedChanges = false;
+    configuration.addEventListener('input', () => { hasUnsavedChanges = true; });
+    configuration.addEventListener('change', () => { hasUnsavedChanges = true; });
+    configuration.addEventListener('submit', () => { hasUnsavedChanges = false; });
+    window.addEventListener('beforeunload', event => {
+        if (!hasUnsavedChanges) return;
+        event.preventDefault();
+        event.returnValue = '';
+    });
+
     const phaseBody = document.querySelector('#demandas-phases-table tbody');
     const addPhase = document.getElementById('demandas-add-phase');
     let phaseIndex = phaseBody ? phaseBody.children.length : 0;

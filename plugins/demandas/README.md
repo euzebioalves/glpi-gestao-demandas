@@ -1,5 +1,15 @@
 # Gestão de Demandas
 
+## Versão 0.18.5
+
+- disponibiliza **Salvar todas as configurações administrativas** e **Salvar e testar conexão** no início de Integração e automação, Classificação e Templates;
+- troca as abas na própria página, preservando o preenchimento e a aba selecionada após salvar;
+- corrige o fechamento do formulário compartilhado; as três abas administrativas são salvas juntas e o token pessoal continua separado;
+- abre a aba de um campo obrigatório inválido e avisa antes de sair/recarregar com campos alterados;
+- não armazena rascunhos ou tokens no armazenamento local do navegador e mantém autorização e CSRF no servidor.
+
+Atualize substituindo `plugins/demandas` e usando **Atualizar** em **Configuração > Plugins**, sem desinstalar. Consulte `docs/RELEASE_0.18.5.md` para os testes e o roteiro de conferência.
+
 ## Versão 0.18.4
 
 - configurações globais, teste da automação e as abas Integração e automação, Classificação, Templates e Tutorial usam `MANAGE_CONFIG` do perfil ativo; o nome do perfil não concede nem restringe direitos;
