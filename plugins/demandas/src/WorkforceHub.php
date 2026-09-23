@@ -22,7 +22,7 @@ final class WorkforceHub extends CommonGLPI
             'audit' => ['title' => 'Auditoria do banco de horas', 'page' => '/plugins/demandas/front/timeclock-audit.php', 'icon' => 'ti ti-list-details'],
             'absences' => ['title' => 'Minhas ausências', 'page' => '/plugins/demandas/front/absence-list.php', 'icon' => 'ti ti-calendar-x'],
         ];
-        if (Config::isActiveSuperAdmin() || AccessPolicy::has(Profile::MANAGE_TIME_ACCESS)) {
+        if (AccessPolicy::has(Profile::MANAGE_HOLIDAYS) || AccessPolicy::has(Profile::MANAGE_TIME_ACCESS)) {
             $options['admin'] = ['title' => 'Administração do ponto', 'page' => '/plugins/demandas/front/timeclock-admin.php', 'icon' => 'ti ti-settings'];
         }
         return [

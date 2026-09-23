@@ -1,8 +1,8 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
-## Plugin 0.18.3
+## Plugin 0.18.4
 
-A versão 0.18.3 corrige os avisos de campos DATETIME no instalador e migra as colunas legadas para TIMESTAMP, preservando os dados. Veja o roteiro de atualização em `plugins/demandas/README.md`.
+A versão 0.18.4 autoriza as configurações pela permissão **Administrar as configurações do plugin** (`MANAGE_CONFIG`) do perfil ativo, independentemente do nome. Perfis como Master e Administrador Corporativo podem administrar o plugin quando autorizados. Sem essa permissão, permanece apenas o acesso ao próprio token. Mantém as correções de instalação da 0.18.3 e preserva dados e permissões. Veja `docs/RELEASE_0.18.4.md` e `plugins/demandas/README.md`.
 
 Ambiente local de homologação para validar a integração entre tickets do GLPI e Work Packages do OpenProject.
 
@@ -276,7 +276,7 @@ docker compose up -d
 O comando `down` acima remove os contêineres e a rede antiga, mas preserva os
 volumes e os bancos. Não acrescente a opção `-v`.
 
-Para instalar, acesse **Configuração > Plugins** no GLPI, localize **Gestão de Demandas**, clique em **Instalar** e depois em **Ativar**. Com o perfil ativo **Super-Admin**, abra a configuração do plugin e informe as URLs e o token do usuário técnico presente no `integration.env`; ele é usado exclusivamente nas sincronizações automáticas. Cada usuário que criar ou sincronizar Work Packages manualmente deve abrir a aba **Meu acesso ao OpenProject** e registrar seu próprio token. Projetos, tipos e campos de origem são identificados automaticamente.
+Para instalar, acesse **Configuração > Plugins** no GLPI, localize **Gestão de Demandas**, clique em **Instalar** e depois em **Ativar**. Com a permissão **Administrar as configurações do plugin** concedida ao perfil ativo em **Administração > Perfis > Gestão de Demandas**, abra a configuração do plugin e informe as URLs e o token do usuário técnico presente no `integration.env`; ele é usado exclusivamente nas sincronizações automáticas. Cada usuário que criar ou sincronizar Work Packages manualmente deve abrir a aba **Meu acesso ao OpenProject** e registrar seu próprio token. Projetos, tipos e campos de origem são identificados automaticamente.
 
 ## Configuração automatizada para o plugin
 

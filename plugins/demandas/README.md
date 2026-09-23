@@ -1,5 +1,20 @@
 # Gestão de Demandas
 
+## Versão 0.18.4
+
+- configurações globais, teste da automação e as abas Integração e automação, Classificação, Templates e Tutorial usam `MANAGE_CONFIG` do perfil ativo; o nome do perfil não concede nem restringe direitos;
+- sem essa permissão, somente o token pessoal fica disponível; URL administrativa e POST global retornam acesso negado;
+- feriados usam `MANAGE_HOLIDAYS` e exceções individuais usam `MANAGE_TIME_ACCESS`, mantendo a política própria de horas; nenhuma dessas permissões concede configuração global;
+- a gestão dos perfis continua exigindo o direito nativo do GLPI de alterar perfis;
+- corrige a gravação de novas exceções de horas e restringe no servidor os direitos que podem receber essas exceções;
+- preserva configurações, tokens, permissões e históricos; não cria migração de banco nem exige renomear perfis.
+
+### Atualização da 0.18.4
+
+Faça backup, substitua os arquivos de `plugins/demandas` pela pasta `demandas/` do ZIP e execute **Atualizar** em **Configuração > Plugins**. **Não desinstale**: isso remove dados. Em **Administração > Perfis > Gestão de Demandas**, confira **Administrar as configurações do plugin** e selecione o perfil autorizado na sessão. O GLPI recarrega os direitos após alterações feitas por sua interface nativa; o plugin consulta o perfil ativo em cada requisição. Tokens pessoais não autorizam configurações globais.
+
+Testes automatizados, roteiro manual e limitações: `docs/RELEASE_0.18.4.md` no repositório. As referências a Super-Admin nas versões abaixo descrevem o comportamento histórico, substituído na 0.18.4.
+
 ## Versão 0.18.3
 
 - elimina os avisos de uso de `DATETIME` na instalação, utilizando `TIMESTAMP` nos campos de data e hora;

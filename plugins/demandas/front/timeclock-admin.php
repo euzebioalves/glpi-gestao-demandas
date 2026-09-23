@@ -3,16 +3,16 @@
 declare(strict_types=1);
 
 use GlpiPlugin\Demandas\AccessPolicy;
-use GlpiPlugin\Demandas\Config as DemandasConfig;
 use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\TimeManagementService;
 
 Session::checkLoginUser();
 AccessPolicy::check(DemandasProfile::VIEW_TIME_PORTAL);
 
-$isSuperAdmin = DemandasConfig::isActiveSuperAdmin();
+$canManageHolidays = AccessPolicy::has(DemandasProfile::MANAGE_HOLIDAYS);
 $canAccess = AccessPolicy::has(DemandasProfile::MANAGE_TIME_ACCESS);
-if (!$isSuperAdmin && !$canAccess) {
+$timeRights = [DemandasProfile::VIEW_TIME_PORTAL, DemandasProfile::LOG_OWN_TIME, DemandasProfile::LOG_OTHERS_TIME, DemandasProfile::VIEW_OWN_ATTENDANCE, DemandasProfile::VIEW_TEAM_ATTENDANCE, DemandasProfile::MANAGE_ATTENDANCE, DemandasProfile::MANAGE_HOLIDAYS];
+if (!$canManageHolidays && !$canAccess) {
     throw new Glpi\Exception\Http\AccessDeniedHttpException();
 }
 
@@ -20,6 +20,12 @@ $service = new TimeManagementService();
 $db = DBConnection::getReadConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['save_holiday']) || isset($_POST['delete_holiday'])) {
+        AccessPolicy::check(DemandasProfile::MANAGE_HOLIDAYS);
+    }
+    if (isset($_POST['save_access'])) {
+        AccessPolicy::check(DemandasProfile::MANAGE_TIME_ACCESS);
+    }
     try {
         if (isset($_POST['save_holiday'])) {
             $service->saveHoliday($_POST);
@@ -31,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             AccessPolicy::check(DemandasProfile::MANAGE_TIME_ACCESS);
             $userId = (int) ($_POST['users_id'] ?? 0);
             $right = (string) ($_POST['right_name'] ?? '');
-            if ($userId <= 0 || !array_key_exists($right, DemandasProfile::definitions())) {
+            if ($userId <= 0 || !in_array($right, $timeRights, true)) {
                 throw new RuntimeException('Usuário ou permissão inválidos.');
             }
             $existing = null;
@@ -42,7 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($existing !== null) {
                 $db->update('glpi_plugin_demandas_user_rights', $data, ['id' => (int) $existing['id']]);
             } else {
-                $data['date_creation'] = date('Y-m-d H:i:s');
                 $db->insert('glpi_plugin_demandas_user_rights', $data);
             }
             Session::addMessageAfterRedirect('Exceção individual salva.', true, INFO);
@@ -58,7 +63,7 @@ function timeAdminEsc(string $value): string
     return htmlspecialchars($value, ENT_QUOTES);
 }
 
-$holidays = $isSuperAdmin ? $service->holidays() : [];
+$holidays = $canManageHolidays ? $service->holidays() : [];
 $editing = null;
 $editId = (int) ($_GET['edit'] ?? 0);
 foreach ($holidays as $holiday) {
@@ -73,8 +78,8 @@ $scopeLabels = ['international' => 'Internacional', 'national' => 'Nacional', 's
 Html::header('Administração do Ponto', $_SERVER['PHP_SELF'], 'management', GlpiPlugin\Demandas\WorkforceHub::class);
 echo "<div class='container-xl'><h1>Administração do ponto</h1><div class='row g-4'>";
 
-if ($isSuperAdmin) {
-    echo "<div class='col-12'><div class='alert alert-info'><i class='ti ti-calendar-off me-2'></i><strong>Feriados e dias não úteis:</strong> estes dias ficam neutros no banco de horas, mesmo que existam marcações ou ausências. A configuração é exclusiva do perfil ativo Super-Admin.</div></div>";
+if ($canManageHolidays) {
+    echo "<div class='col-12'><div class='alert alert-info'><i class='ti ti-calendar-off me-2'></i><strong>Feriados e dias não úteis:</strong> estes dias ficam neutros no banco de horas, mesmo que existam marcações ou ausências. A configuração exige a permissão Administrar feriados e compensações.</div></div>";
     echo "<div class='col-lg-5'><div class='card'><div class='card-header'><h2 class='card-title'>" . ((int) $editing['id'] > 0 ? 'Editar' : 'Adicionar') . " feriado ou dia não útil</h2></div><div class='card-body'><form method='post'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><input type='hidden' name='id' value='" . (int) $editing['id'] . "'><div class='row g-3'>";
     echo "<div class='col-md-8'><label class='form-label'>Nome</label><input class='form-control' name='name' required maxlength='255' value='" . timeAdminEsc((string) $editing['name']) . "'></div>";
     echo "<div class='col-md-4'><label class='form-label'>Data</label><input class='form-control' type='date' name='holiday_date' required value='" . timeAdminEsc((string) $editing['holiday_date']) . "'></div>";
@@ -103,14 +108,13 @@ if ($isSuperAdmin) {
 }
 
 if ($canAccess) {
-    $rights = [DemandasProfile::VIEW_TIME_PORTAL, DemandasProfile::LOG_OWN_TIME, DemandasProfile::LOG_OTHERS_TIME, DemandasProfile::VIEW_OWN_ATTENDANCE, DemandasProfile::VIEW_TEAM_ATTENDANCE, DemandasProfile::MANAGE_ATTENDANCE, DemandasProfile::MANAGE_HOLIDAYS];
     echo "<div class='col-lg-6'><div class='card'><div class='card-header'><h2 class='card-title'>Exceções individuais de acesso</h2></div><div class='card-body'><p class='text-muted'>A decisão individual prevalece sobre a permissão herdada do perfil.</p><form method='post'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><label class='form-label'>Usuário</label><select class='form-select mb-3' name='users_id'>";
     foreach ($db->request(['SELECT' => ['id', 'name', 'realname', 'firstname'], 'FROM' => 'glpi_users', 'WHERE' => ['is_active' => 1], 'ORDER' => ['realname ASC']]) as $user) {
         $name = trim((string) $user['firstname'] . ' ' . (string) $user['realname']) ?: (string) $user['name'];
         echo "<option value='" . (int) $user['id'] . "'>" . timeAdminEsc($name) . "</option>";
     }
     echo "</select><label class='form-label'>Permissão</label><select class='form-select mb-3' name='right_name'>";
-    foreach ($rights as $right) {
+    foreach ($timeRights as $right) {
         echo "<option value='" . timeAdminEsc($right) . "'>" . timeAdminEsc(DemandasProfile::definitions()[$right]) . "</option>";
     }
     echo "</select><label class='form-label'>Decisão individual</label><select class='form-select mb-3' name='decision'><option value='1'>Permitir</option><option value='0'>Negar</option></select><button class='btn btn-primary' name='save_access' value='1'>Salvar exceção</button></form></div></div></div>";

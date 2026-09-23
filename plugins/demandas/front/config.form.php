@@ -11,12 +11,21 @@ use GlpiPlugin\Demandas\FieldsClassificationProvider;
 use GlpiPlugin\Demandas\WorkPackageTemplate;
 
 Session::checkLoginUser();
-$isSuperAdmin = DemandasConfig::isActiveSuperAdmin();
+$canManageConfiguration = DemandasConfig::canManageConfiguration();
 $currentUserId = (int) Session::getLoginUserID();
+$administrativeTabs = ['automation', 'classification', 'templates', 'tutorial'];
+$isPersonalAction = isset($_POST['save_personal_token']) || isset($_POST['test_personal_token']);
+// A negativa deve ocorrer antes do tratamento de erros e de qualquer escrita.
+if (!$canManageConfiguration && (
+    in_array((string) ($_GET['tab'] ?? ''), $administrativeTabs, true)
+    || ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isPersonalAction)
+)) {
+    throw new Glpi\Exception\Http\AccessDeniedHttpException();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        if (isset($_POST['save_personal_token']) || isset($_POST['test_personal_token'])) {
+        if ($isPersonalAction) {
             DemandasConfig::savePersonalToken($currentUserId, (string) ($_POST['personal_openproject_api_token'] ?? ''));
             if (isset($_POST['test_personal_token'])) {
                 OpenProjectClient::forCurrentUser()->testConnection();
@@ -27,9 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Html::redirect('/plugins/demandas/front/config.form.php?tab=my-access');
         }
 
-        if (!$isSuperAdmin) {
-            throw new Glpi\Exception\Http\AccessDeniedHttpException();
-        }
         $input = $_POST;
         $input['ticket_log_enabled'] = isset($_POST['ticket_log_enabled']) ? '1' : '0';
         $phases = [];
@@ -123,6 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
     }
 
+    if ($isPersonalAction) {
+        Html::redirect('/plugins/demandas/front/config.form.php?tab=my-access');
+    }
     $redirectTab = (string) ($_GET['tab'] ?? 'automation');
     if (!in_array($redirectTab, ['automation', 'classification', 'templates'], true)) {
         $redirectTab = 'automation';
@@ -130,11 +139,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Html::redirect('/plugins/demandas/front/config.form.php?tab=' . rawurlencode($redirectTab));
 }
 
-$config = DemandasConfig::all();
-$config['webhook_secret'] = DemandasConfig::webhookSecret();
+$config = $canManageConfiguration ? DemandasConfig::all() : [];
+if ($canManageConfiguration) {
+    $config['webhook_secret'] = DemandasConfig::webhookSecret();
+}
 $statuses = [];
 $statusLoadError = null;
-if ($isSuperAdmin && DemandasConfig::isAutomationReady()) {
+if ($canManageConfiguration && DemandasConfig::isAutomationReady()) {
     try {
         $statuses = OpenProjectClient::forAutomation()->getStatuses();
     } catch (Throwable $exception) {
@@ -156,7 +167,7 @@ foreach (array_keys($fieldsPluginFields) as $fieldId) {
     }
 }
 $typeNames = [];
-if ($isSuperAdmin && DemandasConfig::isAutomationReady()) {
+if ($canManageConfiguration && DemandasConfig::isAutomationReady()) {
     try {
         foreach (OpenProjectClient::forAutomation()->getTypes() as $type) {
             $name = trim((string) ($type['name'] ?? ''));
@@ -190,7 +201,7 @@ function demandasRenderConfigurationTutorial(): void
   <div class="card-header"><h3 class="card-title">Tutorial de configuração</h3></div>
   <div class="card-body">
     <div class="alert alert-info">
-      <strong>Quem configura:</strong> somente o perfil ativo <strong>Super-Admin</strong>. O token automático é exclusivo da automação; cada pessoa que cria ou sincroniza Work Packages manualmente configura o próprio token na aba <strong>Meu acesso ao OpenProject</strong>.
+      <strong>Quem configura:</strong> o perfil ativo com a permissão <strong>Administrar as configurações do plugin</strong>, independentemente do nome. O token automático é exclusivo da automação; cada pessoa que cria ou sincroniza Work Packages manualmente configura o próprio token na aba <strong>Meu acesso ao OpenProject</strong>.
     </div>
     <div class="row g-4">
       <div class="col-lg-7">
@@ -203,7 +214,7 @@ function demandasRenderConfigurationTutorial(): void
           <li class="mb-3"><strong>Revise a classificação.</strong> Na aba <strong>Classificação</strong>, escolha a origem e libere os tipos de Work Package para cada classificação. Uma classificação sem regra não poderá criar WP.</li>
           <li class="mb-3"><strong>Preencha os templates.</strong> Na aba <strong>Templates</strong>, cadastre o Markdown de cada tipo de WP que poderá ser criado. O plugin bloqueia a criação quando o tipo não possui template.</li>
           <li class="mb-3"><strong>Oriente os operadores.</strong> Cada usuário que cria, sincroniza ou lança tempo manualmente deve abrir <strong>Minhas configurações &gt; OpenProject</strong> e informar o próprio token.</li>
-          <li><strong>Configure os dias sem expediente.</strong> Em <strong>Gerência &gt; Horas e Ponto &gt; Administração do ponto</strong>, o Super-Admin cadastra feriados e dias não úteis. Eles são neutros e não geram crédito ou débito no banco de horas.</li>
+          <li><strong>Configure os dias sem expediente.</strong> Em <strong>Gerência &gt; Horas e Ponto &gt; Administração do ponto</strong>, quem possui a permissão Administrar feriados e compensações cadastra feriados e dias não úteis. Eles são neutros e não geram crédito ou débito no banco de horas.</li>
         </ol>
       </div>
       <div class="col-lg-5">
@@ -219,12 +230,14 @@ function demandasRenderConfigurationTutorial(): void
             <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
             <div class="p-2 border rounded"><strong>4. Minhas configurações &gt; OpenProject</strong><br><span class="text-muted small">Token individual de quem executa ações manuais.</span></div>
             <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
-            <div class="p-2 border rounded"><strong>5. Administração do ponto</strong><br><span class="text-muted small">Feriados e dias não úteis, exclusivos do Super-Admin.</span></div>
+            <div class="p-2 border rounded"><strong>5. Administração do ponto</strong><br><span class="text-muted small">Feriados e dias não úteis, com a permissão Administrar feriados e compensações.</span></div>
           </div>
         </div>
       </div>
     </div>
     <hr class="my-4">
+    <h3 class="h4">Permissões administrativas</h3>
+    <p>Em Administração &gt; Perfis &gt; Gestão de Demandas, conceda <strong>Administrar as configurações do plugin</strong> ao perfil desejado e selecione esse perfil na sessão. Nomes como Master ou Administrador não alteram os direitos. Sem essa permissão, somente o token pessoal fica disponível. Feriados e exceções de acesso usam permissões próprias.</p>
     <h3 class="h4">Atualização do plugin</h3>
     <p>Faça backup do banco e dos arquivos, substitua a pasta <code>plugins/demandas</code> pelo pacote novo e execute <strong>Atualizar</strong> em <strong>Configuração &gt; Plugins</strong>. Não desinstale para atualizar, pois isso apaga os dados do plugin. Na versão 0.18.3, mantenha o fuso horário do GLPI e confira os horários de ponto após a migração. Se a atualização indicar datas inválidas, solicite revisão ao administrador.</p>
     <h3 class="h4">Checklist de validação</h3>
@@ -242,8 +255,8 @@ function demandasRenderConfigurationTutorial(): void
 HTML;
 }
 
-$activeTab = (string) ($_GET['tab'] ?? ($isSuperAdmin ? 'automation' : 'my-access'));
-if (!$isSuperAdmin || !in_array($activeTab, ['automation', 'classification', 'templates', 'tutorial'], true)) {
+$activeTab = (string) ($_GET['tab'] ?? ($canManageConfiguration ? 'automation' : 'my-access'));
+if (!$canManageConfiguration || !in_array($activeTab, ['automation', 'classification', 'templates', 'tutorial'], true)) {
     $activeTab = 'my-access';
 }
 echo <<<'HTML'
@@ -254,7 +267,7 @@ echo <<<'HTML'
 HTML;
 echo "<div class='container-xl'><ul class='nav nav-tabs mb-4' role='tablist'>";
 echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'my-access' ? ' active' : '') . "' href='?tab=my-access' role='tab'>Meu acesso ao OpenProject</a></li>";
-if ($isSuperAdmin) {
+if ($canManageConfiguration) {
     echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'automation' ? ' active' : '') . "' href='?tab=automation' role='tab'>Integração e automação</a></li>";
     echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'classification' ? ' active' : '') . "' href='?tab=classification' role='tab'>Classificação</a></li>";
     echo "<li class='nav-item'><a class='nav-link" . ($activeTab === 'templates' ? ' active' : '') . "' href='?tab=templates' role='tab'>Templates</a></li>";
@@ -268,7 +281,7 @@ echo "<div class='col-md-8'><label class='form-label' for='personal_openproject_
 echo "<div class='col-md-4 d-flex align-items-end gap-2'><button class='btn btn-primary' name='save_personal_token' value='1'>Salvar meu token</button><button class='btn btn-outline-primary' name='test_personal_token' value='1'>Salvar e testar</button></div></form>";
 echo "</div></div></div>";
 
-if ($isSuperAdmin) {
+if ($canManageConfiguration) {
 echo "<form method='post'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><div" . demandasTabPaneAttributes('demandas-automation', $activeTab === 'automation') . "><div class='card'><div class='card-header'><h3 class='card-title'>Integração com OpenProject</h3></div><div class='card-body'><div class='row g-3'>";
 demandasField('openproject_internal_url', 'URL interna da API', $config);
 demandasField('openproject_external_url', 'URL externa para navegação', $config);

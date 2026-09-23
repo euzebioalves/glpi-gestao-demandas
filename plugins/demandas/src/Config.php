@@ -22,6 +22,7 @@ final class Config
 
     public static function save(array $input): void
     {
+        Profile::checkRight(Profile::MANAGE_CONFIG);
         $allowed = [
             'openproject_internal_url',
             'openproject_external_url',
@@ -156,23 +157,10 @@ final class Config
         $db->insert(self::USER_TOKENS_TABLE, $values);
     }
 
-    public static function isActiveSuperAdmin(): bool
+    /** A autorização acompanha exclusivamente os direitos do perfil ativo no GLPI. */
+    public static function canManageConfiguration(): bool
     {
-        $profile = $_SESSION['glpiactiveprofile'] ?? [];
-        $name = trim((string) ($profile['name'] ?? ''));
-        if ($name === '' && (int) ($profile['id'] ?? 0) > 0) {
-            $db = \DBConnection::getReadConnection();
-            foreach ($db->request([
-                'SELECT' => ['name'],
-                'FROM' => 'glpi_profiles',
-                'WHERE' => ['id' => (int) $profile['id']],
-                'LIMIT' => 1,
-            ]) as $row) {
-                $name = trim((string) ($row['name'] ?? ''));
-            }
-        }
-
-        return mb_strtolower($name) === 'super-admin';
+        return Profile::has(Profile::MANAGE_CONFIG);
     }
 
     public static function label(string $name): string

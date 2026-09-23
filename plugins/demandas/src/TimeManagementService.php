@@ -231,13 +231,13 @@ final class TimeManagementService
     /** @return array<int, array<string, mixed>> */
     public function holidays(): array
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageHolidays();
         return array_values(iterator_to_array($this->db->request(['FROM'=>'glpi_plugin_demandas_holidays','ORDER'=>['holiday_date DESC','id DESC']])));
     }
 
     public function saveHoliday(array $input): int
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageHolidays();
         $name=mb_substr(trim((string)($input['name']??'')),0,255);
         if($name==='')throw new RuntimeException('Informe o nome do feriado ou dia não útil.');
         $date=$this->date((string)($input['holiday_date']??''));
@@ -265,7 +265,7 @@ final class TimeManagementService
 
     public function deleteHoliday(int $holidayId): void
     {
-        $this->assertSuperAdmin();
+        $this->assertCanManageHolidays();
         if($holidayId<=0)throw new RuntimeException('Feriado inválido.');
         $this->db->delete('glpi_plugin_demandas_holidays',['id'=>$holidayId]);
         $this->holidayRows=null;
@@ -344,9 +344,9 @@ final class TimeManagementService
         $minutes=((int)$matches['hours']*60)+(int)$matches['minutes'];
         return ($matches['sign']??'')==='-'?-$minutes:$minutes;
     }
-    private function assertSuperAdmin():void
+    private function assertCanManageHolidays():void
     {
-        if(!Config::isActiveSuperAdmin())throw new \Glpi\Exception\Http\AccessDeniedHttpException();
+        if(!AccessPolicy::has(Profile::MANAGE_HOLIDAYS))throw new \Glpi\Exception\Http\AccessDeniedHttpException();
     }
     private function time(string $v):string{if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/',$v))throw new RuntimeException('Horário inválido.');return$v;}
     private function punchType(string $v):string{$allowed=['entrada_manha','saida_manha','entrada_tarde','saida_tarde','entrada_intermediaria','saida_intermediaria'];return in_array($v,$allowed,true)?$v:'';}
