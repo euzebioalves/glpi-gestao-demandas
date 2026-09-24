@@ -124,7 +124,11 @@ final class OpenProjectClient
 
         $workPackages = [];
         $offset = 1;
-        $pageSize = 100;
+        // The official instance can return large embedded WP payloads. A
+        // smaller page keeps each HTTP response below the configured timeout
+        // while still collecting the complete result set.
+        $pageSize = 25;
+        $total = null;
         do {
             $query = http_build_query([
                 'filters' => $filters,
@@ -144,7 +148,11 @@ final class OpenProjectClient
             }
             $received = count($elements);
             $offset += $received;
-        } while ($received === $pageSize);
+            $reportedTotal = $collection['total'] ?? $collection['_meta']['total'] ?? null;
+            if (is_numeric($reportedTotal)) {
+                $total = (int) $reportedTotal;
+            }
+        } while ($received === $pageSize && ($total === null || count($workPackages) < $total));
 
         return $workPackages;
     }

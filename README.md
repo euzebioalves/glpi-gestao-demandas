@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.19.2
+
+A versão 0.19.2 pagina a consulta de Work Packages em blocos menores para impedir que respostas extensas da instância oficial do OpenProject excedam o tempo de comunicação configurado. Veja `docs/RELEASE_0.19.2.md`.
+
 ## Plugin 0.19.1
 
 A versão 0.19.1 torna visível a consulta de Work Packages com indicador indeterminado de progresso e corrige o alinhamento do sino de alertas ao lado direito da busca no cabeçalho. Veja `docs/RELEASE_0.19.1.md`.

@@ -1,5 +1,13 @@
 # Gestão de Demandas
 
+## Versão 0.19.2
+
+- pagina a leitura de Work Packages abertas em blocos de 25 itens;
+- usa o total devolvido pela API quando disponível para não executar uma página vazia adicional;
+- evita timeout de respostas muito grandes sem reduzir o conjunto de WPs consolidado.
+
+Consulte `docs/RELEASE_0.19.2.md` para validação.
+
 ## Versão 0.19.1
 
 - exibe indicador de consulta na página **Minhas Work Packages**, com barra de progresso animada sem porcentagem fictícia enquanto o OpenProject processa e devolve o total;
