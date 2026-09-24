@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.19.2` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.19.3` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.19.2` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.19.2 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.19.3 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -258,3 +258,7 @@ O sino deve ser anexado ao formulário do `#global-search`, que no GLPI 11 é in
 ## 15. Paginação do monitoramento — 0.19.2
 
 Não eleve o timeout como resposta inicial a uma coleção de WPs lenta. O cliente busca blocos de 25, preservando o filtro e a ordenação, e usa o total retornado pela coleção quando estiver disponível. Essa abordagem limita cada resposta HTTP e evita uma requisição adicional vazia ao final. Veja `docs/RELEASE_0.19.2.md`.
+
+## 16. Offset do OpenProject — 0.19.3
+
+No endpoint `/api/v3/work_packages`, `offset` é a página da coleção e começa em 1. Para uma página de 25 itens, o avanço correto é `1`, `2`, `3`; nunca some a quantidade de elementos ao offset. A instância oficial confirmou `total=128`, `count=25`, `pageSize=25` e `offset=1`, validando esse contrato. Veja `docs/RELEASE_0.19.3.md`.

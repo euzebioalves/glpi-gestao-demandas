@@ -1,5 +1,12 @@
 # Gestão de Demandas
 
+## Versão 0.19.3
+
+- corrige a paginação do OpenProject para avançar de página em página (`offset=1`, `2`, `3`…), em vez de saltar para o número de itens recebidos;
+- mantém blocos de 25 WPs e passa a consolidar todas as páginas até o total devolvido pela API.
+
+Consulte `docs/RELEASE_0.19.3.md` para validação.
+
 ## Versão 0.19.2
 
 - pagina a leitura de Work Packages abertas em blocos de 25 itens;

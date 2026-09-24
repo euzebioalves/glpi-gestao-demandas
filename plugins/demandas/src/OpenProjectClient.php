@@ -147,7 +147,10 @@ final class OpenProjectClient
                 }
             }
             $received = count($elements);
-            $offset += $received;
+            // OpenProject's `offset` identifies the page (starting at 1),
+            // rather than the index of the first item. Advancing it by the
+            // number of items would jump from page 1 directly to page 26.
+            $offset++;
             $reportedTotal = $collection['total'] ?? $collection['_meta']['total'] ?? null;
             if (is_numeric($reportedTotal)) {
                 $total = (int) $reportedTotal;
