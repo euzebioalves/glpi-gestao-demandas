@@ -67,6 +67,57 @@ final class WorkPackageMonitoringService
         return $this->rows(['users_id' => $userId, 'is_open' => 1]);
     }
 
+    /** Applies the same safe, in-memory filters to personal and consolidated snapshots. */
+    public function filterRows(array $rows, array $filters): array
+    {
+        $status = trim((string) ($filters['status'] ?? ''));
+        $customer = trim((string) ($filters['customer'] ?? ''));
+        $responsible = trim((string) ($filters['responsible'] ?? ''));
+        $ticketId = (int) ($filters['ticket'] ?? 0);
+
+        return array_values(array_filter($rows, static function (array $row) use ($status, $customer, $responsible, $ticketId): bool {
+            $details = (array) ($row['details'] ?? []);
+            $rowStatus = trim((string) ($row['status_name'] ?? $details['status'] ?? ''));
+            $rowCustomer = trim((string) ($details['customer'] ?? ''));
+            $rowResponsible = trim((string) ($row['responsible_name'] ?? $details['responsible'] ?? ''));
+            $tickets = array_map('intval', (array) ($row['ticket_ids'] ?? $details['ticket_ids'] ?? []));
+
+            return ($status === '' || $rowStatus === $status)
+                && ($customer === '' || $rowCustomer === $customer)
+                && ($responsible === '' || $rowResponsible === $responsible)
+                && ($ticketId <= 0 || in_array($ticketId, $tickets, true));
+        }));
+    }
+
+    /** Values for the monitoring filters, calculated from the unfiltered scope. */
+    public function filterOptions(array $rows): array
+    {
+        $options = ['status' => [], 'customer' => [], 'responsible' => [], 'ticket' => []];
+        foreach ($rows as $row) {
+            $details = (array) ($row['details'] ?? []);
+            foreach ([
+                'status' => trim((string) ($row['status_name'] ?? $details['status'] ?? '')),
+                'customer' => trim((string) ($details['customer'] ?? '')),
+                'responsible' => trim((string) ($row['responsible_name'] ?? $details['responsible'] ?? '')),
+            ] as $key => $value) {
+                if ($value !== '') {
+                    $options[$key][$value] = $value;
+                }
+            }
+            foreach (array_map('intval', (array) ($row['ticket_ids'] ?? $details['ticket_ids'] ?? [])) as $ticketId) {
+                if ($ticketId > 0) {
+                    $options['ticket'][(string) $ticketId] = $ticketId;
+                }
+            }
+        }
+        foreach (['status', 'customer', 'responsible'] as $key) {
+            natcasesort($options[$key]);
+            $options[$key] = array_values($options[$key]);
+        }
+        sort($options['ticket'], SORT_NUMERIC);
+        return $options;
+    }
+
     /** Consolidates latest observations from every personal-token query. */
     public function consolidatedRows(string $responsible = ''): array
     {

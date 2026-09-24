@@ -10,7 +10,15 @@ use GlpiPlugin\Demandas\WorkPackageMonitoringView;
 Session::checkLoginUser();
 $userId = (int) Session::getLoginUserID();
 $service = new WorkPackageMonitoringService();
-$rows = $service->userRows($userId);
+$ticketFilter = (int) ($_GET['ticket'] ?? 0);
+$filters = [
+    'status' => trim((string) ($_GET['status'] ?? '')),
+    'ticket' => $ticketFilter > 0 ? (string) $ticketFilter : '',
+    'customer' => trim((string) ($_GET['customer'] ?? '')),
+    'responsible' => trim((string) ($_GET['responsible'] ?? '')),
+];
+$allRows = $service->userRows($userId);
+$rows = $service->filterRows($allRows, $filters);
 
 Html::header('Minhas Work Packages', $_SERVER['PHP_SELF'], 'management', WorkPackageMonitoringHub::class);
 echo "<div class='container-xl'><div class='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4'><div><h1 class='mb-1'>Minhas Work Packages abertas</h1><p class='text-muted mb-0'>Consulte User Stories, Épicos e Bugs abertos pelos quais você é responsável no OpenProject.</p></div><form id='demandas-monitor-form' method='post' action='/plugins/demandas/front/work-package-monitor.form.php'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><button id='demandas-monitor-submit' class='btn btn-primary'><i class='ti ti-refresh me-1'></i>Consultar minhas WPs</button></form></div>";
@@ -18,9 +26,10 @@ echo "<div id='demandas-monitor-loading' class='card card-body mb-4 d-none' role
 if (!DemandasConfig::hasPersonalToken($userId)) {
     echo "<div class='alert alert-warning'>Seu token pessoal do OpenProject ainda não foi configurado. <a class='alert-link' href='/front/preference.php?forcetab=" . rawurlencode('GlpiPlugin\\Demandas\\OpenProjectPersonalToken$1') . "'>Configurar token</a>.</div>";
 }
-if ($rows !== []) {
-    WorkPackageMonitoringView::renderStatusCards($rows);
+if ($allRows !== []) {
+    WorkPackageMonitoringView::renderStatusCards($allRows, $filters);
     echo "<p class='text-muted small'>Apenas WPs abertas da última consulta são exibidas. Os vínculos incluem o campo Atividade DevOps, acompanhamentos e vínculos já registrados pelo plugin.</p>";
+    WorkPackageMonitoringView::renderFilters($service->filterOptions($allRows), $filters);
 }
 WorkPackageMonitoringView::renderRows($rows);
 echo "<script>document.getElementById('demandas-monitor-form')?.addEventListener('submit',function(event){if(this.dataset.submitting==='1')return;event.preventDefault();this.dataset.submitting='1';const button=document.getElementById('demandas-monitor-submit');button.disabled=true;button.innerHTML='<span class=\"spinner-border spinner-border-sm me-1\" aria-hidden=\"true\"></span>Consultando…';document.getElementById('demandas-monitor-loading')?.classList.remove('d-none');requestAnimationFrame(()=>this.submit())});</script></div>";

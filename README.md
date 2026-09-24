@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.19.4
+
+A versão 0.19.4 adiciona filtros por status, chamado, cliente e responsável ao monitoramento de Work Packages, torna os indicadores de status clicáveis e corrige a leitura de clientes que o OpenProject retorna como lista. Veja `docs/RELEASE_0.19.4.md`.
+
 ## Plugin 0.19.3
 
 A versão 0.19.3 corrige o avanço da paginação do OpenProject: o offset representa a página e agora a consulta percorre corretamente todos os blocos. Veja `docs/RELEASE_0.19.3.md`.

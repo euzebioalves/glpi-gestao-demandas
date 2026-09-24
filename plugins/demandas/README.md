@@ -1,5 +1,14 @@
 # Gestão de Demandas
 
+## Versão 0.19.4
+
+- torna os cards de status do monitoramento de Work Packages filtros de drill-down;
+- inclui filtros por status da WP, chamado GLPI, cliente do OpenProject e responsável;
+- interpreta corretamente o campo `Cliente` quando a API o devolve como uma lista de valores;
+- reutiliza a descoberta do schema por projeto/tipo, evitando chamadas repetidas durante a consulta paginada.
+
+Consulte `docs/RELEASE_0.19.4.md` para validação.
+
 ## Versão 0.19.3
 
 - corrige a paginação do OpenProject para avançar de página em página (`offset=1`, `2`, `3`…), em vez de saltar para o número de itens recebidos;
