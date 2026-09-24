@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use GlpiPlugin\Demandas\Config as DemandasConfig;
+use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
 use GlpiPlugin\Demandas\WorkPackageMonitoringService;
 use GlpiPlugin\Demandas\WorkPackageMonitoringView;
@@ -21,7 +22,10 @@ $allRows = $service->userRows($userId);
 $rows = $service->filterRows($allRows, $filters);
 
 Html::header('Minhas Work Packages', $_SERVER['PHP_SELF'], 'management', WorkPackageMonitoringHub::class);
-echo "<div class='container-xl'><div class='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4'><div><h1 class='mb-1'>Minhas Work Packages abertas</h1><p class='text-muted mb-0'>Consulte User Stories, Épicos e Bugs abertos pelos quais você é responsável no OpenProject.</p></div><form id='demandas-monitor-form' method='post' action='/plugins/demandas/front/work-package-monitor.form.php'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><button id='demandas-monitor-submit' class='btn btn-primary'><i class='ti ti-refresh me-1'></i>Consultar minhas WPs</button></form></div>";
+$consolidatedButton = DemandasProfile::has(DemandasProfile::VIEW_DASHBOARD)
+    ? "<a class='btn btn-outline-primary' href='/plugins/demandas/front/work-package-consolidated.php'><i class='ti ti-layout-dashboard me-1'></i>Consolidado geral</a>"
+    : '';
+echo "<div class='container-xl'><div class='d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4'><div><h1 class='mb-1'>Minhas Work Packages abertas</h1><p class='text-muted mb-0'>Consulte User Stories, Épicos e Bugs abertos pelos quais você é responsável no OpenProject.</p></div><div class='d-flex flex-wrap gap-2 align-items-center'>" . $consolidatedButton . "<form id='demandas-monitor-form' method='post' action='/plugins/demandas/front/work-package-monitor.form.php'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><button id='demandas-monitor-submit' class='btn btn-primary'><i class='ti ti-refresh me-1'></i>Consultar minhas WPs</button></form></div></div>";
 echo "<div id='demandas-monitor-loading' class='card card-body mb-4 d-none' role='status' aria-live='polite'><div class='d-flex align-items-center gap-2 mb-2'><span class='spinner-border spinner-border-sm text-primary' aria-hidden='true'></span><strong>Consultando Work Packages no OpenProject…</strong></div><div class='progress'><div class='progress-bar progress-bar-striped progress-bar-animated w-100' role='progressbar' aria-label='Consulta em andamento'></div></div><div class='form-hint mt-2'>O OpenProject informa o total somente durante a resposta da consulta; por isso este indicador não exibe uma porcentagem imprecisa.</div></div>";
 if (!DemandasConfig::hasPersonalToken($userId)) {
     echo "<div class='alert alert-warning'>Seu token pessoal do OpenProject ainda não foi configurado. <a class='alert-link' href='/front/preference.php?forcetab=" . rawurlencode('GlpiPlugin\\Demandas\\OpenProjectPersonalToken$1') . "'>Configurar token</a>.</div>";

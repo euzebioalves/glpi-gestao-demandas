@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.19.5
+
+A versão 0.19.5 disponibiliza o acesso direto ao consolidado geral de Work Packages na tela de monitoramento pessoal para perfis com acesso à visão gerencial. Veja `docs/RELEASE_0.19.5.md`.
+
 ## Plugin 0.19.4
 
 A versão 0.19.4 adiciona filtros por status, chamado, cliente e responsável ao monitoramento de Work Packages, torna os indicadores de status clicáveis e corrige a leitura de clientes que o OpenProject retorna como lista. Veja `docs/RELEASE_0.19.4.md`.

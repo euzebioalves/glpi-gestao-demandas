@@ -1,5 +1,12 @@
 # Gestão de Demandas
 
+## Versão 0.19.5
+
+- apresenta o botão **Consolidado geral** em **Gerência > Monitoramento de Work Packages > Minhas Work Packages** para perfis com a permissão **Acessar a visão gerencial**;
+- mantém a validação da mesma permissão na página consolidada.
+
+Consulte `docs/RELEASE_0.19.5.md` para validação.
+
 ## Versão 0.19.4
 
 - torna os cards de status do monitoramento de Work Packages filtros de drill-down;
