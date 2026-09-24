@@ -1,5 +1,13 @@
 # Gestão de Demandas
 
+## Versão 0.19.6
+
+- ancora o painel do sino de alertas abaixo do ícone, com altura máxima e rolagem interna;
+- limita a prévia a três alertas não lidos, com atalho para os alertas restantes e para o histórico completo;
+- limita o título e a mensagem da prévia para preservar o layout do cabeçalho.
+
+Consulte `docs/RELEASE_0.19.6.md` para validação.
+
 ## Versão 0.19.5
 
 - apresenta o botão **Consolidado geral** em **Gerência > Monitoramento de Work Packages > Minhas Work Packages** para perfis com a permissão **Acessar a visão gerencial**;

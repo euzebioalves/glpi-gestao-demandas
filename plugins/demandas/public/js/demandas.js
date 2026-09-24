@@ -182,7 +182,7 @@
         const root = document.createElement('div');
         root.id = 'demandas-wp-alerts';
         root.className = 'position-relative d-inline-flex align-items-center flex-shrink-0';
-        root.innerHTML = `<button type="button" class="btn btn-icon btn-ghost-secondary position-relative" aria-label="Alertas de Work Packages" aria-expanded="false"><i class="ti ti-bell"></i><span class="badge bg-red text-white position-absolute top-0 start-100 translate-middle ${data.unread ? '' : 'd-none'}">${Number(data.unread || 0) > 99 ? '99+' : Number(data.unread || 0)}</span></button><div class="card shadow-lg position-absolute end-0 mt-2 d-none" style="width:min(390px,calc(100vw - 24px));z-index:1080"><div class="card-header d-flex align-items-center justify-content-between"><strong>Alertas de Work Packages</strong><a class="btn btn-sm btn-link" href="/plugins/demandas/front/work-package-notifications.php">Ver todos</a></div><div class="list-group list-group-flush"></div></div>`;
+        root.innerHTML = `<button type="button" class="btn btn-icon btn-ghost-secondary position-relative" aria-label="Alertas de Work Packages" aria-expanded="false"><i class="ti ti-bell"></i><span class="badge bg-red text-white position-absolute top-0 start-100 translate-middle ${data.unread ? '' : 'd-none'}">${Number(data.unread || 0) > 99 ? '99+' : Number(data.unread || 0)}</span></button><div class="card shadow-lg position-absolute end-0 top-100 mt-2 d-none" style="width:min(390px,calc(100vw - 24px));max-height:min(70vh,440px);z-index:1080"><div class="card-header d-flex align-items-center justify-content-between flex-shrink-0"><strong>Alertas de Work Packages</strong><a class="btn btn-sm btn-link" href="/plugins/demandas/front/work-package-notifications.php">Ver todos</a></div><div class="list-group list-group-flush overflow-auto"></div></div>`;
         const anchor = search.closest('.input-icon, .input-group') || search.parentElement;
         const searchForm = search.closest('form[role="search"]');
         if (searchForm && anchor) {
@@ -199,8 +199,12 @@
         const button = root.querySelector('button');
         const panel = root.querySelector('.card');
         const list = root.querySelector('.list-group');
-        const items = Array.isArray(data.items) ? data.items : [];
-        list.innerHTML = items.length ? items.map((item) => `<a class="list-group-item list-group-item-action" href="/plugins/demandas/front/work-package-notifications.php#notification-${Number(item.id)}"><div class="d-flex gap-2"><i class="ti ${item.priority === 'warning' ? 'ti-alert-triangle text-yellow' : 'ti-bell text-blue'} mt-1"></i><div class="text-wrap"><strong>${escapeHtml(item.title)}</strong><div class="small text-muted">${escapeHtml(item.message)}</div></div></div></a>`).join('') : '<div class="list-group-item text-muted">Nenhum alerta pendente.</div>';
+        const items = Array.isArray(data.items) ? data.items.slice(0, 3) : [];
+        const remaining = Math.max(0, Number(data.unread || 0) - items.length);
+        list.innerHTML = items.length
+            ? items.map((item) => `<a class="list-group-item list-group-item-action" href="/plugins/demandas/front/work-package-notifications.php#notification-${Number(item.id)}"><div class="d-flex gap-2"><i class="ti ${item.priority === 'warning' ? 'ti-alert-triangle text-yellow' : 'ti-bell text-blue'} mt-1"></i><div class="text-wrap overflow-hidden"><strong class="d-block text-truncate">${escapeHtml(item.title)}</strong><div class="small text-muted" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden">${escapeHtml(item.message)}</div></div></div></a>`).join('')
+                + (remaining > 0 ? `<a class="list-group-item list-group-item-action text-center small text-primary" href="/plugins/demandas/front/work-package-notifications.php">Ver mais ${remaining} alerta${remaining > 1 ? 's' : ''}</a>` : '')
+            : '<div class="list-group-item text-muted">Nenhum alerta pendente.</div>';
         button?.addEventListener('click', (event) => {
             event.stopPropagation();
             const hidden = panel.classList.toggle('d-none');

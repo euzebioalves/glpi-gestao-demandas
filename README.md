@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.19.6
+
+A versão 0.19.6 corrige o painel flutuante de alertas: ele fica ancorado abaixo do sino, exibe uma prévia compacta e direciona ao histórico completo. Veja `docs/RELEASE_0.19.6.md`.
+
 ## Plugin 0.19.5
 
 A versão 0.19.5 disponibiliza o acesso direto ao consolidado geral de Work Packages na tela de monitoramento pessoal para perfis com acesso à visão gerencial. Veja `docs/RELEASE_0.19.5.md`.

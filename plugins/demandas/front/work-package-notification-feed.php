@@ -10,7 +10,8 @@ try {
     $service = new WorkPackageMonitoringService();
     $userId = (int) Session::getLoginUserID();
     $items = [];
-    foreach ($service->notifications($userId, true, 6) as $notification) {
+    // O sino é uma prévia compacta; a página de alertas mantém o histórico.
+    foreach ($service->notifications($userId, true, 3) as $notification) {
         $items[] = [
             'id' => (int) $notification['id'],
             'title' => (string) $notification['title'],
