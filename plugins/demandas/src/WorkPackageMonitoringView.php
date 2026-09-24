@@ -34,13 +34,18 @@ final class WorkPackageMonitoringView
         echo '</div>';
     }
 
-    public static function renderFilters(array $options, array $filters): void
+    public static function renderFilters(array $options, array $filters, int $pageSize = 25): void
     {
         echo "<form class='card card-body mb-4' method='get'><div class='row align-items-end g-3'>";
         self::selectFilter('status', 'Status da WP', $options['status'] ?? [], (string) ($filters['status'] ?? ''), 'Todos os status');
         self::selectFilter('ticket', 'Chamado GLPI', $options['ticket'] ?? [], (string) ($filters['ticket'] ?? ''), 'Todos os chamados', '#');
         self::selectFilter('customer', 'Cliente (OpenProject)', $options['customer'] ?? [], (string) ($filters['customer'] ?? ''), 'Todos os clientes');
         self::selectFilter('responsible', 'Responsável da WP', $options['responsible'] ?? [], (string) ($filters['responsible'] ?? ''), 'Todos os responsáveis');
+        echo "<div class='col-sm-6 col-lg-2'><label class='form-label' for='demandas-per-page'>Itens por página</label><select class='form-select' id='demandas-per-page' name='per_page'>";
+        foreach (WorkPackageMonitoringList::PAGE_SIZES as $size) {
+            echo "<option value='{$size}'" . ($size === $pageSize ? ' selected' : '') . ">{$size}</option>";
+        }
+        echo '</select></div>';
         echo "<div class='col-sm-6 col-lg-2 d-flex gap-2'><button class='btn btn-primary flex-fill'><i class='ti ti-filter me-1'></i>Filtrar</button><a class='btn btn-outline-secondary' href='?'><i class='ti ti-x'></i><span class='visually-hidden'>Limpar filtros</span></a></div></div></form>";
     }
 
@@ -57,7 +62,7 @@ final class WorkPackageMonitoringView
     private static function filterUrl(array $filters, ?string $status): string
     {
         $query = [];
-        foreach (['ticket', 'customer', 'responsible'] as $name) {
+        foreach (['ticket', 'customer', 'responsible', 'per_page'] as $name) {
             $value = trim((string) ($filters[$name] ?? ''));
             if ($value !== '') {
                 $query[$name] = $value;
@@ -72,7 +77,7 @@ final class WorkPackageMonitoringView
     public static function renderRows(array $rows, bool $showSource = false, bool $showAnalysis = false): void
     {
         if ($rows === []) {
-            echo "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>Nenhuma Work Package aberta foi encontrada na última consulta.</div>";
+            echo "<div class='alert alert-info'><i class='ti ti-info-circle me-1'></i>Nenhuma Work Package encontrada para os filtros selecionados na última consulta.</div>";
             return;
         }
         echo "<div class='card'><div class='table-responsive'><table class='table table-vcenter card-table'><thead><tr><th>WP</th><th>Título</th><th>Status</th><th>Responsável</th><th>Cliente</th><th>Criada em</th><th>Atualizada em</th><th>Chamado vinculado</th>" . ($showSource ? '<th>Consulta por</th>' : '') . ($showAnalysis ? '<th>Ações</th>' : '') . '</tr></thead><tbody>';
@@ -100,5 +105,42 @@ final class WorkPackageMonitoringView
             echo '</tr>';
         }
         echo '</tbody></table></div></div>';
+    }
+
+    public static function renderExports(array $filters, bool $consolidated = false): void
+    {
+        if ($consolidated && !Profile::has(Profile::EXPORT_DASHBOARD)) {
+            return;
+        }
+        $query = WorkPackageMonitoringList::filters($filters);
+        $query['scope'] = $consolidated ? 'consolidated' : 'mine';
+        echo "<div class='d-flex flex-wrap gap-2 align-items-center mb-3'><span class='text-muted small'>Exportar todos os resultados filtrados:</span><div class='btn-group'>";
+        foreach (['pdf' => 'PDF', 'xlsx' => 'Excel'] as $format => $label) {
+            $url = '/plugins/demandas/front/work-package-export.php?' . http_build_query($query + ['format' => $format], '', '&', PHP_QUERY_RFC3986);
+            $icon = $format === 'pdf' ? 'ti-file-type-pdf' : 'ti-file-spreadsheet';
+            echo "<a class='btn btn-outline-primary' href='" . self::escape($url) . "'><i class='ti {$icon} me-1'></i>{$label}</a>";
+        }
+        echo '</div></div>';
+    }
+
+    public static function renderPagination(array $pagination, array $filters): void
+    {
+        $page = $pagination['page'];
+        $pages = $pagination['pages'];
+        $query = WorkPackageMonitoringList::filters($filters) + ['per_page' => $pagination['per_page']];
+        echo "<div class='d-flex flex-wrap justify-content-between align-items-center gap-3 my-3'><span class='text-muted small'>Exibindo {$pagination['first']}–{$pagination['last']} de {$pagination['total']} Work Packages</span>";
+        if ($pages > 1) {
+            echo "<nav aria-label='Paginação das Work Packages'><ul class='pagination flex-wrap mb-0'>";
+            foreach ([['Primeira', 1, $page === 1], ['Anterior', $page - 1, $page === 1], ["Página {$page} de {$pages}", $page, true], ['Próxima', $page + 1, $page === $pages], ['Última', $pages, $page === $pages]] as [$label, $target, $disabled]) {
+                if ($disabled) {
+                    echo "<li class='page-item disabled'><span class='page-link'>{$label}</span></li>";
+                } else {
+                    $url = '?' . http_build_query($query + ['page' => $target], '', '&', PHP_QUERY_RFC3986);
+                    echo "<li class='page-item'><a class='page-link' href='" . self::escape($url) . "'>{$label}</a></li>";
+                }
+            }
+            echo '</ul></nav>';
+        }
+        echo '</div>';
     }
 }

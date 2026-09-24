@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.20.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.21.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.20.1` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.20.1 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.21.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -285,3 +285,9 @@ O recurso não é uma integração com IA. Ele entrega ao usuário um prompt rev
 ## 21. Análise de WP sem chamado identificado — 0.20.1
 
 O preparo de contexto deve continuar disponível quando a correlação da WP com o GLPI ainda não existir. Nesse cenário, não tentar inferir ou expor dados de chamados: esconder as opções dependentes de ticket e montar o prompt exclusivamente com a WP selecionada. Veja `docs/RELEASE_0.20.1.md`.
+
+## 22. Paginação e exportação do monitoramento — 0.21.0
+
+`WorkPackageMonitoringList` normaliza filtros e pagina os resultados após a filtragem. O padrão é 25, com opções 50/100/200; páginas fora do intervalo são ajustadas. Cards e navegação preservam os filtros e o tamanho, e aplicar filtros volta à primeira página. A paginação visual não altera a consulta paginada da API nem os snapshots completos.
+
+`front/work-package-export.php` exporta a lista filtrada inteira usando `WorkPackageMonitoringExport`, GLPIPDF e PhpSpreadsheet já presentes no GLPI. A exportação pessoal usa exclusivamente `Session::getLoginUserID()`. O consolidado exige `VIEW_DASHBOARD` e `EXPORT_DASHBOARD`; não aceitar IDs de usuários fornecidos por GET. Texto da API é gravado no Excel como string explícita para evitar fórmulas e escapado no PDF. Exportações não incluem descrições, anexos, tokens nem dados adicionais de chamados. Não há migração nova. Veja `docs/RELEASE_0.21.0.md`.

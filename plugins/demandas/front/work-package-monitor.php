@@ -7,19 +7,16 @@ use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
 use GlpiPlugin\Demandas\WorkPackageMonitoringService;
 use GlpiPlugin\Demandas\WorkPackageMonitoringView;
+use GlpiPlugin\Demandas\WorkPackageMonitoringList;
 
 Session::checkLoginUser();
 $userId = (int) Session::getLoginUserID();
 $service = new WorkPackageMonitoringService();
-$ticketFilter = (int) ($_GET['ticket'] ?? 0);
-$filters = [
-    'status' => trim((string) ($_GET['status'] ?? '')),
-    'ticket' => $ticketFilter > 0 ? (string) $ticketFilter : '',
-    'customer' => trim((string) ($_GET['customer'] ?? '')),
-    'responsible' => trim((string) ($_GET['responsible'] ?? '')),
-];
+$filters = WorkPackageMonitoringList::filters($_GET);
+$filters['per_page'] = WorkPackageMonitoringList::pageSize($_GET);
 $allRows = $service->userRows($userId);
 $rows = $service->filterRows($allRows, $filters);
+$pagination = WorkPackageMonitoringList::paginate($rows, $_GET);
 
 Html::header('Minhas Work Packages', $_SERVER['PHP_SELF'], 'management', WorkPackageMonitoringHub::class);
 $consolidatedButton = DemandasProfile::has(DemandasProfile::VIEW_DASHBOARD)
@@ -33,8 +30,13 @@ if (!DemandasConfig::hasPersonalToken($userId)) {
 if ($allRows !== []) {
     WorkPackageMonitoringView::renderStatusCards($allRows, $filters);
     echo "<p class='text-muted small'>Apenas WPs abertas da última consulta são exibidas. Os vínculos incluem o campo Atividade DevOps, acompanhamentos e vínculos já registrados pelo plugin.</p>";
-    WorkPackageMonitoringView::renderFilters($service->filterOptions($allRows), $filters);
+    WorkPackageMonitoringView::renderFilters($service->filterOptions($allRows), $filters, $pagination['per_page']);
 }
-WorkPackageMonitoringView::renderRows($rows, false, DemandasProfile::has(DemandasProfile::PREPARE_AI_CONTEXT));
+WorkPackageMonitoringView::renderExports($filters);
+WorkPackageMonitoringView::renderPagination($pagination, $filters);
+WorkPackageMonitoringView::renderRows($pagination['rows'], false, DemandasProfile::has(DemandasProfile::PREPARE_AI_CONTEXT));
+if ($pagination['pages'] > 1) {
+    WorkPackageMonitoringView::renderPagination($pagination, $filters);
+}
 echo "<script>document.getElementById('demandas-monitor-form')?.addEventListener('submit',function(event){if(this.dataset.submitting==='1')return;event.preventDefault();this.dataset.submitting='1';const button=document.getElementById('demandas-monitor-submit');button.disabled=true;button.innerHTML='<span class=\"spinner-border spinner-border-sm me-1\" aria-hidden=\"true\"></span>Consultando…';document.getElementById('demandas-monitor-loading')?.classList.remove('d-none');requestAnimationFrame(()=>this.submit())});</script></div>";
 Html::footer();

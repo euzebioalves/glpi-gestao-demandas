@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.21.0
+
+A versão 0.21.0 adiciona paginação e exportação em PDF e Excel ao monitoramento pessoal e consolidado de Work Packages. As exportações incluem todos os resultados dos filtros aplicados. Veja `docs/RELEASE_0.21.0.md`.
+
 ## Plugin 0.20.1
 
 A versão 0.20.1 permite preparar a análise de qualquer Work Package monitorada, mesmo quando ainda não foi identificado um chamado GLPI vinculado. Veja `docs/RELEASE_0.20.1.md`.
