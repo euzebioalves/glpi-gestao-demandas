@@ -1,5 +1,16 @@
 # Gestão de Demandas
 
+## Versão 0.21.0
+
+- pagina as listagens pessoal e consolidada de Work Packages, com 25 itens por padrão e opções de 50, 100 e 200;
+- mantém filtros e tamanho da página durante a navegação, com total de registros e controles no início e no final da tabela;
+- exporta todos os resultados filtrados, inclusive os das demais páginas, em PDF paisagem e Excel `.xlsx`;
+- registra no arquivo os filtros e a data de geração, sem consultar novamente o OpenProject;
+- restringe a exportação pessoal ao usuário autenticado; a consolidada exige **Acessar a visão gerencial** e **Exportar a visão gerencial em PDF e Excel**, também no backend;
+- usa as bibliotecas existentes do GLPI, sem novas dependências ou mudanças de banco.
+
+Atualize sem desinstalar. Consulte `docs/RELEASE_0.21.0.md` para validação e limitações.
+
 ## Versão 0.20.1
 
 - disponibiliza **Preparar IA** para todas as Work Packages da consulta pessoal, inclusive aquelas ainda sem chamado GLPI identificado;
