@@ -1,5 +1,41 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.20.1
+
+A versão 0.20.1 permite preparar a análise de qualquer Work Package monitorada, mesmo quando ainda não foi identificado um chamado GLPI vinculado. Veja `docs/RELEASE_0.20.1.md`.
+
+## Plugin 0.20.0
+
+A versão 0.20.0 permite preparar, localmente, um contexto selecionável de chamado e Work Package para copiar em uma IA externa. Inclui extração local de texto de PDF, documentos Office e OCR de imagens, com consentimento explícito e sem envio automático de dados. Veja `docs/RELEASE_0.20.0.md`.
+
+## Plugin 0.19.6
+
+A versão 0.19.6 corrige o painel flutuante de alertas: ele fica ancorado abaixo do sino, exibe uma prévia compacta e direciona ao histórico completo. Veja `docs/RELEASE_0.19.6.md`.
+
+## Plugin 0.19.5
+
+A versão 0.19.5 disponibiliza o acesso direto ao consolidado geral de Work Packages na tela de monitoramento pessoal para perfis com acesso à visão gerencial. Veja `docs/RELEASE_0.19.5.md`.
+
+## Plugin 0.19.4
+
+A versão 0.19.4 adiciona filtros por status, chamado, cliente e responsável ao monitoramento de Work Packages, torna os indicadores de status clicáveis e corrige a leitura de clientes que o OpenProject retorna como lista. Veja `docs/RELEASE_0.19.4.md`.
+
+## Plugin 0.19.3
+
+A versão 0.19.3 corrige o avanço da paginação do OpenProject: o offset representa a página e agora a consulta percorre corretamente todos os blocos. Veja `docs/RELEASE_0.19.3.md`.
+
+## Plugin 0.19.2
+
+A versão 0.19.2 pagina a consulta de Work Packages em blocos menores para impedir que respostas extensas da instância oficial do OpenProject excedam o tempo de comunicação configurado. Veja `docs/RELEASE_0.19.2.md`.
+
+## Plugin 0.19.1
+
+A versão 0.19.1 torna visível a consulta de Work Packages com indicador indeterminado de progresso e corrige o alinhamento do sino de alertas ao lado direito da busca no cabeçalho. Veja `docs/RELEASE_0.19.1.md`.
+
+## Plugin 0.19.0
+
+A versão 0.19.0 adiciona o monitoramento de Work Packages abertas por token pessoal: o usuário consulta suas User Stories, Épicos e Bugs sob sua responsabilidade, visualiza indicadores por status, vínculos com chamados e alertas no cabeçalho. A visão gerencial consolida as consultas já realizadas e filtra por responsável. Consulte `docs/RELEASE_0.19.0.md`.
+
 ## Plugin 0.18.5
 
 A versão 0.18.5 corrige o salvamento da configuração: os botões ficam disponíveis nas três abas administrativas, e alternar entre abas preserva o preenchimento sem recarregar a página. Mantém a autorização por permissões da 0.18.4. Veja `docs/RELEASE_0.18.5.md` e `plugins/demandas/README.md`.
@@ -41,8 +77,9 @@ O script:
 1. verifica se o Docker está disponível;
 2. cria o `.env` com segredos aleatórios;
 3. valida o Compose;
-4. baixa as imagens;
-5. inicia todos os serviços.
+4. baixa as imagens externas;
+5. monta localmente a imagem do GLPI com ferramentas de extração de anexos;
+6. inicia todos os serviços.
 
 Na primeira inicialização, o OpenProject pode levar alguns minutos para preparar seu banco.
 

@@ -31,6 +31,7 @@ final class Profile extends CommonDBTM
     public const MANAGE_ATTENDANCE = 'demandas_manage_attendance';
     public const MANAGE_HOLIDAYS = 'demandas_manage_holidays';
     public const MANAGE_TIME_ACCESS = 'demandas_manage_time_access';
+    public const PREPARE_AI_CONTEXT = 'demandas_prepare_ai_context';
 
     public static function getTypeName($nb = 0): string
     {
@@ -72,6 +73,7 @@ final class Profile extends CommonDBTM
             self::MANAGE_ATTENDANCE => 'Administrar jornadas, marcações e ausências',
             self::MANAGE_HOLIDAYS => 'Administrar feriados e compensações',
             self::MANAGE_TIME_ACCESS => 'Administrar exceções individuais de acesso',
+            self::PREPARE_AI_CONTEXT => 'Preparar contexto de chamado e WP para IA externa',
         ];
     }
 

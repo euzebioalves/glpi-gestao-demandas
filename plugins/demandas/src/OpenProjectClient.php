@@ -12,6 +12,9 @@ final class OpenProjectClient
 {
     private Client $client;
     private array $creationSchemas = [];
+    /** @var array<string, array> */
+    private array $creationOptions = [];
+    private ?array $customFieldsCache = null;
     private bool $allowsWorkPackageCreation;
 
     private function __construct(string $token, bool $allowsWorkPackageCreation)
@@ -83,8 +86,89 @@ final class OpenProjectClient
         return is_array($elements) ? $elements : [];
     }
 
+    /**
+     * Returns the OpenProject identity represented by this client's token.
+     * The API accepts the special `me` identifier for the authenticated user.
+     */
+    public function getCurrentUser(): array
+    {
+        return $this->request('GET', 'users/me');
+    }
+
+    /**
+     * Lists all open User Stories, Epics and Bugs whose responsible is the
+     * owner of the personal token. Pagination is explicit because a personal
+     * backlog can be larger than OpenProject's default page size.
+     */
+    public function getOpenDemandWorkPackagesForCurrentUser(): array
+    {
+        $currentUser = $this->getCurrentUser();
+        $currentUserId = (int) ($currentUser['id'] ?? 0);
+        if ($currentUserId <= 0) {
+            throw new RuntimeException('O OpenProject não informou o usuário associado ao token pessoal.');
+        }
+
+        $typeIds = [];
+        foreach ($this->getTypes() as $type) {
+            $name = self::normalizeDemandType((string) ($type['name'] ?? ''));
+            if (in_array($name, ['userstory', 'epico', 'epic', 'bug'], true) && (int) ($type['id'] ?? 0) > 0) {
+                $typeIds[] = (string) (int) $type['id'];
+            }
+        }
+        if ($typeIds === []) {
+            return [];
+        }
+
+        $filters = json_encode([
+            ['type' => ['operator' => '=', 'values' => array_values(array_unique($typeIds))]],
+            ['responsible' => ['operator' => '=', 'values' => [(string) $currentUserId]]],
+            ['status' => ['operator' => 'o', 'values' => []]],
+        ], JSON_THROW_ON_ERROR);
+
+        $workPackages = [];
+        $offset = 1;
+        // The official instance can return large embedded WP payloads. A
+        // smaller page keeps each HTTP response below the configured timeout
+        // while still collecting the complete result set.
+        $pageSize = 25;
+        $total = null;
+        do {
+            $query = http_build_query([
+                'filters' => $filters,
+                'pageSize' => $pageSize,
+                'offset' => $offset,
+                'sortBy' => json_encode([['updatedAt', 'desc']], JSON_THROW_ON_ERROR),
+            ], '', '&', PHP_QUERY_RFC3986);
+            $collection = $this->request('GET', 'work_packages?' . $query);
+            $elements = $collection['_embedded']['elements'] ?? [];
+            if (!is_array($elements)) {
+                break;
+            }
+            foreach ($elements as $element) {
+                if (is_array($element)) {
+                    $workPackages[] = $element;
+                }
+            }
+            $received = count($elements);
+            // OpenProject's `offset` identifies the page (starting at 1),
+            // rather than the index of the first item. Advancing it by the
+            // number of items would jump from page 1 directly to page 26.
+            $offset++;
+            $reportedTotal = $collection['total'] ?? $collection['_meta']['total'] ?? null;
+            if (is_numeric($reportedTotal)) {
+                $total = (int) $reportedTotal;
+            }
+        } while ($received === $pageSize && ($total === null || count($workPackages) < $total));
+
+        return $workPackages;
+    }
+
     public function getCreationOptions(int $projectId, int $typeId): array
     {
+        $cacheKey = $projectId . ':' . $typeId;
+        if (isset($this->creationOptions[$cacheKey])) {
+            return $this->creationOptions[$cacheKey];
+        }
         $base = [
             'subject' => 'Validação dos campos da integração',
             '_links' => [
@@ -94,7 +178,7 @@ final class OpenProjectClient
         ];
         $form = $this->request('POST', 'work_packages/form', $base);
         $schema = (array) ($form['_embedded']['schema'] ?? []);
-        $this->creationSchemas[$projectId . ':' . $typeId] = $schema;
+        $this->creationSchemas[$cacheKey] = $schema;
         $formPayload = (array) ($form['_embedded']['payload'] ?? []);
         $fields = [];
         foreach ([
@@ -115,7 +199,7 @@ final class OpenProjectClient
             $fields['customer'] = $this->creationField((string) $schemaKey, 'Cliente', $fieldSchema, $formPayload);
             break;
         }
-        return $fields;
+        return $this->creationOptions[$cacheKey] = $fields;
     }
 
     public function createWorkPackage(
@@ -318,11 +402,7 @@ final class OpenProjectClient
         foreach ($this->customFields() as $customField) {
             if (mb_strtolower(trim((string) ($customField['name'] ?? ''))) !== 'cliente') continue;
             $key = 'customField' . (int) ($customField['id'] ?? 0);
-            $details['customer'] = (string) (
-                $workPackage['_links'][$key]['title']
-                ?? $workPackage[$key]
-                ?? ''
-            );
+            $details['customer'] = $this->customFieldLabel($workPackage, $key);
             break;
         }
 
@@ -337,11 +417,7 @@ final class OpenProjectClient
                     $customer = $this->getCreationOptions($projectId, $typeId)['customer'] ?? null;
                     $key = is_array($customer) ? (string) ($customer['schema_key'] ?? '') : '';
                     if ($key !== '') {
-                        $details['customer'] = (string) (
-                            $workPackage['_links'][$key]['title']
-                            ?? $workPackage[$key]
-                            ?? ''
-                        );
+                        $details['customer'] = $this->customFieldLabel($workPackage, $key);
                     }
                 } catch (RuntimeException) {
                     // Os demais dados da WP continuam úteis mesmo que o schema
@@ -350,6 +426,40 @@ final class OpenProjectClient
             }
         }
         return $details;
+    }
+
+    /**
+     * OpenProject serializes a list custom field as an array of HAL links,
+     * while a single-value field is an individual HAL link. Both forms need
+     * to be represented in the monitoring list.
+     */
+    private function customFieldLabel(array $workPackage, string $key): string
+    {
+        $value = $workPackage['_links'][$key] ?? $workPackage[$key] ?? null;
+        $labels = $this->resourceTitles($value);
+        return implode(', ', $labels);
+    }
+
+    private function resourceTitles(mixed $value): array
+    {
+        if (is_scalar($value)) {
+            $label = trim((string) $value);
+            return $label === '' ? [] : [$label];
+        }
+        if (!is_array($value)) {
+            return [];
+        }
+        if (isset($value['title']) && is_scalar($value['title'])) {
+            $label = trim((string) $value['title']);
+            return $label === '' ? [] : [$label];
+        }
+        $labels = [];
+        foreach ($value as $item) {
+            foreach ($this->resourceTitles($item) as $label) {
+                $labels[$label] = $label;
+            }
+        }
+        return array_values($labels);
     }
 
     private function linkedResourceId(array $resource, string $link): int
@@ -410,12 +520,17 @@ final class OpenProjectClient
 
     private function customFields(): array
     {
+        if ($this->customFieldsCache !== null) {
+            return $this->customFieldsCache;
+        }
         try {
             $collection = $this->request('GET', 'custom_fields?pageSize=500');
             $elements = $collection['_embedded']['elements'] ?? [];
-            return is_array($elements) ? $elements : [];
+            return $this->customFieldsCache = is_array($elements) ? $elements : [];
         } catch (RuntimeException) {
-            return [];
+            // Some OpenProject instances do not expose this global endpoint
+            // to ordinary users. The work package form schema is used below.
+            return $this->customFieldsCache = [];
         }
     }
 
@@ -470,6 +585,13 @@ final class OpenProjectClient
             $href = $path . (is_string($query) && $query !== '' ? '?' . $query : '');
         }
         return str_starts_with($href, '/api/v3/') ? substr($href, strlen('/api/v3/')) : ltrim($href, '/');
+    }
+
+    private static function normalizeDemandType(string $value): string
+    {
+        $value = trim(mb_strtolower($value));
+        $value = strtr($value, ['á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'é' => 'e', 'ê' => 'e', 'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ú' => 'u', 'ç' => 'c']);
+        return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
     }
 
     private function request(string $method, string $uri, ?array $payload = null): array

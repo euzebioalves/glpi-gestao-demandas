@@ -1,5 +1,83 @@
 # Gestão de Demandas
 
+## Versão 0.20.1
+
+- disponibiliza **Preparar IA** para todas as Work Packages da consulta pessoal, inclusive aquelas ainda sem chamado GLPI identificado;
+- quando não houver chamado, prepara somente os dados selecionados da WP e seus links, sem exibir campos, acompanhamentos ou anexos que dependem de chamado;
+- preserva a seleção completa de dados e anexos assim que um chamado vinculado for identificado.
+
+Consulte `docs/RELEASE_0.20.1.md` para validação.
+
+## Versão 0.20.0
+
+- permite a quem possuir a permissão **Preparar contexto de chamado e WP para IA externa** selecionar dados da WP e do chamado na listagem de monitoramento pessoal;
+- prepara o texto somente sob demanda, sem gravá-lo no banco nem enviá-lo a qualquer provedor de IA;
+- exige confirmação do usuário antes de copiar conteúdo para uma IA externa;
+- permite selecionar anexos individualmente e extrai localmente texto de PDF, documentos Office, texto estruturado e imagens com OCR em português e inglês;
+- limita anexos a 15 MB, o texto de cada anexo a 30 mil caracteres e o contexto completo a 180 mil caracteres, para reduzir exposição e consumo de recursos;
+- mantém privados fora do fluxo os acompanhamentos privados e qualquer anexo sem permissão efetiva de leitura no chamado.
+
+Consulte `docs/RELEASE_0.20.0.md` para atualização, permissões e validação.
+
+## Versão 0.19.6
+
+- ancora o painel do sino de alertas abaixo do ícone, com altura máxima e rolagem interna;
+- limita a prévia a três alertas não lidos, com atalho para os alertas restantes e para o histórico completo;
+- limita o título e a mensagem da prévia para preservar o layout do cabeçalho.
+
+Consulte `docs/RELEASE_0.19.6.md` para validação.
+
+## Versão 0.19.5
+
+- apresenta o botão **Consolidado geral** em **Gerência > Monitoramento de Work Packages > Minhas Work Packages** para perfis com a permissão **Acessar a visão gerencial**;
+- mantém a validação da mesma permissão na página consolidada.
+
+Consulte `docs/RELEASE_0.19.5.md` para validação.
+
+## Versão 0.19.4
+
+- torna os cards de status do monitoramento de Work Packages filtros de drill-down;
+- inclui filtros por status da WP, chamado GLPI, cliente do OpenProject e responsável;
+- interpreta corretamente o campo `Cliente` quando a API o devolve como uma lista de valores;
+- reutiliza a descoberta do schema por projeto/tipo, evitando chamadas repetidas durante a consulta paginada.
+
+Consulte `docs/RELEASE_0.19.4.md` para validação.
+
+## Versão 0.19.3
+
+- corrige a paginação do OpenProject para avançar de página em página (`offset=1`, `2`, `3`…), em vez de saltar para o número de itens recebidos;
+- mantém blocos de 25 WPs e passa a consolidar todas as páginas até o total devolvido pela API.
+
+Consulte `docs/RELEASE_0.19.3.md` para validação.
+
+## Versão 0.19.2
+
+- pagina a leitura de Work Packages abertas em blocos de 25 itens;
+- usa o total devolvido pela API quando disponível para não executar uma página vazia adicional;
+- evita timeout de respostas muito grandes sem reduzir o conjunto de WPs consolidado.
+
+Consulte `docs/RELEASE_0.19.2.md` para validação.
+
+## Versão 0.19.1
+
+- exibe indicador de consulta na página **Minhas Work Packages**, com barra de progresso animada sem porcentagem fictícia enquanto o OpenProject processa e devolve o total;
+- mantém o botão de consulta bloqueado durante a requisição para impedir disparos repetidos;
+- posiciona o sino de alertas horizontalmente ao lado direito do campo de busca do cabeçalho do GLPI 11.
+
+Consulte `docs/RELEASE_0.19.1.md` para validação.
+
+## Versão 0.19.0
+
+- adiciona **Monitoramento de Work Packages** no menu Gerência para qualquer usuário autenticado com token pessoal configurado;
+- consulta no OpenProject somente **User Story**, **Épico/Epic** e **Bug** abertos cujo usuário do token é o **Responsável**;
+- exibe cards por status, lista com identificador, título, criação, atualização, responsável, cliente e chamados vinculados; links de WP e chamado abrem em nova aba;
+- identifica vínculos pela tabela do plugin, pelo campo do plugin Fields rotulado **Atividade DevOps** e por URLs de Work Package em acompanhamentos de chamados;
+- grava o último resultado de cada consulta e disponibiliza o consolidado gerencial filtrável por responsável para perfis com **Acessar a visão gerencial**;
+- cria alertas deduplicados para WPs abertas, com prioridade para status Novo e Em especificação, e os exibe no sino do cabeçalho e na página **Alertas de Work Packages**;
+- cria as tabelas de monitoramento e alertas de forma idempotente. Atualize sem desinstalar e execute **Atualizar** em **Configuração > Plugins**.
+
+Consulte `docs/RELEASE_0.19.0.md` para roteiro de validação e limitações.
+
 ## Versão 0.18.5
 
 - disponibiliza **Salvar todas as configurações administrativas** e **Salvar e testar conexão** no início de Integração e automação, Classificação e Templates;

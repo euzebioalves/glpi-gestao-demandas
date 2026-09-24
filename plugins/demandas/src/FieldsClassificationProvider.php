@@ -9,6 +9,53 @@ use Ticket;
 
 final class FieldsClassificationProvider
 {
+    /**
+     * Finds textual Fields-plugin columns named "Atividade DevOps". The
+     * customer can use a different container, so the physical table is
+     * discovered from the Fields metadata instead of being hard-coded.
+     */
+    public static function workPackageLinkFields(): array
+    {
+        try {
+            $db = \DBConnection::getReadConnection();
+            $containers = [];
+            foreach ($db->request(['FROM' => 'glpi_plugin_fields_containers']) as $container) {
+                $itemtypes = json_decode((string) ($container['itemtypes'] ?? '[]'), true);
+                if (is_array($itemtypes) && in_array(Ticket::class, $itemtypes, true)) {
+                    $containers[(int) $container['id']] = $container;
+                }
+            }
+
+            $fields = [];
+            foreach ($db->request(['FROM' => 'glpi_plugin_fields_fields']) as $field) {
+                $container = $containers[(int) ($field['plugin_fields_containers_id'] ?? 0)] ?? null;
+                if (!is_array($container)) {
+                    continue;
+                }
+                $label = (string) ($field['label'] ?? $field['name'] ?? '');
+                if (self::normalizedLabel($label) !== 'atividadedevops') {
+                    continue;
+                }
+                $containerName = self::identifier((string) ($container['name'] ?? ''), false);
+                $fieldName = self::identifier((string) ($field['name'] ?? ''), false);
+                $type = (string) ($field['type'] ?? '');
+                // A link is normally stored as text/URL. Dropdown fields do
+                // not carry an OpenProject URL and are intentionally ignored.
+                if ($type === 'dropdown') {
+                    continue;
+                }
+                $fields[] = [
+                    'table' => 'glpi_plugin_fields_ticket' . $containerName . 's',
+                    'ticket_key' => 'items_id',
+                    'itemtype_field' => 'itemtype',
+                    'value_field' => 'plugin_fields_' . $fieldName,
+                ];
+            }
+            return $fields;
+        } catch (\Throwable) {
+            return [];
+        }
+    }
     public static function fields(): array
     {
         try {
@@ -140,5 +187,12 @@ final class FieldsClassificationProvider
             throw new RuntimeException('O plugin Fields retornou um identificador técnico inválido.');
         }
         return $value;
+    }
+
+    private static function normalizedLabel(string $value): string
+    {
+        $value = mb_strtolower(trim($value));
+        $value = strtr($value, ['á' => 'a', 'à' => 'a', 'â' => 'a', 'ã' => 'a', 'é' => 'e', 'ê' => 'e', 'í' => 'i', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ú' => 'u', 'ç' => 'c']);
+        return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
     }
 }
