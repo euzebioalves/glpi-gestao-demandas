@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.20.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.20.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.20.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.20.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.20.1 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -121,7 +121,7 @@ Use usuário técnico dedicado e com o menor conjunto de permissões necessário
 
 O menu **Gerência > Monitoramento de Work Packages** usa exclusivamente o token pessoal do usuário logado. A consulta identifica User Stories, Épicos e Bugs abertos nos quais aquele token é o Responsável; não cria nem altera WPs. O consolidado exige `VIEW_DASHBOARD` e mostra somente resultados efetivamente coletados por usuários. Alertas são gravados por usuário e versão observada da WP, evitando repetição da mesma mensagem em consultas subsequentes.
 
-Na listagem pessoal, o botão **Preparar IA** exige o direito `PREPARE_AI_CONTEXT` e só opera sobre uma WP do próprio snapshot do usuário e um chamado efetivamente vinculado. O serviço monta o contexto em memória, sem persistir texto ou anexos e sem comunicar-se com qualquer provedor de IA. A pessoa escolhe cada seção e anexo, confirma que está autorizada a compartilhar o resultado e copia o prompt para a ferramenta de sua preferência. Apenas acompanhamentos públicos e documentos com leitura permitida entram na seleção. A imagem local do GLPI instala Poppler, LibreOffice e Tesseract (`por` e `eng`) para extração local; limites de tamanho e caracteres reduzem risco de exposição e saturação de recursos.
+Na listagem pessoal, o botão **Preparar IA** exige o direito `PREPARE_AI_CONTEXT` e só opera sobre uma WP do próprio snapshot do usuário. Se houver chamado efetivamente vinculado, o serviço também permite selecionar os dados desse chamado. Sem chamado identificado, o contexto é formado apenas pelos dados da WP e seus links. O serviço monta o contexto em memória, sem persistir texto ou anexos e sem comunicar-se com qualquer provedor de IA. A pessoa escolhe cada seção e anexo, confirma que está autorizada a compartilhar o resultado e copia o prompt para a ferramenta de sua preferência. Apenas acompanhamentos públicos e documentos com leitura permitida entram na seleção. A imagem local do GLPI instala Poppler, LibreOffice e Tesseract (`por` e `eng`) para extração local; limites de tamanho e caracteres reduzem risco de exposição e saturação de recursos.
 
 Para entradas de tempo, o plugin também admite o vínculo do usuário do GLPI com o usuário correspondente do OpenProject. Revise sempre os direitos de visualizar e registrar horas no projeto.
 
@@ -281,3 +281,7 @@ O sino apresenta apenas as três notificações não lidas mais recentes. O pain
 ## 20. Contexto local para IA externa — 0.20.0
 
 O recurso não é uma integração com IA. Ele entrega ao usuário um prompt revisável e copiável, mantendo a decisão e a responsabilidade pelo compartilhamento fora do plugin. Não registrar o prompt, o conteúdo extraído ou o consentimento evita converter dados de chamados em uma nova base de dados sensível. O OCR e a conversão de documentos devem permanecer estritamente locais à imagem do GLPI. Todo novo formato de anexo deve ser liberado de forma explícita, com limite de recurso e teste contra documentos malformados. Veja `docs/RELEASE_0.20.0.md`.
+
+## 21. Análise de WP sem chamado identificado — 0.20.1
+
+O preparo de contexto deve continuar disponível quando a correlação da WP com o GLPI ainda não existir. Nesse cenário, não tentar inferir ou expor dados de chamados: esconder as opções dependentes de ticket e montar o prompt exclusivamente com a WP selecionada. Veja `docs/RELEASE_0.20.1.md`.

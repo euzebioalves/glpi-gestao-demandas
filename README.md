@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.20.1
+
+A versão 0.20.1 permite preparar a análise de qualquer Work Package monitorada, mesmo quando ainda não foi identificado um chamado GLPI vinculado. Veja `docs/RELEASE_0.20.1.md`.
+
 ## Plugin 0.20.0
 
 A versão 0.20.0 permite preparar, localmente, um contexto selecionável de chamado e Work Package para copiar em uma IA externa. Inclui extração local de texto de PDF, documentos Office e OCR de imagens, com consentimento explícito e sem envio automático de dados. Veja `docs/RELEASE_0.20.0.md`.

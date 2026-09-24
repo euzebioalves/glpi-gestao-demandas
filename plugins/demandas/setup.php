@@ -14,7 +14,7 @@ use GlpiPlugin\Demandas\UserTimeProfile;
 use GlpiPlugin\Demandas\OpenProjectPersonalToken;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
 
-define('PLUGIN_DEMANDAS_VERSION', '0.20.0');
+define('PLUGIN_DEMANDAS_VERSION', '0.20.1');
 define('PLUGIN_DEMANDAS_MIN_GLPI', '11.0.0');
 define('PLUGIN_DEMANDAS_MAX_GLPI', '11.0.99');
 

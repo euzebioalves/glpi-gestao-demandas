@@ -61,28 +61,29 @@ final class WorkPackageAnalysisService
         }
 
         $ticketIds = array_values(array_unique(array_filter(array_map('intval', (array) ($monitor['ticket_ids'] ?? [])))));
-        if ($ticketIds === []) {
-            throw new RuntimeException('Não foi identificado um chamado GLPI vinculado a esta Work Package.');
-        }
-        if ($ticketId <= 0) {
+        if ($ticketId <= 0 && $ticketIds !== []) {
             $ticketId = $ticketIds[0];
         }
-        if (!in_array($ticketId, $ticketIds, true)) {
+        if ($ticketId > 0 && !in_array($ticketId, $ticketIds, true)) {
             throw new RuntimeException('O chamado selecionado não está vinculado a esta Work Package.');
         }
 
-        $ticket = new Ticket();
-        if (!$ticket->getFromDB($ticketId) || !$ticket->can($ticketId, READ)) {
-            throw new RuntimeException('Você não possui permissão para preparar conteúdo deste chamado.');
+        $ticket = null;
+        $followups = [];
+        if ($ticketId > 0) {
+            $ticket = new Ticket();
+            if (!$ticket->getFromDB($ticketId) || !$ticket->can($ticketId, READ)) {
+                throw new RuntimeException('Você não possui permissão para preparar conteúdo deste chamado.');
+            }
+            $followups = $this->followups($ticketId);
         }
 
-        $followups = $this->followups($ticketId);
         return [
             'monitor' => $monitor,
             'ticket' => $ticket,
             'ticket_ids' => $ticketIds,
             'followups' => $followups,
-            'attachments' => $this->attachments($ticketId, array_column($followups, 'id')),
+            'attachments' => $ticket === null ? [] : $this->attachments($ticketId, array_column($followups, 'id')),
         ];
     }
 
@@ -96,9 +97,9 @@ final class WorkPackageAnalysisService
         }
 
         $details = (array) ($context['monitor']['details'] ?? []);
-        /** @var Ticket $ticket */
+        /** @var Ticket|null $ticket */
         $ticket = $context['ticket'];
-        $ticketContent = $this->plainText((string) ($ticket->fields['content'] ?? ''));
+        $ticketContent = $ticket === null ? '' : $this->plainText((string) ($ticket->fields['content'] ?? ''));
         $attachmentText = ['text' => '', 'results' => []];
         $parts = [
             '# Contexto para análise de demanda',
@@ -118,25 +119,29 @@ final class WorkPackageAnalysisService
         if (isset($selected['wp_customer'])) {
             $this->add($parts, 'Cliente da WP', (string) ($details['customer'] ?? '—'));
         }
-        if (isset($selected['ticket_title'])) {
+        if ($ticket !== null && isset($selected['ticket_title'])) {
             $this->add($parts, 'Título do chamado', (string) ($ticket->fields['name'] ?? '—'));
         }
-        if (isset($selected['ticket_number'])) {
+        if ($ticket !== null && isset($selected['ticket_number'])) {
             $this->add($parts, 'Número do chamado', '#' . $ticket->getID());
         }
-        if (isset($selected['ticket_status'])) {
+        if ($ticket !== null && isset($selected['ticket_status'])) {
             $this->add($parts, 'Status do chamado', Ticket::getStatus((int) ($ticket->fields['status'] ?? 0)));
         }
         if (isset($selected['links'])) {
-            $this->add($parts, 'Links', 'Work Package: ' . (string) ($details['openproject_url'] ?? '—') . "\nChamado: " . $this->ticketUrl($ticket->getID()));
+            $links = 'Work Package: ' . (string) ($details['openproject_url'] ?? '—');
+            if ($ticket !== null) {
+                $links .= "\nChamado: " . $this->ticketUrl($ticket->getID());
+            }
+            $this->add($parts, 'Links', $links);
         }
-        if (isset($selected['ticket_summary'])) {
+        if ($ticket !== null && isset($selected['ticket_summary'])) {
             $this->add($parts, 'Resumo do chamado', $this->limit($ticketContent, 3000));
         }
-        if (isset($selected['ticket_description'])) {
+        if ($ticket !== null && isset($selected['ticket_description'])) {
             $this->add($parts, 'Descrição completa do chamado', $ticketContent);
         }
-        if (isset($selected['ticket_followups'])) {
+        if ($ticket !== null && isset($selected['ticket_followups'])) {
             $this->add($parts, 'Acompanhamentos públicos', $this->formatFollowups($context['followups']));
         }
         if (isset($selected['attachments'])) {
@@ -149,7 +154,7 @@ final class WorkPackageAnalysisService
         return [
             'prompt' => $prompt,
             'attachments' => $attachmentText['results'] ?? [],
-            'ticket_id' => $ticket->getID(),
+            'ticket_id' => $ticket?->getID() ?? 0,
             'work_package_id' => $workPackageId,
         ];
     }

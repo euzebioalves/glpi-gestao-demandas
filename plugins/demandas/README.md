@@ -1,5 +1,13 @@
 # Gestão de Demandas
 
+## Versão 0.20.1
+
+- disponibiliza **Preparar IA** para todas as Work Packages da consulta pessoal, inclusive aquelas ainda sem chamado GLPI identificado;
+- quando não houver chamado, prepara somente os dados selecionados da WP e seus links, sem exibir campos, acompanhamentos ou anexos que dependem de chamado;
+- preserva a seleção completa de dados e anexos assim que um chamado vinculado for identificado.
+
+Consulte `docs/RELEASE_0.20.1.md` para validação.
+
 ## Versão 0.20.0
 
 - permite a quem possuir a permissão **Preparar contexto de chamado e WP para IA externa** selecionar dados da WP e do chamado na listagem de monitoramento pessoal;

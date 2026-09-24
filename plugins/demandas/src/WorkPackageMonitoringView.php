@@ -95,9 +95,7 @@ final class WorkPackageMonitoringView
                 echo '<td>' . (int) ($row['users_id'] ?? 0) . '</td>';
             }
             if ($showAnalysis) {
-                echo '<td>' . ($ticketLinks === []
-                    ? '<span class="text-muted small">Sem chamado</span>'
-                    : "<a class='btn btn-sm btn-outline-primary' href='/plugins/demandas/front/work-package-analysis.php?wp={$wpId}'><i class='ti ti-sparkles me-1'></i>Preparar IA</a>") . '</td>';
+                echo "<td><a class='btn btn-sm btn-outline-primary' href='/plugins/demandas/front/work-package-analysis.php?wp={$wpId}'><i class='ti ti-sparkles me-1'></i>Preparar IA</a></td>";
             }
             echo '</tr>';
         }
