@@ -35,6 +35,6 @@ if ($allRows !== []) {
     echo "<p class='text-muted small'>Apenas WPs abertas da última consulta são exibidas. Os vínculos incluem o campo Atividade DevOps, acompanhamentos e vínculos já registrados pelo plugin.</p>";
     WorkPackageMonitoringView::renderFilters($service->filterOptions($allRows), $filters);
 }
-WorkPackageMonitoringView::renderRows($rows);
+WorkPackageMonitoringView::renderRows($rows, false, DemandasProfile::has(DemandasProfile::PREPARE_AI_CONTEXT));
 echo "<script>document.getElementById('demandas-monitor-form')?.addEventListener('submit',function(event){if(this.dataset.submitting==='1')return;event.preventDefault();this.dataset.submitting='1';const button=document.getElementById('demandas-monitor-submit');button.disabled=true;button.innerHTML='<span class=\"spinner-border spinner-border-sm me-1\" aria-hidden=\"true\"></span>Consultando…';document.getElementById('demandas-monitor-loading')?.classList.remove('d-none');requestAnimationFrame(()=>this.submit())});</script></div>";
 Html::footer();

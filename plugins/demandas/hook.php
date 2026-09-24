@@ -379,6 +379,18 @@ function plugin_demandas_install(): bool
         Config::setConfigurationValues('plugin:demandas', ['rights_initialized_160' => '1']);
     }
 
+    if (($current['rights_initialized_200'] ?? '0') !== '1') {
+        // Somente quem já pode consultar dados técnicos recebe o recurso que
+        // prepara contexto para uma IA externa. O conteúdo continua sujeito
+        // às permissões efetivas do chamado no momento da solicitação.
+        foreach ($profileRight->find(['name' => DemandasProfile::VIEW_TECHNICAL]) as $row) {
+            if (((int) ($row['rights'] ?? 0) & READ) === READ) {
+                DemandasProfile::setRight((int) $row['profiles_id'], DemandasProfile::PREPARE_AI_CONTEXT, true);
+            }
+        }
+        Config::setConfigurationValues('plugin:demandas', ['rights_initialized_200' => '1']);
+    }
+
     return true;
 }
 

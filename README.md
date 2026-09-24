@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.20.0
+
+A versão 0.20.0 permite preparar, localmente, um contexto selecionável de chamado e Work Package para copiar em uma IA externa. Inclui extração local de texto de PDF, documentos Office e OCR de imagens, com consentimento explícito e sem envio automático de dados. Veja `docs/RELEASE_0.20.0.md`.
+
 ## Plugin 0.19.6
 
 A versão 0.19.6 corrige o painel flutuante de alertas: ele fica ancorado abaixo do sino, exibe uma prévia compacta e direciona ao histórico completo. Veja `docs/RELEASE_0.19.6.md`.
@@ -69,8 +73,9 @@ O script:
 1. verifica se o Docker está disponível;
 2. cria o `.env` com segredos aleatórios;
 3. valida o Compose;
-4. baixa as imagens;
-5. inicia todos os serviços.
+4. baixa as imagens externas;
+5. monta localmente a imagem do GLPI com ferramentas de extração de anexos;
+6. inicia todos os serviços.
 
 Na primeira inicialização, o OpenProject pode levar alguns minutos para preparar seu banco.
 

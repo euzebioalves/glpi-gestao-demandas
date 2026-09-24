@@ -1,5 +1,16 @@
 # Gestão de Demandas
 
+## Versão 0.20.0
+
+- permite a quem possuir a permissão **Preparar contexto de chamado e WP para IA externa** selecionar dados da WP e do chamado na listagem de monitoramento pessoal;
+- prepara o texto somente sob demanda, sem gravá-lo no banco nem enviá-lo a qualquer provedor de IA;
+- exige confirmação do usuário antes de copiar conteúdo para uma IA externa;
+- permite selecionar anexos individualmente e extrai localmente texto de PDF, documentos Office, texto estruturado e imagens com OCR em português e inglês;
+- limita anexos a 15 MB, o texto de cada anexo a 30 mil caracteres e o contexto completo a 180 mil caracteres, para reduzir exposição e consumo de recursos;
+- mantém privados fora do fluxo os acompanhamentos privados e qualquer anexo sem permissão efetiva de leitura no chamado.
+
+Consulte `docs/RELEASE_0.20.0.md` para atualização, permissões e validação.
+
 ## Versão 0.19.6
 
 - ancora o painel do sino de alertas abaixo do ícone, com altura máxima e rolagem interna;

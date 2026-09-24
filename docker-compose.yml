@@ -26,7 +26,10 @@ services:
       - demandas
 
   glpi:
-    image: glpi/glpi:11.0.9
+    build:
+      context: .
+      dockerfile: docker/glpi/Dockerfile
+    image: demandas-glpi:11.0.9-local-extraction
     container_name: demandas-hml1109-glpi
     restart: unless-stopped
     depends_on:

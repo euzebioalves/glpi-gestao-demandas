@@ -85,8 +85,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "A configuração do Docker Compose é inválida."
 }
 
-docker compose pull
-docker compose up -d
+docker compose pull glpi-db openproject
+docker compose up -d --build
 
 Write-Host ""
 Write-Host "Ambiente iniciado." -ForegroundColor Green
