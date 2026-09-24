@@ -181,10 +181,21 @@
 
         const root = document.createElement('div');
         root.id = 'demandas-wp-alerts';
-        root.className = 'position-relative ms-2';
+        root.className = 'position-relative d-inline-flex align-items-center flex-shrink-0';
         root.innerHTML = `<button type="button" class="btn btn-icon btn-ghost-secondary position-relative" aria-label="Alertas de Work Packages" aria-expanded="false"><i class="ti ti-bell"></i><span class="badge bg-red text-white position-absolute top-0 start-100 translate-middle ${data.unread ? '' : 'd-none'}">${Number(data.unread || 0) > 99 ? '99+' : Number(data.unread || 0)}</span></button><div class="card shadow-lg position-absolute end-0 mt-2 d-none" style="width:min(390px,calc(100vw - 24px));z-index:1080"><div class="card-header d-flex align-items-center justify-content-between"><strong>Alertas de Work Packages</strong><a class="btn btn-sm btn-link" href="/plugins/demandas/front/work-package-notifications.php">Ver todos</a></div><div class="list-group list-group-flush"></div></div>`;
-        const anchor = search.closest('.input-icon, .input-group, form') || search.parentElement;
-        anchor.parentElement?.insertBefore(root, anchor.nextSibling);
+        const anchor = search.closest('.input-icon, .input-group') || search.parentElement;
+        const searchForm = search.closest('form[role="search"]');
+        if (searchForm && anchor) {
+            // In GLPI 11 the search group is inside a block-level form. The
+            // form must become a row before the alert control is appended,
+            // otherwise the icon is rendered below the search field.
+            searchForm.classList.add('d-flex', 'align-items-center', 'gap-1');
+            anchor.classList.add('flex-grow-1');
+            anchor.style.minWidth = '0';
+            searchForm.append(root);
+        } else {
+            anchor?.parentElement?.insertBefore(root, anchor.nextSibling);
+        }
         const button = root.querySelector('button');
         const panel = root.querySelector('.card');
         const list = root.querySelector('.list-group');

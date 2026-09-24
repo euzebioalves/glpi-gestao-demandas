@@ -1,5 +1,13 @@
 # Gestão de Demandas
 
+## Versão 0.19.1
+
+- exibe indicador de consulta na página **Minhas Work Packages**, com barra de progresso animada sem porcentagem fictícia enquanto o OpenProject processa e devolve o total;
+- mantém o botão de consulta bloqueado durante a requisição para impedir disparos repetidos;
+- posiciona o sino de alertas horizontalmente ao lado direito do campo de busca do cabeçalho do GLPI 11.
+
+Consulte `docs/RELEASE_0.19.1.md` para validação.
+
 ## Versão 0.19.0
 
 - adiciona **Monitoramento de Work Packages** no menu Gerência para qualquer usuário autenticado com token pessoal configurado;

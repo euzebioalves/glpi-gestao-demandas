@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.19.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.19.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.19.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.19.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.19.1 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -248,3 +248,9 @@ O monitoramento usa `GET /api/v3/users/me` para identificar o dono do token e co
 Os snapshots são por usuário e WP; uma consulta bem-sucedida marca como fora do escopo apenas WPs antes abertas naquele mesmo snapshot que não retornaram. Uma falha de API não limpa dados anteriores. A identificação de chamados reúne a tabela `glpi_plugin_demandas_links`, URLs `/work_packages/{id}` nos acompanhamentos e o campo Fields com rótulo “Atividade DevOps”. Alterações nessa heurística precisam preservar os três caminhos.
 
 As notificações possuem uma impressão digital de WP, status e atualização. Não remover a chave única: ela impede spam a cada clique de consulta. O feed do sino é um endpoint autenticado e nunca deve expor token, payload bruto do OpenProject ou notificações de outro usuário. Veja `docs/RELEASE_0.19.0.md`.
+
+## 14. Feedback de consulta — 0.19.1
+
+A consulta de WPs faz um POST tradicional para manter a proteção de sessão e CSRF do GLPI. Antes de enviar, a página mostra uma barra de progresso **indeterminada** e bloqueia o botão. Não simular porcentagem: o total disponível no OpenProject só chega junto da resposta paginada e não há um trabalho assíncrono para informar avanço real ao navegador.
+
+O sino deve ser anexado ao formulário do `#global-search`, que no GLPI 11 é inicialmente bloco. O script transforma apenas esse formulário em linha flexível e permite que o grupo de pesquisa encolha; isso evita que o sino seja renderizado abaixo da barra. Veja `docs/RELEASE_0.19.1.md`.
