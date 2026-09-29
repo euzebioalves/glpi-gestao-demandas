@@ -17,12 +17,31 @@ final class ManagementDashboardService
         '91+' => 'Mais de 90 dias',
     ];
 
+    /**
+     * Colunas permitidas para a ordenação da grade gerencial. A lista fechada
+     * evita que parâmetros de URL sejam usados como campos arbitrários.
+     */
+    private const SORT_FIELDS = [
+        'ticket' => ['field' => 'ticket_id', 'type' => 'number'],
+        'client' => ['field' => 'entity_name', 'type' => 'text'],
+        'classification' => ['field' => 'classification_label', 'type' => 'text'],
+        'glpi_status' => ['field' => 'glpi_status_name', 'type' => 'text'],
+        'age' => ['field' => 'age_days', 'type' => 'number'],
+        'wp' => ['field' => 'openproject_work_package_id', 'type' => 'number'],
+        'project' => ['field' => 'openproject_project_name', 'type' => 'text'],
+        'type' => ['field' => 'openproject_type_name', 'type' => 'text'],
+        'op_status' => ['field' => 'openproject_status', 'type' => 'text'],
+        'public_phase' => ['field' => 'public_phase', 'type' => 'text'],
+        'last_synced_at' => ['field' => 'last_synced_at', 'type' => 'date'],
+    ];
+
     public function result(array $input): array
     {
         $filters = $this->normalizeFilters($input);
         $allRows = $this->loadRows();
         $scopeRows = array_values(array_filter($allRows, fn(array $row): bool => $this->matchesBaseFilters($row, $filters)));
         $rows = array_values(array_filter($scopeRows, fn(array $row): bool => $this->matchesDrillDown($row, $filters)));
+        $rows = $this->sortRows($rows, $filters['sort'], $filters['sort_direction']);
 
         return [
             'filters' => $filters,
@@ -120,6 +139,8 @@ final class ManagementDashboardService
     private function normalizeFilters(array $input): array
     {
         $hasWp = (string) ($input['has_wp'] ?? '');
+        $sort = (string) ($input['sort'] ?? 'ticket');
+        $sortDirection = strtolower((string) ($input['sort_direction'] ?? 'desc'));
         return [
             'date_from' => $this->date((string) ($input['date_from'] ?? '')),
             'date_to' => $this->date((string) ($input['date_to'] ?? '')),
@@ -140,7 +161,45 @@ final class ManagementDashboardService
                 'undocumented_improvement_bug', 'open_bug', 'open_improvement',
                 'open_collector', 'suggestions', 'open_improvement_bug',
             ], true) ? (string) $input['metric'] : '',
+            'sort' => array_key_exists($sort, self::SORT_FIELDS) ? $sort : 'ticket',
+            'sort_direction' => in_array($sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'desc',
         ];
+    }
+
+    private function sortRows(array $rows, string $sort, string $direction): array
+    {
+        $definition = self::SORT_FIELDS[$sort] ?? self::SORT_FIELDS['ticket'];
+        $field = $definition['field'];
+        $type = $definition['type'];
+
+        usort($rows, static function (array $left, array $right) use ($field, $type, $direction): int {
+            $leftValue = $left[$field] ?? '';
+            $rightValue = $right[$field] ?? '';
+            $leftEmpty = trim((string) $leftValue) === '' || ($field === 'openproject_work_package_id' && (int) $leftValue <= 0);
+            $rightEmpty = trim((string) $rightValue) === '' || ($field === 'openproject_work_package_id' && (int) $rightValue <= 0);
+
+            // Valores indisponíveis permanecem no fim em ambos os sentidos.
+            if ($leftEmpty !== $rightEmpty) {
+                return $leftEmpty ? 1 : -1;
+            }
+
+            $comparison = match ($type) {
+                'number' => (int) $leftValue <=> (int) $rightValue,
+                'date' => (strtotime((string) $leftValue) ?: 0) <=> (strtotime((string) $rightValue) ?: 0),
+                default => strcasecmp((string) $leftValue, (string) $rightValue),
+            };
+            if ($comparison !== 0) {
+                return $direction === 'asc' ? $comparison : -$comparison;
+            }
+
+            $ticketComparison = (int) $left['ticket_id'] <=> (int) $right['ticket_id'];
+            if ($ticketComparison !== 0) {
+                return $direction === 'asc' ? $ticketComparison : -$ticketComparison;
+            }
+            return (int) ($left['openproject_work_package_id'] ?? 0) <=> (int) ($right['openproject_work_package_id'] ?? 0);
+        });
+
+        return $rows;
     }
 
     private function matchesBaseFilters(array $row, array $filters): bool

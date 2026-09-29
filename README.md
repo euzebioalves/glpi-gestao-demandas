@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.21.2
+
+A versão 0.21.2 melhora a operação da **Visão Gerencial de Demandas**: filtros em painel recolhido e distribuídos em duas linhas, além de ordenação server-side por todas as colunas da grade, mantendo filtros, drill-down, paginação e exportações. Veja `docs/RELEASE_0.21.2.md`.
+
 ## Plugin 0.21.1
 
 A versão 0.21.1 corrige o isolamento das informações de Work Packages: monitoramento, alertas, exportação pessoal e contexto para IA passam a exigir a permissão de dados técnicos no menu, nas páginas e nos endpoints. A visão pública permanece limitada à fase e aos acompanhamentos públicos. Veja `docs/RELEASE_0.21.1.md`.

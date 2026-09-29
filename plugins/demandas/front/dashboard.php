@@ -34,12 +34,27 @@ function demandasQuery(array $filters, array $changes = []): string
 
 function demandasSelect(string $name, string $label, array $options, string $selected): void
 {
-    echo "<div class='col-sm-6 col-lg-3 col-xxl'><label class='form-label' for='demandas-{$name}'>" . demandasH($label) . "</label><select class='form-select' id='demandas-{$name}' name='{$name}'><option value=''>Todos</option>";
+    echo "<div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label' for='demandas-{$name}'>" . demandasH($label) . "</label><select class='form-select' id='demandas-{$name}' name='{$name}'><option value=''>Todos</option>";
     foreach ($options as $value => $optionLabel) {
         $isSelected = (string) $value === $selected ? ' selected' : '';
         echo "<option value='" . demandasH($value) . "'{$isSelected}>" . demandasH($optionLabel) . '</option>';
     }
     echo '</select></div>';
+}
+
+function demandasSortHeader(string $key, string $label, array $filters): void
+{
+    $isCurrent = $filters['sort'] === $key;
+    $currentDirection = $filters['sort_direction'];
+    $nextDirection = $isCurrent && $currentDirection === 'asc' ? 'desc' : 'asc';
+    $icon = !$isCurrent ? 'ti-selector' : ($currentDirection === 'asc' ? 'ti-sort-ascending' : 'ti-sort-descending');
+    $ariaSort = !$isCurrent ? 'none' : ($currentDirection === 'asc' ? 'ascending' : 'descending');
+    $url = '/plugins/demandas/front/dashboard.php?' . demandasQuery($filters, [
+        'sort' => $key,
+        'sort_direction' => $nextDirection,
+    ]);
+
+    echo "<th aria-sort='{$ariaSort}'><a class='demandas-sort-link' href='" . demandasH($url) . "' title='Ordenar por " . demandasH($label) . "'><span>" . demandasH($label) . "</span><i class='ti {$icon}' aria-hidden='true'></i></a></th>";
 }
 
 function demandasPercent(int|float $value, int|float $total): float
@@ -63,7 +78,10 @@ function demandasBarList(array $items, string $field, array $filters, int $limit
 $total = (int) $summary['total'];
 $coverage = demandasPercent((int) $summary['with_wp'], $total);
 $riskTotal = (int) $summary['undocumented_improvement_bug'] + (int) $summary['older_30'] + (int) $summary['stale'];
-$activeFilterCount = count(array_filter($filters, static fn(mixed $value): bool => $value !== '' && $value !== null));
+$activeFilterCount = count(array_filter(
+    array_diff_key($filters, ['sort' => true, 'sort_direction' => true]),
+    static fn(mixed $value): bool => $value !== '' && $value !== null
+));
 $dashboardUpdatedAt = (new DateTimeImmutable())->format('d/m/Y H:i');
 
 echo <<<'CSS'
@@ -71,14 +89,14 @@ echo <<<'CSS'
 .demandas-exec{--dm-navy:#14213d;--dm-blue:#246bfd;--dm-cyan:#2ec5ce;--dm-orange:#ff9f43;--dm-red:#ef476f;--dm-purple:#7b61ff;--dm-green:#16a085;--dm-surface:var(--tblr-bg-surface,#fff);--dm-border:rgba(98,105,118,.16);color:var(--tblr-body-color)}
 .demandas-exec *{box-sizing:border-box}.demandas-hero{position:relative;overflow:hidden;border-radius:20px;padding:26px 28px;color:#fff;background:linear-gradient(120deg,#111c34 0%,#203d73 58%,#2b6ef3 100%);box-shadow:0 18px 45px rgba(20,33,61,.2)}
 .demandas-hero:after{content:"";position:absolute;right:-80px;top:-120px;width:340px;height:340px;border-radius:50%;background:rgba(255,255,255,.08)}.demandas-hero>*{position:relative;z-index:1}.demandas-eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.72}.demandas-hero h1{font-size:1.75rem;margin:.35rem 0}.demandas-hero p{max-width:720px;opacity:.8;margin:0}.demandas-hero-meta{display:flex;align-items:center;gap:12px;font-size:.78rem;opacity:.82}.demandas-live{display:inline-flex;align-items:center;gap:6px}.demandas-live:before{content:"";width:8px;height:8px;border-radius:50%;background:#5ee6a8;box-shadow:0 0 0 5px rgba(94,230,168,.14)}
-.demandas-filter-card,.demandas-panel,.demandas-table-card{background:var(--dm-surface);border:1px solid var(--dm-border);border-radius:16px;box-shadow:0 8px 30px rgba(20,33,61,.055)}.demandas-filter-card{margin-top:16px;padding:18px}.demandas-filter-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.demandas-filter-title h2{font-size:.92rem;margin:0}.demandas-filter-count{font-size:.72rem;padding:4px 9px;border-radius:30px;background:rgba(36,107,253,.1);color:var(--dm-blue);font-weight:700}
+.demandas-filter-card,.demandas-panel,.demandas-table-card{background:var(--dm-surface);border:1px solid var(--dm-border);border-radius:16px;box-shadow:0 8px 30px rgba(20,33,61,.055)}.demandas-filter-card{margin-top:16px;padding:0}.demandas-filter-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px;cursor:pointer;list-style:none}.demandas-filter-summary::-webkit-details-marker{display:none}.demandas-filter-summary h2{font-size:.92rem;margin:0}.demandas-filter-summary-right{display:flex;align-items:center;gap:9px}.demandas-filter-toggle{color:var(--tblr-secondary-color);font-size:.76rem}.demandas-filter-toggle .ti{transition:transform .18s ease}.demandas-filter-card[open] .demandas-filter-toggle .ti{transform:rotate(180deg)}.demandas-filter-card[open] .demandas-filter-toggle-text:before{content:'Ocultar filtros'}.demandas-filter-card:not([open]) .demandas-filter-toggle-text:before{content:'Exibir filtros'}.demandas-filter-form{padding:0 18px 18px;border-top:1px solid var(--dm-border)}.demandas-filter-count{font-size:.72rem;padding:4px 9px;border-radius:30px;background:rgba(36,107,253,.1);color:var(--dm-blue);font-weight:700}
 .demandas-kpi-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;margin:16px 0}.demandas-kpi{position:relative;min-height:132px;border-radius:16px;padding:17px;color:#fff;text-decoration:none!important;overflow:hidden;box-shadow:0 10px 24px rgba(20,33,61,.13);transition:transform .18s ease,box-shadow .18s ease}.demandas-kpi:hover{transform:translateY(-3px);box-shadow:0 14px 30px rgba(20,33,61,.2);color:#fff}.demandas-kpi:after{content:"";position:absolute;right:-22px;bottom:-35px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.12)}.demandas-kpi-icon{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.16);font-size:1.15rem}.demandas-kpi-value{font-size:1.8rem;line-height:1;font-weight:800;margin:15px 0 7px}.demandas-kpi-label{font-size:.76rem;line-height:1.25;opacity:.9}.demandas-kpi small{display:block;margin-top:7px;font-size:.66rem;opacity:.7}.dm-blue{background:linear-gradient(145deg,#246bfd,#1849b9)}.dm-green{background:linear-gradient(145deg,#20b486,#08795a)}.dm-orange{background:linear-gradient(145deg,#ffb347,#f07821)}.dm-red{background:linear-gradient(145deg,#ff6577,#d92f55)}.dm-purple{background:linear-gradient(145deg,#8c6cff,#5938c8)}.dm-slate{background:linear-gradient(145deg,#53657d,#2f3d52)}
 .demandas-main-grid{display:grid;grid-template-columns:minmax(300px,.78fr) minmax(0,1.22fr) minmax(0,1.22fr);gap:16px;margin-bottom:16px}.demandas-panel{padding:20px;min-width:0}.demandas-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}.demandas-panel-title{font-size:.94rem;font-weight:700;margin:0}.demandas-panel-subtitle{font-size:.72rem;color:var(--tblr-secondary-color);margin-top:3px}.demandas-panel-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:rgba(36,107,253,.1);color:var(--dm-blue)}
 .demandas-coverage{display:flex;align-items:center;justify-content:center;gap:22px;min-height:210px}.demandas-donut{--percent:0;position:relative;width:142px;height:142px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--dm-blue) calc(var(--percent)*1%),rgba(125,135,150,.16) 0)}.demandas-donut:before{content:"";position:absolute;inset:15px;border-radius:50%;background:var(--dm-surface)}.demandas-donut-value{position:relative;text-align:center;font-size:1.55rem;font-weight:800}.demandas-donut-value small{display:block;font-size:.64rem;color:var(--tblr-secondary-color);font-weight:600}.demandas-legend{display:grid;gap:12px;min-width:120px}.demandas-legend-item{display:grid;grid-template-columns:9px 1fr auto;gap:8px;align-items:center;font-size:.75rem}.demandas-legend-dot{width:9px;height:9px;border-radius:3px}.demandas-legend-item strong{font-size:.9rem}
 .demandas-bar-list{display:grid;gap:12px}.demandas-bar-row{display:grid;grid-template-columns:minmax(90px,1.35fr) minmax(70px,2fr) 34px;gap:10px;align-items:center;color:inherit;text-decoration:none!important;font-size:.75rem}.demandas-bar-row:hover .demandas-bar-fill{filter:brightness(1.12)}.demandas-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.demandas-bar-track{display:block;height:9px;border-radius:20px;background:rgba(125,135,150,.14);overflow:hidden}.demandas-bar-fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dm-purple),var(--dm-blue));transition:width .25s}.demandas-bar-row strong{text-align:right}.demandas-empty{padding:28px 0;text-align:center;color:var(--tblr-secondary-color);font-size:.78rem}
 .demandas-classification-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.demandas-class-item{padding:13px;border-radius:12px;background:rgba(125,135,150,.075);color:inherit;text-decoration:none!important;border:1px solid transparent;transition:border-color .18s}.demandas-class-item:hover{border-color:rgba(36,107,253,.3)}.demandas-class-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.demandas-class-top span{font-size:.73rem}.demandas-class-top strong{font-size:1.05rem}.demandas-mini-track{height:5px;border-radius:8px;background:rgba(125,135,150,.15);margin-top:9px;overflow:hidden}.demandas-mini-fill{display:block;height:100%;border-radius:inherit}.fill-red{background:var(--dm-red)}.fill-orange{background:var(--dm-orange)}.fill-cyan{background:var(--dm-cyan)}.fill-purple{background:var(--dm-purple)}
 .demandas-secondary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}.demandas-secondary-grid .demandas-panel{min-height:275px}.demandas-panel-footer{margin-top:16px;padding-top:13px;border-top:1px solid var(--dm-border);font-size:.7rem;color:var(--tblr-secondary-color)}
-.demandas-table-card{overflow:hidden}.demandas-table-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--dm-border)}.demandas-table-head h2{font-size:.95rem;margin:0}.demandas-result-badge{padding:5px 10px;border-radius:20px;background:rgba(36,107,253,.1);color:var(--dm-blue);font-size:.72rem;font-weight:700}.demandas-table-card table{font-size:.76rem}.demandas-table-card thead th{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--tblr-secondary-color);white-space:nowrap}.demandas-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:20px;background:rgba(125,135,150,.1);white-space:nowrap}.demandas-status-pill:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--dm-blue)}
+.demandas-table-card{overflow:hidden}.demandas-table-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid var(--dm-border)}.demandas-table-head h2{font-size:.95rem;margin:0}.demandas-result-badge{padding:5px 10px;border-radius:20px;background:rgba(36,107,253,.1);color:var(--dm-blue);font-size:.72rem;font-weight:700}.demandas-table-card table{font-size:.76rem}.demandas-table-card thead th{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--tblr-secondary-color);white-space:nowrap}.demandas-sort-link{display:inline-flex;align-items:center;gap:5px;color:inherit;text-decoration:none}.demandas-sort-link:hover{color:var(--dm-blue)}.demandas-sort-link .ti{font-size:.8rem}.demandas-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:20px;background:rgba(125,135,150,.1);white-space:nowrap}.demandas-status-pill:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--dm-blue)}
 @media(max-width:1399px){.demandas-kpi-grid{grid-template-columns:repeat(3,1fr)}.demandas-main-grid{grid-template-columns:1fr 1fr}.demandas-main-grid .demandas-panel:last-child{grid-column:1/-1}}
 @media(max-width:991px){.demandas-main-grid,.demandas-secondary-grid{grid-template-columns:1fr}.demandas-main-grid .demandas-panel:last-child{grid-column:auto}.demandas-hero{padding:22px}.demandas-hero-actions{margin-top:18px}}
 @media(max-width:575px){.demandas-exec{padding-left:10px!important;padding-right:10px!important}.demandas-kpi-grid{grid-template-columns:repeat(2,1fr)}.demandas-kpi{min-height:122px}.demandas-coverage{flex-direction:column}.demandas-classification-grid{grid-template-columns:1fr}.demandas-bar-row{grid-template-columns:minmax(78px,1.2fr) minmax(60px,1.5fr) 30px}}
@@ -93,8 +111,8 @@ if (DemandasProfile::has(DemandasProfile::EXPORT_DASHBOARD)) {
 }
 echo '</div></div></section>';
 
-echo "<section class='demandas-filter-card'><div class='demandas-filter-title'><h2><i class='ti ti-adjustments-horizontal me-2 text-primary'></i>Filtros estratégicos</h2><span class='demandas-filter-count'>{$activeFilterCount} filtro(s) ativo(s)</span></div><form method='get' class='row g-3'>";
-echo "<div class='col-sm-6 col-lg-3 col-xxl'><label class='form-label'>Busca</label><input class='form-control' name='q' value='" . demandasH($filters['q']) . "' placeholder='Número ou título'></div><div class='col-sm-6 col-lg-3 col-xxl'><label class='form-label'>Abertos desde</label><input class='form-control' type='date' name='date_from' value='" . demandasH($filters['date_from']) . "'></div><div class='col-sm-6 col-lg-3 col-xxl'><label class='form-label'>Abertos até</label><input class='form-control' type='date' name='date_to' value='" . demandasH($filters['date_to']) . "'></div>";
+echo "<details class='demandas-filter-card'><summary class='demandas-filter-summary'><h2><i class='ti ti-adjustments-horizontal me-2 text-primary'></i>Filtros estratégicos</h2><span class='demandas-filter-summary-right'><span class='demandas-filter-count'>{$activeFilterCount} filtro(s) ativo(s)</span><span class='demandas-filter-toggle'><span class='demandas-filter-toggle-text'></span><i class='ti ti-chevron-down ms-1'></i></span></span></summary><form method='get' class='row g-3 demandas-filter-form'>";
+echo "<div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Busca</label><input class='form-control' name='q' value='" . demandasH($filters['q']) . "' placeholder='Número ou título'></div><div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Abertos desde</label><input class='form-control' type='date' name='date_from' value='" . demandasH($filters['date_from']) . "'></div><div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Abertos até</label><input class='form-control' type='date' name='date_to' value='" . demandasH($filters['date_to']) . "'></div>";
 demandasSelect('has_wp', 'Vínculo', ['yes' => 'Com WP', 'no' => 'Sem WP'], $filters['has_wp']);
 demandasSelect('age_bucket', 'Idade', ManagementDashboardService::AGE_BUCKETS, $filters['age_bucket']);
 demandasSelect('glpi_status', 'Status GLPI', $result['options']['glpi_status'], $filters['glpi_status']);
@@ -103,7 +121,7 @@ demandasSelect('public_phase', DemandasConfig::label('public_phase'), $result['o
 demandasSelect('project', 'Projeto', $result['options']['project'], $filters['project']);
 demandasSelect('type', 'Tipo da WP', $result['options']['type'], $filters['type']);
 demandasSelect('client', 'Cliente', $result['options']['client'], $filters['client']);
-echo "<div class='col-12 d-flex gap-2 justify-content-end'><a class='btn btn-outline-secondary' href='/plugins/demandas/front/dashboard.php'>Limpar</a><button class='btn btn-primary px-4' type='submit'><i class='ti ti-filter me-1'></i>Aplicar filtros</button></div></form></section>";
+echo "<div class='col-12 d-flex gap-2 justify-content-end'><a class='btn btn-outline-secondary' href='/plugins/demandas/front/dashboard.php'>Limpar</a><button class='btn btn-primary px-4' type='submit'><i class='ti ti-filter me-1'></i>Aplicar filtros</button></div></form></details>";
 
 $kpis = [
     ['metric' => 'all', 'label' => 'Chamados no escopo', 'value' => $total, 'hint' => 'Volume analisado', 'icon' => 'ti ti-ticket', 'class' => 'dm-blue'],
@@ -165,7 +183,19 @@ foreach ($secondaryPanels as $panel) {
 }
 echo '</section>';
 
-echo "<section class='demandas-table-card'><div class='demandas-table-head'><div><h2>Chamados correspondentes</h2><div class='demandas-panel-subtitle'>Detalhamento para análise e tomada de decisão</div></div><span class='demandas-result-badge'>" . count($rows) . " resultado(s)</span></div><div class='table-responsive'><table class='table table-hover table-vcenter mb-0'><thead><tr><th>Chamado</th><th>Cliente</th><th>Classificação</th><th>Status GLPI</th><th>Idade</th><th>WP</th><th>Projeto</th><th>Tipo</th><th>Status WP</th><th>" . demandasH(DemandasConfig::label('public_phase')) . "</th><th>Última sincronização</th></tr></thead><tbody>";
+echo "<section class='demandas-table-card'><div class='demandas-table-head'><div><h2>Chamados correspondentes</h2><div class='demandas-panel-subtitle'>Detalhamento para análise e tomada de decisão</div></div><span class='demandas-result-badge'>" . count($rows) . " resultado(s)</span></div><div class='table-responsive'><table class='table table-hover table-vcenter mb-0'><thead><tr>";
+demandasSortHeader('ticket', 'Chamado', $filters);
+demandasSortHeader('client', 'Cliente', $filters);
+demandasSortHeader('classification', 'Classificação', $filters);
+demandasSortHeader('glpi_status', 'Status GLPI', $filters);
+demandasSortHeader('age', 'Idade', $filters);
+demandasSortHeader('wp', 'WP', $filters);
+demandasSortHeader('project', 'Projeto', $filters);
+demandasSortHeader('type', 'Tipo', $filters);
+demandasSortHeader('op_status', 'Status WP', $filters);
+demandasSortHeader('public_phase', DemandasConfig::label('public_phase'), $filters);
+demandasSortHeader('last_synced_at', 'Última sincronização', $filters);
+echo '</tr></thead><tbody>';
 foreach ($visibleRows as $row) {
     $ticketUrl = '/front/ticket.form.php?id=' . (int) $row['ticket_id'];
     $wp = $row['has_wp'] ? '#' . (int) $row['openproject_work_package_id'] : '—';

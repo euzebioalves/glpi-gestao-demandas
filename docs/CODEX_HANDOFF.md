@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.21.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.21.2` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.21.1` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.21.1 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.21.2 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -297,3 +297,9 @@ O preparo de contexto deve continuar disponível quando a correlação da WP com
 `VIEW_PUBLIC` é exclusivamente a visão da fase e das mensagens públicas. Não usar esse direito como autorização para identificador, URL, título, status ou qualquer snapshot de Work Package. A aba de evolução e o hook público também devem confirmar a leitura efetiva do chamado antes de renderizar conteúdo.
 
 `WorkPackageMonitoringHub` e todos os seus endpoints exigem `VIEW_TECHNICAL`; isso inclui consulta, alertas, exportação pessoal e preparo de IA. O consolidado acumula `VIEW_TECHNICAL` e `VIEW_DASHBOARD`; a exportação consolidada acrescenta `EXPORT_DASHBOARD`. Não reintroduzir acesso somente por usuário autenticado, token pessoal ou ocultação de menu: a checagem precisa permanecer no backend. Veja `docs/RELEASE_0.21.1.md`.
+
+## 24. Filtros e ordenação da visão gerencial — 0.21.2
+
+O painel de filtros da Visão Gerencial permanece recolhido por padrão. Os onze filtros são distribuídos em seis colunas na primeira linha e cinco na segunda em telas largas, com adaptação responsiva para larguras menores. A contagem de filtros ativos continua visível mesmo com o painel fechado.
+
+A ordenação da grade é feita no `ManagementDashboardService`, depois dos filtros de base e do drill-down. Aceite somente as chaves fechadas em `SORT_FIELDS`; não use parâmetros de URL como nomes de colunas. O parâmetro `sort_direction` aceita apenas `asc` e `desc`. URLs de cabeçalho, paginação e exportação preservam essa ordenação; valores indisponíveis de data permanecem no fim. Veja `docs/RELEASE_0.21.2.md`.

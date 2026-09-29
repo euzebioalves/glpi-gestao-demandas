@@ -1,5 +1,13 @@
 # Gestão de Demandas
 
+## Versão 0.21.2
+
+- organiza os filtros da **Visão Gerencial de Demandas** em duas linhas, com campos mais amplos em telas grandes;
+- torna o painel de filtros recolhido por padrão, preservando o indicador de filtros ativos;
+- permite ordenar a grade por qualquer coluna, de forma segura no servidor e sem perder filtros, drill-down, paginação ou a ordem nas exportações.
+
+Consulte `docs/RELEASE_0.21.2.md` para validação.
+
 ## Versão 0.21.1
 
 - restringe o monitoramento pessoal, os alertas, as exportações e o preparo de contexto para IA a perfis com a permissão **Visualizar dados técnicos do OpenProject**;
