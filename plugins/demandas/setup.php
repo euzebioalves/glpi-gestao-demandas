@@ -13,8 +13,9 @@ use GlpiPlugin\Demandas\TimeEntryHub;
 use GlpiPlugin\Demandas\UserTimeProfile;
 use GlpiPlugin\Demandas\OpenProjectPersonalToken;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
+use GlpiPlugin\Demandas\OperationalHealthHub;
 
-define('PLUGIN_DEMANDAS_VERSION', '0.21.2');
+define('PLUGIN_DEMANDAS_VERSION', '0.22.0');
 define('PLUGIN_DEMANDAS_MIN_GLPI', '11.0.0');
 define('PLUGIN_DEMANDAS_MAX_GLPI', '11.0.99');
 
@@ -56,7 +57,7 @@ function plugin_init_demandas(): void
     $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['demandas'] = 'js/demandas.js';
     $PLUGIN_HOOKS[Hooks::POST_ITIL_INFO_SECTION]['demandas'] = 'plugin_demandas_post_itil_info_section';
     $PLUGIN_HOOKS[Hooks::MENU_TOADD]['demandas'] = [
-        'management' => [ManagementDashboard::class, WorkforceHub::class, TimeEntryHub::class, WorkPackageMonitoringHub::class],
+        'management' => [ManagementDashboard::class, WorkforceHub::class, TimeEntryHub::class, WorkPackageMonitoringHub::class, OperationalHealthHub::class],
     ];
 }
 

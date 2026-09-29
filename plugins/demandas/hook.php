@@ -23,6 +23,9 @@ function plugin_demandas_migrate_timestamps(DBmysql $db): void
         'user_tokens' => ['date_creation', 'date_mod'],
         'work_package_monitors' => ['last_queried_at', 'date_creation', 'date_mod'],
         'work_package_notifications' => ['date_creation', 'date_mod'],
+        'operational_runs' => ['started_at', 'finished_at', 'date_creation'],
+        'operational_findings' => ['first_detected_at', 'last_detected_at', 'ignored_until', 'date_creation', 'date_mod'],
+        'operational_actions' => ['date_creation'],
     ];
     $changes = [];
     foreach ($columns as $suffix => $names) {
@@ -235,6 +238,32 @@ function plugin_demandas_install(): bool
         PRIMARY KEY (`id`), UNIQUE KEY `uniq_user_work_package_notice` (`users_id`,`openproject_work_package_id`,`fingerprint`),
         KEY `idx_user_unread` (`users_id`,`is_read`,`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_operational_runs` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL,
+        `scope_entities_json` longtext DEFAULT NULL, `status` varchar(20) NOT NULL DEFAULT 'running',
+        `findings_count` int unsigned NOT NULL DEFAULT 0, `error_message` text DEFAULT NULL,
+        `started_at` timestamp NULL DEFAULT NULL, `finished_at` timestamp NULL DEFAULT NULL,
+        `date_creation` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`),
+        KEY `idx_user_date` (`users_id`,`date_creation`), KEY `idx_status_date` (`status`,`date_creation`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_operational_findings` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT, `fingerprint` char(64) NOT NULL,
+        `rule_code` varchar(80) NOT NULL, `severity` varchar(20) NOT NULL DEFAULT 'medium',
+        `state` varchar(20) NOT NULL DEFAULT 'open', `tickets_id` int unsigned NOT NULL,
+        `entities_id` int unsigned NOT NULL, `openproject_work_package_id` int unsigned DEFAULT NULL,
+        `evidence_json` longtext DEFAULT NULL, `last_run_id` int unsigned DEFAULT NULL,
+        `first_detected_at` timestamp NULL DEFAULT NULL, `last_detected_at` timestamp NULL DEFAULT NULL,
+        `ignored_until` timestamp NULL DEFAULT NULL, `date_creation` timestamp NULL DEFAULT NULL,
+        `date_mod` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `uniq_fingerprint` (`fingerprint`),
+        KEY `idx_scope_state` (`entities_id`,`state`,`severity`), KEY `idx_ticket` (`tickets_id`),
+        KEY `idx_wp` (`openproject_work_package_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_operational_actions` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT, `operational_findings_id` int unsigned NOT NULL,
+        `users_id` int unsigned NOT NULL, `action` varchar(40) NOT NULL, `details_json` longtext DEFAULT NULL,
+        `date_creation` timestamp NULL DEFAULT NULL, PRIMARY KEY (`id`),
+        KEY `idx_finding_date` (`operational_findings_id`,`date_creation`), KEY `idx_user_date` (`users_id`,`date_creation`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $defaults = [
         'openproject_internal_url' => 'http://openproject/api/v3',
@@ -265,6 +294,9 @@ function plugin_demandas_install(): bool
         'ticket_log_enabled' => '0',
         'label_ticket_log' => 'Log do Chamado',
         'holiday_overtime_multiplier' => '2',
+        'operational_health_initial_statuses' => 'Novo,Em especificação',
+        'operational_health_initial_days' => '7',
+        'operational_health_stale_days' => '7',
     ];
     $current = Config::getConfigurationValues('plugin:demandas');
     Config::setConfigurationValues('plugin:demandas', $current + $defaults);
@@ -397,7 +429,7 @@ function plugin_demandas_install(): bool
 function plugin_demandas_uninstall(): bool
 {
     $db = DBConnection::getReadConnection();
-    foreach (['work_package_notifications','work_package_monitors','user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
+    foreach (['operational_actions','operational_findings','operational_runs','work_package_notifications','work_package_monitors','user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
         $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_' . $table . '`');
     }
     $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_events`');

@@ -1,5 +1,18 @@
 # Gestão de Demandas
 
+Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
+
+## Versão 0.22.0
+
+- adiciona **Gerência > Pendências de Integração**, uma central de diagnóstico baseada exclusivamente no estado já persistido no GLPI;
+- identifica chamado elegível sem WP, WP parada em status inicial acima do prazo e WP sem sincronização recente;
+- permite configurar os status iniciais e os prazos na aba **Integração e automação**;
+- registra cada execução, pendência e tratativa localmente, sem consultar ou alterar o OpenProject;
+- separa as permissões de visualizar e operar a central; ambas exigem também **Visualizar dados técnicos do OpenProject**;
+- confirma a leitura efetiva do chamado antes de exibir uma pendência, inclusive no endpoint de ações.
+
+Consulte `docs/RELEASE_0.22.0.md` para instalação, permissões e validação.
+
 ## Versão 0.21.2
 
 - organiza os filtros da **Visão Gerencial de Demandas** em duas linhas, com campos mais amplos em telas grandes;

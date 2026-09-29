@@ -32,6 +32,8 @@ final class Profile extends CommonDBTM
     public const MANAGE_HOLIDAYS = 'demandas_manage_holidays';
     public const MANAGE_TIME_ACCESS = 'demandas_manage_time_access';
     public const PREPARE_AI_CONTEXT = 'demandas_prepare_ai_context';
+    public const VIEW_OPERATIONAL_HEALTH = 'demandas_view_operational_health';
+    public const MANAGE_OPERATIONAL_HEALTH = 'demandas_manage_operational_health';
 
     public static function getTypeName($nb = 0): string
     {
@@ -74,6 +76,8 @@ final class Profile extends CommonDBTM
             self::MANAGE_HOLIDAYS => 'Administrar feriados e compensações',
             self::MANAGE_TIME_ACCESS => 'Administrar exceções individuais de acesso',
             self::PREPARE_AI_CONTEXT => 'Preparar contexto de chamado e WP para IA externa',
+            self::VIEW_OPERATIONAL_HEALTH => 'Visualizar pendências operacionais da integração',
+            self::MANAGE_OPERATIONAL_HEALTH => 'Executar e tratar pendências operacionais da integração',
         ];
     }
 

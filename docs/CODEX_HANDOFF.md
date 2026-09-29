@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.21.2` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.22.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.21.2` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.21.2 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.22.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -30,6 +30,7 @@ O ambiente é voltado exclusivamente à homologação local. Não deve ser publi
 - histórico de sincronizações e visão técnica restrita;
 - sincronização manual e automática por webhook assinado;
 - painel gerencial com filtros, indicadores, drill-down e exportações.
+- central de pendências operacionais baseada nos dados locais, com verificação manual, filtros e auditoria de tratativas.
 
 ### 3.2 Segurança e perfis
 
@@ -44,6 +45,7 @@ O plugin possui direitos próprios para separar:
 - controle de ponto;
 - lançamento de entradas de tempo;
 - administração de jornadas, ausências e feriados.
+- visualização e operação da central de pendências de integração.
 
 As verificações devem ocorrer no backend, inclusive em endpoints de formulários e consultas AJAX. A visão do cliente nunca deve revelar dados internos do OpenProject sem autorização explícita.
 
@@ -303,3 +305,11 @@ O preparo de contexto deve continuar disponível quando a correlação da WP com
 O painel de filtros da Visão Gerencial permanece recolhido por padrão. Os onze filtros são distribuídos em seis colunas na primeira linha e cinco na segunda em telas largas, com adaptação responsiva para larguras menores. A contagem de filtros ativos continua visível mesmo com o painel fechado.
 
 A ordenação da grade é feita no `ManagementDashboardService`, depois dos filtros de base e do drill-down. Aceite somente as chaves fechadas em `SORT_FIELDS`; não use parâmetros de URL como nomes de colunas. O parâmetro `sort_direction` aceita apenas `asc` e `desc`. URLs de cabeçalho, paginação e exportação preservam essa ordenação; valores indisponíveis de data permanecem no fim. Veja `docs/RELEASE_0.21.2.md`.
+
+## 25. Central de pendências de integração — 0.22.0
+
+`OperationalHealthService` avalia somente dados já persistidos no GLPI, sem abrir uma consulta ao OpenProject. As três regras iniciais são `ticket_without_wp`, `wp_initial_status_overdue` e `wp_sync_stale`. O serviço cria uma rodada em `operational_runs`, atualiza a ocorrência por fingerprint em `operational_findings` e registra reconhecer, ignorar por sete dias ou reabrir em `operational_actions`.
+
+O menu e a página usam `OperationalHealthHub`. Exigem cumulativamente `VIEW_TECHNICAL` e `VIEW_OPERATIONAL_HEALTH`; o endpoint mutável também exige `MANAGE_OPERATIONAL_HEALTH`. Não conceda esses direitos por migração a todos os perfis: a matriz de perfis deve ser a única fonte de autorização. Antes de listar ou agir sobre uma ocorrência, o serviço confirma que o ticket está na entidade ativa e que `Ticket::can(READ)` continua verdadeiro.
+
+Os prazos e os status iniciais ficam em `operational_health_initial_statuses`, `operational_health_initial_days` e `operational_health_stale_days`, administrados apenas com `MANAGE_CONFIG`. A instalação cria as tabelas e os valores padrão de modo idempotente. Consulte `docs/RELEASE_0.22.0.md` antes de ampliar as regras, automatizar rodadas ou executar ações corretivas.

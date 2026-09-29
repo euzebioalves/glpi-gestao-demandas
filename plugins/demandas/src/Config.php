@@ -41,6 +41,9 @@ final class Config
             'ticket_log_enabled',
             'label_ticket_log',
             'work_package_templates_json',
+            'operational_health_initial_statuses',
+            'operational_health_initial_days',
+            'operational_health_stale_days',
         ];
 
         $values = [];

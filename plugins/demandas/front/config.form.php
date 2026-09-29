@@ -214,6 +214,7 @@ function demandasRenderConfigurationTutorial(): void
           <li class="mb-3"><strong>Revise a classificação.</strong> Na aba <strong>Classificação</strong>, escolha a origem e libere os tipos de Work Package para cada classificação. Uma classificação sem regra não poderá criar WP.</li>
           <li class="mb-3"><strong>Conceda o monitoramento somente a perfis técnicos.</strong> Em <strong>Administração &gt; Perfis &gt; Gestão de Demandas</strong>, marque <strong>Visualizar dados técnicos do OpenProject</strong> para cada perfil que poderá usar <strong>Gerência &gt; Monitoramento de Work Packages</strong>, ver os alertas e abrir links de WPs. Cada pessoa autorizada configura o token pessoal em <strong>Minhas configurações &gt; OpenProject</strong>. A consulta é somente de leitura e encontra User Stories, Épicos e Bugs abertos sob sua responsabilidade. Perfis sem esse direito, inclusive os de cliente com apenas visão pública, não recebem o menu, alertas nem dados de WPs. Para consultar o consolidado, conceda também <strong>Acessar a visão gerencial</strong>.</li>
           <li class="mb-3"><strong>Consulte e exporte a listagem de WPs.</strong> Escolha 25, 50, 100 ou 200 itens por página e aplique os filtros. Os botões PDF e Excel exportam todos os resultados filtrados da última consulta. Cada pessoa exporta sua própria listagem; para exportar o consolidado, o perfil precisa de <strong>Acessar a visão gerencial</strong> e <strong>Exportar a visão gerencial em PDF e Excel</strong>.</li>
+          <li class="mb-3"><strong>Configure e opere as pendências de integração.</strong> Na aba <strong>Integração e automação</strong>, informe os status iniciais e os prazos de alerta. Em <strong>Administração &gt; Perfis &gt; Gestão de Demandas</strong>, conceda <strong>Visualizar pendências operacionais da integração</strong> a quem fará a conferência e <strong>Executar e tratar pendências operacionais da integração</strong> somente a quem poderá executar a verificação e reconhecer, ignorar temporariamente ou reabrir itens. Os dois direitos também exigem <strong>Visualizar dados técnicos do OpenProject</strong>.</li>
           <li class="mb-3"><strong>Controle o preparo de contexto para IA externa.</strong> Em <strong>Administração &gt; Perfis &gt; Gestão de Demandas</strong>, conceda <strong>Preparar contexto de chamado e WP para IA externa</strong> somente a quem pode revisar e compartilhar esses dados. Na listagem de WPs, a pessoa seleciona os campos e anexos que deseja incluir; a extração ocorre localmente e o plugin não envia conteúdo a nenhuma IA. Antes de copiar o texto, o usuário confirma que possui autorização para compartilhá-lo.</li>
           <li class="mb-3"><strong>Preencha os templates.</strong> Na aba <strong>Templates</strong>, cadastre o Markdown de cada tipo de WP que poderá ser criado. O plugin bloqueia a criação quando o tipo não possui template.</li>
           <li class="mb-3"><strong>Oriente os operadores.</strong> Cada usuário que cria, sincroniza ou lança tempo manualmente deve abrir <strong>Minhas configurações &gt; OpenProject</strong> e informar o próprio token.</li>
@@ -234,6 +235,8 @@ function demandasRenderConfigurationTutorial(): void
             <div class="p-2 border rounded"><strong>4. Minhas configurações &gt; OpenProject</strong><br><span class="text-muted small">Token individual de quem executa ações manuais.</span></div>
             <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
             <div class="p-2 border rounded"><strong>5. Administração do ponto</strong><br><span class="text-muted small">Feriados e dias não úteis, com a permissão Administrar feriados e compensações.</span></div>
+            <div class="text-center text-muted"><i class="ti ti-arrow-down"></i></div>
+            <div class="p-2 border rounded"><strong>6. Pendências de Integração</strong><br><span class="text-muted small">Diagnóstico local, permissões específicas e histórico de tratativas.</span></div>
           </div>
         </div>
       </div>
@@ -242,7 +245,7 @@ function demandasRenderConfigurationTutorial(): void
     <h3 class="h4">Salvar configurações</h3>
     <p>Use os botões no início de Integração e automação, Classificação ou Templates. Eles salvam as três abas juntas. A troca de abas mantém os campos preenchidos sem recarregar a página; alterações só são gravadas ao salvar. O token de Meu acesso ao OpenProject é salvo separadamente. Antes de sair ou recarregar, salve suas alterações.</p>
     <h3 class="h4">Permissões administrativas</h3>
-    <p>Em Administração &gt; Perfis &gt; Gestão de Demandas, marque somente os direitos necessários para cada perfil e selecione esse perfil na sessão. Nomes como Master ou Administrador não alteram os direitos. <strong>Visualizar a evolução pública da demanda</strong> libera apenas a fase e os acompanhamentos públicos; não libera IDs, links, status ou demais dados técnicos das WPs. O monitoramento, alertas, exportações pessoais e preparo de IA exigem <strong>Visualizar dados técnicos do OpenProject</strong>, além dos direitos específicos de cada ação. Sem <strong>Administrar as configurações do plugin</strong>, somente o token pessoal fica disponível. Feriados e exceções de acesso usam permissões próprias.</p>
+    <p>Em Administração &gt; Perfis &gt; Gestão de Demandas, marque somente os direitos necessários para cada perfil e selecione esse perfil na sessão. Nomes como Master ou Administrador não alteram os direitos. <strong>Visualizar a evolução pública da demanda</strong> libera apenas a fase e os acompanhamentos públicos; não libera IDs, links, status ou demais dados técnicos das WPs. O monitoramento, alertas, exportações pessoais, preparo de IA e pendências de integração exigem <strong>Visualizar dados técnicos do OpenProject</strong>, além dos direitos específicos de cada ação. Para a central operacional, a visualização e a operação são direitos independentes. Sem <strong>Administrar as configurações do plugin</strong>, somente o token pessoal fica disponível. Feriados e exceções de acesso usam permissões próprias.</p>
     <h3 class="h4">Atualização do plugin</h3>
     <p>Faça backup do banco e dos arquivos, substitua a pasta <code>plugins/demandas</code> pelo pacote novo e execute <strong>Atualizar</strong> em <strong>Configuração &gt; Plugins</strong>. Não desinstale para atualizar, pois isso apaga os dados do plugin. Na versão 0.18.3, mantenha o fuso horário do GLPI e confira os horários de ponto após a migração. Se a atualização indicar datas inválidas, solicite revisão ao administrador.</p>
     <h3 class="h4">Checklist de validação</h3>
@@ -252,6 +255,7 @@ function demandasRenderConfigurationTutorial(): void
       <li>cada status relevante possui uma fase pública e, quando aplicável, uma mensagem revisada;</li>
       <li>os tipos liberados por classificação têm template configurado;</li>
       <li>o usuário técnico não é usado para criar Work Packages e cada operador possui token pessoal.</li>
+      <li>os status iniciais e os prazos da central de pendências foram revisados, e apenas os perfis responsáveis receberam suas permissões.</li>
       <li>os feriados e dias não úteis locais foram cadastrados antes da conferência do banco de horas.</li>
     </ul>
     <p class="form-hint mt-4 mb-0">Este tutorial é parte da configuração do plugin. Toda nova funcionalidade que altere o processo de configuração deve atualizar esta aba e o histórico do plugin.</p>
@@ -299,6 +303,13 @@ demandasField('glpi_external_url', 'URL externa do GLPI', $config);
 demandasField('request_timeout', 'Timeout em segundos', $config, 'number');
 echo "<div class='col-md-6'><label class='form-label' for='openproject_automation_api_token'>Token automático do bot</label><input class='form-control' id='openproject_automation_api_token' name='openproject_automation_api_token' type='password' autocomplete='new-password' placeholder='" . (DemandasConfig::automationToken() !== '' ? 'Token já configurado — informe outro valor para substituí-lo' : 'Informe o token do usuário técnico') . "'><div class='form-hint'>Usado somente por webhook e sincronizações automáticas. O plugin bloqueia seu uso para criar Work Packages.</div></div>";
 echo '</div>';
+
+echo "<hr class='my-4'><h3 class='h4'>Pendências operacionais da integração</h3>";
+echo "<p class='text-muted'>Define as regras locais usadas em Gerência &gt; Pendências de Integração. A verificação não consulta nem altera o OpenProject: ela usa o último estado já salvo pelo plugin.</p><div class='row g-3'>";
+demandasField('operational_health_initial_statuses', 'Status iniciais para alerta (separados por vírgula)', $config);
+demandasField('operational_health_initial_days', 'Dias máximos no status inicial', $config, 'number');
+demandasField('operational_health_stale_days', 'Dias máximos sem sincronização', $config, 'number');
+echo "</div><p class='form-hint mt-2 mb-0'>Um chamado sem Work Package somente é listado quando a classificação está configurada e permite User Story, Épico ou Bug. Status concluídos, fechados, resolvidos e cancelados não entram nas regras de Work Package.</p>";
 
 echo "<hr class='my-4'><h3 class='h4'>Nomenclaturas da interface</h3>";
 echo "<p class='text-muted'>Personalize os nomes exibidos pelo plugin. A alteração do menu pode exigir uma nova autenticação para renovar o cache do GLPI.</p><div class='row g-3'>";

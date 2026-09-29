@@ -1,0 +1,73 @@
+name: demandas-e2e1109
+
+services:
+  db:
+    image: mariadb:11.4
+    container_name: demandas-e2e1109-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${E2E_DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${E2E_DB_NAME}
+      MARIADB_USER: ${E2E_DB_USER}
+      MARIADB_PASSWORD: ${E2E_DB_PASSWORD}
+      TZ: America/Sao_Paulo
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - e2e_glpi_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+    networks:
+      - e2e
+
+  glpi:
+    build:
+      context: .
+      dockerfile: docker/glpi/Dockerfile
+    image: demandas-glpi:11.0.9-e2e
+    container_name: demandas-e2e1109-glpi
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GLPI_DB_HOST: db
+      GLPI_DB_PORT: 3306
+      GLPI_DB_NAME: ${E2E_DB_NAME}
+      GLPI_DB_USER: ${E2E_DB_USER}
+      GLPI_DB_PASSWORD: ${E2E_DB_PASSWORD}
+      GLPI_CRONTAB_ENABLED: 0
+      # A instalação é executada explicitamente pelo start-e2e.ps1, para que
+      # uma falha seja exibida no terminal em vez de reiniciar o contêiner.
+      GLPI_SKIP_AUTOINSTALL: "true"
+      GLPI_SKIP_AUTOUPDATE: "true"
+      TZ: America/Sao_Paulo
+    ports:
+      - "${E2E_GLPI_HTTP_PORT}:80"
+    volumes:
+      - e2e_glpi_data:/var/glpi
+      - ./plugins:/var/www/glpi/plugins:ro
+      - ./bootstrap/e2e:/opt/demandas-e2e:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 36
+      start_period: 60s
+    networks:
+      - e2e
+
+networks:
+  e2e:
+    name: demandas-e2e1109-network
+
+volumes:
+  e2e_glpi_db_data:
+    name: demandas-e2e1109-glpi-db-data
+  e2e_glpi_data:
+    name: demandas-e2e1109-glpi-data

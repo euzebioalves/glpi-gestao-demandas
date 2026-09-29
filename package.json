@@ -1,0 +1,15 @@
+{
+  "name": "glpi-gestao-demandas-e2e",
+  "private": true,
+  "version": "0.22.0",
+  "description": "Regressão prática e capturas sanitizadas do plugin Gestão de Demandas.",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:practical": "node tests/e2e/run.mjs --mutating",
+    "test:e2e:manual": "node tests/e2e/run.mjs --manual",
+    "test:e2e:install": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

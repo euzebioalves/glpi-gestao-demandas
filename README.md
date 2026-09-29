@@ -1,5 +1,15 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+O guia operacional consolidado está em [docs/MANUAL_DO_PLUGIN.md](docs/MANUAL_DO_PLUGIN.md).
+
+Os testes práticos e as capturas sanitizadas do manual usam Playwright. O comando único é `./run-e2e-tests.ps1`; veja [tests/e2e/README.md](tests/e2e/README.md).
+
+Para uma base isolada exclusivamente para Playwright, sem usar a homologação compartilhada, execute `./start-e2e.ps1`. Ela sobe GLPI 11.0.9 em `http://localhost:8190`; os comandos de teste ficam descritos em [tests/e2e/README.md](tests/e2e/README.md).
+
+## Plugin 0.22.0
+
+A versão 0.22.0 inclui a **Central de Pendências de Integração**. Ela verifica localmente vínculos, status iniciais e sincronizações recentes, permite filtrar e tratar pendências com auditoria e exige permissões específicas, além do acesso técnico às WPs. Veja `docs/RELEASE_0.22.0.md`.
+
 ## Plugin 0.21.2
 
 A versão 0.21.2 melhora a operação da **Visão Gerencial de Demandas**: filtros em painel recolhido e distribuídos em duas linhas, além de ordenação server-side por todas as colunas da grade, mantendo filtros, drill-down, paginação e exportações. Veja `docs/RELEASE_0.21.2.md`.
@@ -311,6 +321,7 @@ O plugin inclui, entre outros recursos:
 18. ícone próprio no menu e no cabeçalho gerencial;
 19. política configurável de classificação do chamado para tipos de WP permitidos;
 20. filtragem dos tipos por classificação e validação equivalente no backend.
+21. central gerencial de pendências operacionais da integração, com regras locais, prazos configuráveis e auditoria de tratativas.
 
 Para ativar a sincronização automática, cadastre no OpenProject um webhook para o evento **Work package atualizada**, limitado ao projeto de homologação, usando a URL interna e o segredo exibidos na configuração do plugin.
 
