@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.21.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.21.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,7 +13,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.21.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.21.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.21.1 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -119,7 +119,7 @@ Dentro do Docker, `localhost` não deve ser usado entre contêineres.
 
 Use usuário técnico dedicado e com o menor conjunto de permissões necessário. Nunca use a conta `admin` permanentemente. O token automático desse usuário é configurado somente por perfil ativo com **Administrar as configurações do plugin** (`MANAGE_CONFIG`), é reservado a webhooks e outras sincronizações automáticas e o código do plugin o bloqueia na criação de Work Packages. Cada usuário que execute criação, sincronização manual ou lançamento manual de tempo deve registrar seu token pessoal em **Minhas configurações > OpenProject**. Tokens devem permanecer no ambiente/configuração do GLPI e fora do Git.
 
-O menu **Gerência > Monitoramento de Work Packages** usa exclusivamente o token pessoal do usuário logado. A consulta identifica User Stories, Épicos e Bugs abertos nos quais aquele token é o Responsável; não cria nem altera WPs. O consolidado exige `VIEW_DASHBOARD` e mostra somente resultados efetivamente coletados por usuários. Alertas são gravados por usuário e versão observada da WP, evitando repetição da mesma mensagem em consultas subsequentes.
+O menu **Gerência > Monitoramento de Work Packages** exige `VIEW_TECHNICAL` e usa exclusivamente o token pessoal do usuário logado. A consulta identifica User Stories, Épicos e Bugs abertos nos quais aquele token é o Responsável; não cria nem altera WPs. O consolidado exige também `VIEW_DASHBOARD` e mostra somente resultados efetivamente coletados por usuários. Alertas, exportação pessoal e preparo de IA exigem `VIEW_TECHNICAL` no backend. Alertas são gravados por usuário e versão observada da WP, evitando repetição da mesma mensagem em consultas subsequentes.
 
 Na listagem pessoal, o botão **Preparar IA** exige o direito `PREPARE_AI_CONTEXT` e só opera sobre uma WP do próprio snapshot do usuário. Se houver chamado efetivamente vinculado, o serviço também permite selecionar os dados desse chamado. Sem chamado identificado, o contexto é formado apenas pelos dados da WP e seus links. O serviço monta o contexto em memória, sem persistir texto ou anexos e sem comunicar-se com qualquer provedor de IA. A pessoa escolhe cada seção e anexo, confirma que está autorizada a compartilhar o resultado e copia o prompt para a ferramenta de sua preferência. Apenas acompanhamentos públicos e documentos com leitura permitida entram na seleção. A imagem local do GLPI instala Poppler, LibreOffice e Tesseract (`por` e `eng`) para extração local; limites de tamanho e caracteres reduzem risco de exposição e saturação de recursos.
 
@@ -291,3 +291,9 @@ O preparo de contexto deve continuar disponível quando a correlação da WP com
 `WorkPackageMonitoringList` normaliza filtros e pagina os resultados após a filtragem. O padrão é 25, com opções 50/100/200; páginas fora do intervalo são ajustadas. Cards e navegação preservam os filtros e o tamanho, e aplicar filtros volta à primeira página. A paginação visual não altera a consulta paginada da API nem os snapshots completos.
 
 `front/work-package-export.php` exporta a lista filtrada inteira usando `WorkPackageMonitoringExport`, GLPIPDF e PhpSpreadsheet já presentes no GLPI. A exportação pessoal usa exclusivamente `Session::getLoginUserID()`. O consolidado exige `VIEW_DASHBOARD` e `EXPORT_DASHBOARD`; não aceitar IDs de usuários fornecidos por GET. Texto da API é gravado no Excel como string explícita para evitar fórmulas e escapado no PDF. Exportações não incluem descrições, anexos, tokens nem dados adicionais de chamados. Não há migração nova. Veja `docs/RELEASE_0.21.0.md`.
+
+## 23. Isolamento de dados técnicos de Work Packages — 0.21.1
+
+`VIEW_PUBLIC` é exclusivamente a visão da fase e das mensagens públicas. Não usar esse direito como autorização para identificador, URL, título, status ou qualquer snapshot de Work Package. A aba de evolução e o hook público também devem confirmar a leitura efetiva do chamado antes de renderizar conteúdo.
+
+`WorkPackageMonitoringHub` e todos os seus endpoints exigem `VIEW_TECHNICAL`; isso inclui consulta, alertas, exportação pessoal e preparo de IA. O consolidado acumula `VIEW_TECHNICAL` e `VIEW_DASHBOARD`; a exportação consolidada acrescenta `EXPORT_DASHBOARD`. Não reintroduzir acesso somente por usuário autenticado, token pessoal ou ocultação de menu: a checagem precisa permanecer no backend. Veja `docs/RELEASE_0.21.1.md`.

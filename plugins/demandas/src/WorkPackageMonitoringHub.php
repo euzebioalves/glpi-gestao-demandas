@@ -9,7 +9,7 @@ use Session;
 
 final class WorkPackageMonitoringHub extends CommonGLPI
 {
-    public static $rightname = Profile::VIEW_PUBLIC;
+    public static $rightname = Profile::VIEW_TECHNICAL;
 
     public static function getTypeName($nb = 0): string
     {
@@ -23,7 +23,8 @@ final class WorkPackageMonitoringHub extends CommonGLPI
 
     public static function canView(): bool
     {
-        return (int) Session::getLoginUserID() > 0;
+        return (int) Session::getLoginUserID() > 0
+            && Profile::has(Profile::VIEW_TECHNICAL);
     }
 
     public static function getMenuContent(): array|false
@@ -35,7 +36,7 @@ final class WorkPackageMonitoringHub extends CommonGLPI
             'mine' => ['title' => 'Minhas Work Packages', 'page' => '/plugins/demandas/front/work-package-monitor.php', 'icon' => self::getIcon()],
             'notifications' => ['title' => 'Alertas de Work Packages', 'page' => '/plugins/demandas/front/work-package-notifications.php', 'icon' => 'ti ti-bell'],
         ];
-        if (Profile::has(Profile::VIEW_DASHBOARD)) {
+        if (Profile::has(Profile::VIEW_TECHNICAL) && Profile::has(Profile::VIEW_DASHBOARD)) {
             $options['consolidated'] = ['title' => 'Consolidado de Work Packages', 'page' => '/plugins/demandas/front/work-package-consolidated.php', 'icon' => 'ti ti-layout-dashboard'];
         }
         return [

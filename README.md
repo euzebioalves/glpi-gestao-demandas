@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.21.1
+
+A versão 0.21.1 corrige o isolamento das informações de Work Packages: monitoramento, alertas, exportação pessoal e contexto para IA passam a exigir a permissão de dados técnicos no menu, nas páginas e nos endpoints. A visão pública permanece limitada à fase e aos acompanhamentos públicos. Veja `docs/RELEASE_0.21.1.md`.
+
 ## Plugin 0.21.0
 
 A versão 0.21.0 adiciona paginação e exportação em PDF e Excel ao monitoramento pessoal e consolidado de Work Packages. As exportações incluem todos os resultados dos filtros aplicados. Veja `docs/RELEASE_0.21.0.md`.

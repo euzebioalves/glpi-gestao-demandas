@@ -21,7 +21,12 @@ final class TicketDemand extends CommonDBTM
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string
     {
-        if ($item instanceof Ticket && $item->getID() > 0 && Profile::has(Profile::VIEW_PUBLIC)) {
+        if (
+            $item instanceof Ticket
+            && $item->getID() > 0
+            && $item->can($item->getID(), READ)
+            && Profile::has(Profile::VIEW_PUBLIC)
+        ) {
             return self::createTabEntry(self::getTypeName(), 0, null, 'ti ti-chart-arrows-vertical');
         }
 
@@ -30,7 +35,12 @@ final class TicketDemand extends CommonDBTM
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
-        if ($item instanceof Ticket && Profile::has(Profile::VIEW_PUBLIC)) {
+        if (
+            $item instanceof Ticket
+            && $item->getID() > 0
+            && $item->can($item->getID(), READ)
+            && Profile::has(Profile::VIEW_PUBLIC)
+        ) {
             self::showForTicket($item);
         }
 

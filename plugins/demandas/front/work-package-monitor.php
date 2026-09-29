@@ -10,6 +10,7 @@ use GlpiPlugin\Demandas\WorkPackageMonitoringView;
 use GlpiPlugin\Demandas\WorkPackageMonitoringList;
 
 Session::checkLoginUser();
+DemandasProfile::checkRight(DemandasProfile::VIEW_TECHNICAL);
 $userId = (int) Session::getLoginUserID();
 $service = new WorkPackageMonitoringService();
 $filters = WorkPackageMonitoringList::filters($_GET);

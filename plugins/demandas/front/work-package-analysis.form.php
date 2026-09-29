@@ -5,8 +5,11 @@ declare(strict_types=1);
 use GlpiPlugin\Demandas\WorkPackageAnalysisService;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
 use GlpiPlugin\Demandas\WorkPackageMonitoringView;
+use GlpiPlugin\Demandas\Profile as DemandasProfile;
 
 Session::checkLoginUser();
+DemandasProfile::checkRight(DemandasProfile::VIEW_TECHNICAL);
+DemandasProfile::checkRight(DemandasProfile::PREPARE_AI_CONTEXT);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     throw new Glpi\Exception\Http\BadRequestHttpException();
 }

@@ -424,6 +424,10 @@ function plugin_demandas_post_itil_info_section(mixed $params): void
         return;
     }
 
+    if (!$item->can($item->getID(), READ)) {
+        return;
+    }
+
     $links = \GlpiPlugin\Demandas\TicketDemand::findAllByTicket($item->getID());
     $link = $links[0] ?? null;
     if ($link === null) {
@@ -432,10 +436,14 @@ function plugin_demandas_post_itil_info_section(mixed $params): void
 
     $phase = htmlspecialchars((string) ($link['public_phase'] ?? ''), ENT_QUOTES);
     $label = htmlspecialchars(\GlpiPlugin\Demandas\Config::label('public_phase'), ENT_QUOTES);
-    $wpId = (int) ($link['openproject_work_package_id'] ?? 0);
-    $wpUrl = $wpId > 0
-        ? rtrim((string) \GlpiPlugin\Demandas\Config::get('openproject_external_url', ''), '/') . '/work_packages/' . $wpId
-        : '';
-    echo "<section id='demandas-public-phase-source' class='d-none' data-public-phase='{$phase}' data-public-phase-label='{$label}' data-work-package-id='{$wpId}' data-work-package-count='" . count($links) . "' data-work-package-url='" . htmlspecialchars($wpUrl, ENT_QUOTES) . "'></section>";
+    $technicalAttributes = '';
+    if (DemandasProfile::has(DemandasProfile::VIEW_TECHNICAL)) {
+        $wpId = (int) ($link['openproject_work_package_id'] ?? 0);
+        $wpUrl = $wpId > 0
+            ? rtrim((string) \GlpiPlugin\Demandas\Config::get('openproject_external_url', ''), '/') . '/work_packages/' . $wpId
+            : '';
+        $technicalAttributes = " data-work-package-id='{$wpId}' data-work-package-count='" . count($links) . "' data-work-package-url='" . htmlspecialchars($wpUrl, ENT_QUOTES) . "'";
+    }
+    echo "<section id='demandas-public-phase-source' class='d-none' data-public-phase='{$phase}' data-public-phase-label='{$label}'{$technicalAttributes}></section>";
     echo "<script>window.dispatchEvent(new CustomEvent('demandas:phase-ready'));</script>";
 }

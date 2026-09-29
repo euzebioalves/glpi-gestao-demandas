@@ -8,6 +8,7 @@ use GlpiPlugin\Demandas\WorkPackageMonitoringList;
 use GlpiPlugin\Demandas\WorkPackageMonitoringExport;
 
 Session::checkLoginUser();
+DemandasProfile::checkRight(DemandasProfile::VIEW_TECHNICAL);
 $scope = $_GET['scope'] ?? 'mine';
 $format = $_GET['format'] ?? '';
 if (!in_array($scope, ['mine', 'consolidated'], true) || !in_array($format, ['pdf', 'xlsx'], true)) {

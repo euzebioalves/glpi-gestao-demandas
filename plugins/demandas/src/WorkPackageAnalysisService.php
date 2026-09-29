@@ -44,6 +44,7 @@ final class WorkPackageAnalysisService
     /** Returns only data that the signed-in user can read in GLPI. */
     public function context(int $userId, int $workPackageId, int $ticketId = 0): array
     {
+        Profile::checkRight(Profile::VIEW_TECHNICAL);
         Profile::checkRight(Profile::PREPARE_AI_CONTEXT);
         if ($userId <= 0 || $workPackageId <= 0) {
             throw new RuntimeException('Work Package inválida para a preparação da análise.');

@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
 use GlpiPlugin\Demandas\WorkPackageMonitoringService;
 use GlpiPlugin\Demandas\WorkPackageMonitoringView;
 
 Session::checkLoginUser();
+DemandasProfile::checkRight(DemandasProfile::VIEW_TECHNICAL);
 $service = new WorkPackageMonitoringService();
 $notifications = $service->notifications((int) Session::getLoginUserID());
 

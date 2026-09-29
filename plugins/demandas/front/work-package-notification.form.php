@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\WorkPackageMonitoringService;
 
 Session::checkLoginUser();
+DemandasProfile::checkRight(DemandasProfile::VIEW_TECHNICAL);
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     throw new Glpi\Exception\Http\BadRequestHttpException();
 }

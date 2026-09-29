@@ -1,5 +1,15 @@
 # Gestão de Demandas
 
+## Versão 0.21.1
+
+- restringe o monitoramento pessoal, os alertas, as exportações e o preparo de contexto para IA a perfis com a permissão **Visualizar dados técnicos do OpenProject**;
+- exige a mesma permissão nos menus, páginas e endpoints do backend, impedindo acesso direto por URL;
+- mantém a evolução pública disponível somente a quem possui a permissão correspondente, mas não expõe nesse fluxo a existência, o ID ou o link da Work Package;
+- confere a permissão de leitura efetiva do chamado antes de exibir a aba e os dados públicos da demanda;
+- torna a matriz em **Administração > Perfis > Gestão de Demandas** a fonte de autorização para as capacidades do plugin.
+
+Atualize sem desinstalar. Consulte `docs/RELEASE_0.21.1.md` para o roteiro de validação.
+
 ## Versão 0.21.0
 
 - pagina as listagens pessoal e consolidada de Work Packages, com 25 itens por padrão e opções de 50, 100 e 200;

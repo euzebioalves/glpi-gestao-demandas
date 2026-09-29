@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\WorkPackageMonitoringService;
 
 Session::checkLoginUser();
+DemandasProfile::checkRight(DemandasProfile::VIEW_TECHNICAL);
 header('Content-Type: application/json; charset=utf-8');
 try {
     $service = new WorkPackageMonitoringService();

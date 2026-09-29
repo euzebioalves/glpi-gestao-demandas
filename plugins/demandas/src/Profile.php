@@ -199,7 +199,7 @@ final class Profile extends CommonDBTM
         $canEdit = Session::haveRight('profile', UPDATE);
 
         echo "<div class='card m-3'><div class='card-header'><h3 class='card-title'>Permissões — Gestão de Demandas</h3></div><div class='card-body'>";
-        echo "<p class='text-muted'>Estas permissões são validadas também no servidor e nos endpoints do plugin. Ao conceder a visualização pública, o plugin garante também a permissão nativa mínima para ler acompanhamentos públicos.</p>";
+        echo "<p class='text-muted'>Estas permissões são validadas também no servidor e nos endpoints do plugin. Somente os direitos marcados neste perfil ativo concedem acesso: visualizar a evolução pública não libera identificadores, links ou dados técnicos de Work Packages. Ao conceder a visualização pública, o plugin garante também a permissão nativa mínima para ler acompanhamentos públicos.</p>";
         echo "<form method='post' action='/plugins/demandas/front/profile.form.php'>";
         echo "<input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
         echo "<input type='hidden' name='profiles_id' value='{$profileId}'>";

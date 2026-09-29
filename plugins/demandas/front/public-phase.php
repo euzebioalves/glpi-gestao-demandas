@@ -18,16 +18,24 @@ try {
     }
     $links = TicketDemand::findAllByTicket($ticketId);
     $link = $links[0] ?? null;
-    echo json_encode([
-        'linked' => $link !== null,
+    $result = [
         'public_phase' => $link !== null ? (string) ($link['public_phase'] ?? '') : '',
         'label' => DemandasConfig::label('public_phase'),
-        'work_package_id' => $link !== null ? (int) ($link['openproject_work_package_id'] ?? 0) : 0,
-        'work_package_count' => count($links),
-        'work_package_url' => $link !== null && (int) ($link['openproject_work_package_id'] ?? 0) > 0
-            ? rtrim((string) DemandasConfig::get('openproject_external_url', ''), '/') . '/work_packages/' . (int) $link['openproject_work_package_id']
-            : '',
-    ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    ];
+    // A fase é pública, mas a existência, o identificador e o endereço da WP
+    // são dados técnicos. Eles só seguem para perfis explicitamente autorizados.
+    if (DemandasProfile::has(DemandasProfile::VIEW_TECHNICAL)) {
+        $workPackageId = $link !== null ? (int) ($link['openproject_work_package_id'] ?? 0) : 0;
+        $result += [
+            'linked' => $link !== null,
+            'work_package_id' => $workPackageId,
+            'work_package_count' => count($links),
+            'work_package_url' => $workPackageId > 0
+                ? rtrim((string) DemandasConfig::get('openproject_external_url', ''), '/') . '/work_packages/' . $workPackageId
+                : '',
+        ];
+    }
+    echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 } catch (Throwable $exception) {
     http_response_code(403);
     echo json_encode(['error' => 'A fase pública não está disponível.'], JSON_UNESCAPED_UNICODE);
