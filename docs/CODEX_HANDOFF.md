@@ -4,7 +4,7 @@
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.22.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.23.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -13,13 +13,15 @@ Este documento apresenta o estado funcional e técnico da versão `0.22.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.22.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.23.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
 ## 3. Domínios funcionais
 
 ### 3.1 Gestão de demandas
+
+Na 0.23.0, `ManagementDashboardService` aplica `ticket_scope=open` por padrão, excluindo `Ticket::SOLVED` e `Ticket::CLOSED` e confirmando leitura nativa por chamado. `ticket_scope=all` mantém o histórico completo; filtros, drill-down e exportações compartilham o escopo. `LegacyReconciliationService` descobre URLs completas em **Atividade DevOps** pelo Fields, aceita somente a instância externa configurada e exige conferência humana. A gravação usa transação e unicidade de WP, sem o upsert de `TicketDemand::saveLink`, para nunca mover um vínculo anterior. O endpoint exige direitos técnicos/criar-vincular, leitura/UPDATE nativos, entidade ativa e CSRF. Consulta somente GET de WP com token pessoal; não chama o sincronizador na importação para não publicar fase/acompanhamento. A fase inicial fica vazia até uma sincronização normal. Referências conflitantes ficam bloqueadas. Não há nova tabela ou migração nesta versão. Consulte `RELEASE_0.23.0.md` para testes e limites.
 
 - vínculo de um chamado do GLPI com uma ou mais Work Packages;
 - criação de User Stories e Bugs a partir do chamado;

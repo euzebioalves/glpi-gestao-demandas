@@ -2,6 +2,16 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.23.0
+
+- abre a Visão Gerencial com chamados abertos (exclui solucionados/fechados), mantendo **Todos** nos filtros, gráficos, listagem e exportações;
+- adiciona **Conciliar Work Packages existentes** no painel e no chamado: prévia de URLs completas do campo Fields **Atividade DevOps**, seguida de confirmação e consulta com token pessoal;
+- registra apenas vínculos locais e auditoria, sem criar/alterar WPs ou publicar fases/acompanhamentos durante a importação;
+- exige direitos técnicos e de criar/vincular, leitura/alteração do chamado e entidade ativa; bloqueia URLs de outra instância e conflitos, preservando vínculos anteriores;
+- reconhece colunas textuais Fields com nome simples ou prefixo legado e corrige o filtro de status da WP no painel.
+
+Consulte [RELEASE_0.23.0.md](../../docs/RELEASE_0.23.0.md) para operação, homologação e limitações.
+
 ## Versão 0.22.0
 
 - adiciona **Gerência > Pendências de Integração**, uma central de diagnóstico baseada exclusivamente no estado já persistido no GLPI;

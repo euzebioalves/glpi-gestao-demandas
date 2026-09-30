@@ -24,6 +24,7 @@ $rows = $result['rows'];
 $summary = $result['summary'];
 $headers = ['Chamado', 'Título', 'Cliente', 'Classificação', 'Status GLPI', 'Idade (dias)', 'Work Package', 'Projeto', 'Tipo da WP', 'Status da WP', DemandasConfig::label('public_phase'), 'Abertura', 'Última sincronização'];
 $summaryRows = [
+    ['Escopo dos chamados', $result['filters']['ticket_scope'] === 'open' ? 'Abertos (exclui solucionados e fechados)' : 'Todos, inclusive solucionados e fechados'],
     ['Chamados no escopo', $summary['total']],
     ['Com Work Package', $summary['with_wp']],
     ['Sem Work Package', $summary['without_wp']],

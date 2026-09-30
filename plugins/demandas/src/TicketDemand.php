@@ -167,6 +167,9 @@ final class TicketDemand extends CommonDBTM
         $showTechnical = Profile::has(Profile::VIEW_TECHNICAL);
 
         echo "<div class='card m-3'><div class='card-header'><h3 class='card-title'>" . htmlspecialchars(self::getTypeName()) . "</h3></div><div class='card-body'>";
+        if ($showTechnical && Profile::has(Profile::CREATE_WORK_PACKAGE) && $ticket->can($ticket->getID(), UPDATE)) {
+            echo "<p><a class='btn btn-outline-primary' href='/plugins/demandas/front/legacy-reconciliation.php?ticket_scope=all&amp;ticket=" . (int) $ticket->getID() . "'>Conciliar WP existente de Atividade DevOps</a></p>";
+        }
 
         if ($links !== []) {
             self::showLinked($ticket, $links, $showTechnical);
@@ -283,7 +286,7 @@ final class TicketDemand extends CommonDBTM
         echo '<thead><tr><th>Data e hora</th><th>WP</th><th>Origem</th><th>Status da WP</th><th>' . htmlspecialchars(Config::label('public_phase')) . '</th><th class="text-center">Resultado</th><th>Detalhes</th></tr></thead><tbody>';
         foreach ($events as $event) {
             $success = (int) $event['is_success'] === 1;
-            $sourceLabels = ['webhook' => 'Webhook', 'manual' => 'Manual', 'creation' => 'Criação'];
+            $sourceLabels = ['webhook' => 'Webhook', 'manual' => 'Manual', 'creation' => 'Criação', 'legacy_reconciliation' => 'Conciliação de Atividade DevOps'];
             $source = (string) ($event['source'] ?? '');
             $details = json_decode((string) ($event['details_json'] ?? ''), true);
             if (!is_array($details)) $details = [];
