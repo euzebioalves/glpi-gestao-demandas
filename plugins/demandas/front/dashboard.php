@@ -110,9 +110,17 @@ if (DemandasProfile::has(DemandasProfile::EXPORT_DASHBOARD)) {
     echo "<div class='btn-group'><a class='btn btn-light' href='/plugins/demandas/front/dashboard-export.php?format=pdf&amp;" . demandasH($exportQuery) . "'><i class='ti ti-file-type-pdf me-1'></i>PDF</a><a class='btn btn-light' href='/plugins/demandas/front/dashboard-export.php?format=xlsx&amp;" . demandasH($exportQuery) . "'><i class='ti ti-file-spreadsheet me-1'></i>Excel</a></div>";
 }
 echo '</div></div></section>';
+$scopeLabel = $filters['ticket_scope'] === 'open' ? 'Chamados abertos — exclui solucionados e fechados' : 'Todos os chamados';
+echo "<div class='d-flex flex-wrap justify-content-between align-items-center gap-2 my-3'><strong>" . demandasH($scopeLabel) . "</strong>";
+if (DemandasProfile::has(DemandasProfile::VIEW_TECHNICAL) && DemandasProfile::has(DemandasProfile::CREATE_WORK_PACKAGE)) {
+    echo "<a class='btn btn-outline-primary' href='/plugins/demandas/front/legacy-reconciliation.php'>Conciliar Work Packages existentes</a>";
+}
+echo '</div>';
+
 
 echo "<details class='demandas-filter-card'><summary class='demandas-filter-summary'><h2><i class='ti ti-adjustments-horizontal me-2 text-primary'></i>Filtros estratégicos</h2><span class='demandas-filter-summary-right'><span class='demandas-filter-count'>{$activeFilterCount} filtro(s) ativo(s)</span><span class='demandas-filter-toggle'><span class='demandas-filter-toggle-text'></span><i class='ti ti-chevron-down ms-1'></i></span></span></summary><form method='get' class='row g-3 demandas-filter-form'>";
 echo "<div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Busca</label><input class='form-control' name='q' value='" . demandasH($filters['q']) . "' placeholder='Número ou título'></div><div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Abertos desde</label><input class='form-control' type='date' name='date_from' value='" . demandasH($filters['date_from']) . "'></div><div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Abertos até</label><input class='form-control' type='date' name='date_to' value='" . demandasH($filters['date_to']) . "'></div>";
+echo "<div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label' for='demandas-ticket-scope'>Escopo dos chamados</label><select id='demandas-ticket-scope' class='form-select' name='ticket_scope'><option value='open'" . ($filters['ticket_scope'] === 'open' ? ' selected' : '') . ">Abertos (não solucionados/fechados)</option><option value='all'" . ($filters['ticket_scope'] === 'all' ? ' selected' : '') . ">Todos, inclusive solucionados e fechados</option></select></div>";
 demandasSelect('has_wp', 'Vínculo', ['yes' => 'Com WP', 'no' => 'Sem WP'], $filters['has_wp']);
 demandasSelect('age_bucket', 'Idade', ManagementDashboardService::AGE_BUCKETS, $filters['age_bucket']);
 demandasSelect('glpi_status', 'Status GLPI', $result['options']['glpi_status'], $filters['glpi_status']);

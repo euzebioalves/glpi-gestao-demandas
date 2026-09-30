@@ -38,7 +38,7 @@ final class ManagementDashboardService
     public function result(array $input): array
     {
         $filters = $this->normalizeFilters($input);
-        $allRows = $this->loadRows();
+        $allRows = $this->loadRows($filters['ticket_scope']);
         $scopeRows = array_values(array_filter($allRows, fn(array $row): bool => $this->matchesBaseFilters($row, $filters)));
         $rows = array_values(array_filter($scopeRows, fn(array $row): bool => $this->matchesDrillDown($row, $filters)));
         $rows = $this->sortRows($rows, $filters['sort'], $filters['sort_direction']);
@@ -67,38 +67,43 @@ final class ManagementDashboardService
         ];
     }
 
-    private function loadRows(): array
+    private function loadRows(string $ticketScope): array
     {
         $entities = array_values(array_filter(array_map('intval', Session::getActiveEntities()), static fn(int $id): bool => $id >= 0));
         if ($entities === []) {
             return [];
         }
 
-        $entitySql = implode(',', $entities);
         $db = \DBConnection::getReadConnection();
-        $sql = "SELECT
-                    t.id AS ticket_id,
-                    t.name AS ticket_name,
-                    t.status AS glpi_status,
-                    t.date AS opened_at,
-                    t.date_mod AS ticket_updated_at,
-                    t.entities_id,
-                    e.completename AS entity_name,
-                    l.openproject_work_package_id,
-                    l.openproject_project_name,
-                    l.openproject_type_name,
-                    l.openproject_status,
-                    l.public_phase,
-                    l.last_synced_at
-                FROM glpi_tickets t
-                LEFT JOIN glpi_entities e ON e.id = t.entities_id
-                LEFT JOIN glpi_plugin_demandas_links l ON l.tickets_id = t.id
-                WHERE t.is_deleted = 0 AND t.entities_id IN ({$entitySql})
-                ORDER BY t.date DESC, t.id DESC";
+        $where = ['glpi_tickets.is_deleted' => 0, 'glpi_tickets.entities_id' => $entities];
+        if ($ticketScope !== 'all') {
+            $where['NOT'] = ['glpi_tickets.status' => [Ticket::SOLVED, Ticket::CLOSED]];
+        }
+        $query = [
+            'SELECT' => [
+                'glpi_tickets' => ['id AS ticket_id', 'name AS ticket_name', 'status AS glpi_status', 'date AS opened_at', 'date_mod AS ticket_updated_at', 'entities_id'],
+                'glpi_entities' => ['completename AS entity_name'],
+                'glpi_plugin_demandas_links' => ['openproject_work_package_id', 'openproject_project_name', 'openproject_type_name', 'openproject_status', 'public_phase', 'last_synced_at'],
+            ],
+            'FROM' => 'glpi_tickets',
+            'LEFT JOIN' => [
+                'glpi_entities' => ['ON' => ['glpi_entities' => 'id', 'glpi_tickets' => 'entities_id']],
+                'glpi_plugin_demandas_links' => ['ON' => ['glpi_plugin_demandas_links' => 'tickets_id', 'glpi_tickets' => 'id']],
+            ],
+            'WHERE' => $where,
+            'ORDER' => ['glpi_tickets.date DESC', 'glpi_tickets.id DESC'],
+        ];
 
         $rows = [];
         $classifications = [];
-        foreach ($db->doQuery($sql) as $row) {
+        $readable = [];
+        foreach ($db->request($query) as $row) {
+            $ticketId = (int) $row['ticket_id'];
+            $ticket = new Ticket();
+            if (!array_key_exists($ticketId, $readable)) {
+                $readable[$ticketId] = $ticket->getFromDB($ticketId) && $ticket->can($ticketId, READ);
+            }
+            if (!$readable[$ticketId]) continue;
             $opened = strtotime((string) ($row['opened_at'] ?? '')) ?: time();
             $age = max(0, (int) floor((time() - $opened) / 86400));
             $wpId = (int) ($row['openproject_work_package_id'] ?? 0);
@@ -111,14 +116,11 @@ final class ManagementDashboardService
             $ticketId = (int) $row['ticket_id'];
             if (!isset($classifications[$ticketId])) {
                 $classification = ['value' => '', 'label' => 'Sem classificação'];
-                $ticket = new Ticket();
-                if ($ticket->getFromDB($ticketId)) {
-                    try {
-                        $classification = ClassificationPolicy::resolve($ticket);
-                    } catch (\Throwable) {
-                        // O painel permanece disponível mesmo que a origem da
-                        // classificação esteja temporariamente inconsistente.
-                    }
+                try {
+                    $classification = ClassificationPolicy::resolve($ticket);
+                } catch (\Throwable) {
+                    // O painel permanece disponível mesmo que a origem da
+                    // classificação esteja temporariamente inconsistente.
                 }
                 $label = trim((string) ($classification['label'] ?? '')) ?: 'Sem classificação';
                 $classifications[$ticketId] = [
@@ -130,7 +132,7 @@ final class ManagementDashboardService
             $row['classification_value'] = $classifications[$ticketId]['value'];
             $row['classification_label'] = $classifications[$ticketId]['label'];
             $row['classification_kind'] = $classifications[$ticketId]['kind'];
-            $row['is_open'] = !in_array((int) $row['glpi_status'], [5, 6], true);
+            $row['is_open'] = !in_array((int) $row['glpi_status'], [Ticket::SOLVED, Ticket::CLOSED], true);
             $rows[] = $row;
         }
         return $rows;
@@ -142,6 +144,7 @@ final class ManagementDashboardService
         $sort = (string) ($input['sort'] ?? 'ticket');
         $sortDirection = strtolower((string) ($input['sort_direction'] ?? 'desc'));
         return [
+            'ticket_scope' => ($input['ticket_scope'] ?? 'open') === 'all' ? 'all' : 'open',
             'date_from' => $this->date((string) ($input['date_from'] ?? '')),
             'date_to' => $this->date((string) ($input['date_to'] ?? '')),
             'has_wp' => in_array($hasWp, ['yes', 'no'], true) ? $hasWp : '',
@@ -204,13 +207,14 @@ final class ManagementDashboardService
 
     private function matchesBaseFilters(array $row, array $filters): bool
     {
+        if ($filters['ticket_scope'] === 'open' && !$row['is_open']) return false;
         $opened = substr((string) $row['opened_at'], 0, 10);
         if ($filters['date_from'] !== '' && $opened < $filters['date_from']) return false;
         if ($filters['date_to'] !== '' && $opened > $filters['date_to']) return false;
         if ($filters['has_wp'] === 'yes' && !$row['has_wp']) return false;
         if ($filters['has_wp'] === 'no' && $row['has_wp']) return false;
         foreach (['age_bucket', 'op_status', 'public_phase', 'project', 'type'] as $field) {
-            $rowValue = (string) ($row[$field === 'project' ? 'openproject_project_name' : ($field === 'type' ? 'openproject_type_name' : $field)] ?? '');
+            $rowValue = (string) ($row[$field === 'project' ? 'openproject_project_name' : ($field === 'type' ? 'openproject_type_name' : ($field === 'op_status' ? 'openproject_status' : $field))] ?? '');
             if ($filters[$field] !== '' && !$this->valueMatches($rowValue, $filters[$field])) return false;
         }
         if ($filters['glpi_status'] !== '' && (string) $row['glpi_status'] !== $filters['glpi_status']) return false;

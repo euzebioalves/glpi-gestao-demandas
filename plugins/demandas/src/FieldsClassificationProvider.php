@@ -18,6 +18,9 @@ final class FieldsClassificationProvider
     {
         try {
             $db = \DBConnection::getReadConnection();
+            if (!$db->tableExists('glpi_plugin_fields_containers') || !$db->tableExists('glpi_plugin_fields_fields')) {
+                return [];
+            }
             $containers = [];
             foreach ($db->request(['FROM' => 'glpi_plugin_fields_containers']) as $container) {
                 $itemtypes = json_decode((string) ($container['itemtypes'] ?? '[]'), true);
@@ -44,11 +47,26 @@ final class FieldsClassificationProvider
                 if ($type === 'dropdown') {
                     continue;
                 }
+                $table = 'glpi_plugin_fields_ticket' . $containerName . 's';
+                if (!$db->tableExists($table)) {
+                    continue;
+                }
+                // Fields installations may expose the raw name or the legacy prefix.
+                $column = null;
+                foreach ([$fieldName, 'plugin_fields_' . $fieldName] as $candidate) {
+                    if ($db->fieldExists($table, $candidate)) {
+                        $column = $candidate;
+                        break;
+                    }
+                }
+                if ($column === null) {
+                    continue;
+                }
                 $fields[] = [
-                    'table' => 'glpi_plugin_fields_ticket' . $containerName . 's',
+                    'table' => $table,
                     'ticket_key' => 'items_id',
                     'itemtype_field' => 'itemtype',
-                    'value_field' => 'plugin_fields_' . $fieldName,
+                    'value_field' => $column,
                 ];
             }
             return $fields;

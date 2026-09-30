@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.22.0** · Compatível com GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.23.0** · Compatível com GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -87,6 +87,19 @@ O plugin registra o vínculo, a fase pública e o histórico técnico. Um chamad
 
 ### 6.2 Consultar e sincronizar
 
+#### Incorporar WPs já registradas em Atividade DevOps
+
+Na **Visão Gerencial de Demandas**, use **Conciliar Work Packages existentes** (também disponível na área técnica do chamado). O perfil precisa de **Visualizar dados técnicos do OpenProject** e **Criar e vincular Work Packages**, além de poder ler e alterar o chamado na entidade ativa.
+
+1. Configure seu token pessoal e confira a URL externa do OpenProject na configuração do plugin.
+2. Confira a prévia do campo **Atividade DevOps** do Fields. Ele deve conter a URL completa da WP na instância configurada.
+3. Selecione até cinco referências por operação, marque a confirmação e clique em **Validar e conciliar selecionadas**.
+4. Verifique o vínculo na **Evolução da Demanda** e a cobertura no painel. A conciliação não cria outra WP, não altera a WP externa e não publica fase ou acompanhamento. Depois, a sincronização normal e o webhook passam a reconhecer o vínculo.
+
+Referências de outra instância, WPs sem acesso e conflitos não são importados. WPs já vinculadas são preservadas. O campo original não é alterado. Solucionados e fechados podem ser incluídos escolhendo **Todos**. A cobertura contabiliza os vínculos confirmados, não apenas a presença de uma URL.
+
+#### Acompanhamento dos vínculos
+
 - Use **Sincronizar** no chamado quando possuir **Executar sincronização manual**.
 - A sincronização atualiza os dados técnicos locais e pode atualizar a fase pública conforme o de/para configurado.
 - O histórico técnico é visível somente a perfis autorizados.
@@ -161,6 +174,8 @@ Veja [tests/e2e/README.md](../tests/e2e/README.md) para preparar o ambiente e ge
 ## 10. Visão Gerencial de Demandas
 
 Acesse **Gerência > Visão Gerencial de Demandas** com a permissão própria. O painel apresenta cobertura de WPs, demandas sem documentação, envelhecimento, sincronização e distribuições por classificação, cliente, status, fase, projeto e tipo.
+
+O escopo inicial é **Abertos**, excluindo chamados solucionados e fechados. Para consultar o histórico completo, abra **Filtros estratégicos**, selecione **Todos** em **Escopo dos chamados** e aplique os filtros. Cards, gráficos, grade e exportações PDF/Excel usam o mesmo escopo. A cobertura inclui os vínculos antigos após a conciliação descrita na seção 6.2.
 
 - O painel de filtros é recolhido por padrão; expanda-o para combinar os critérios.
 - Os indicadores levam ao detalhamento correspondente.
