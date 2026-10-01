@@ -7,3 +7,4 @@ test-results/
 tests/e2e/.env
 .env.e2e
 tests/e2e/.env.e2e
+dist/

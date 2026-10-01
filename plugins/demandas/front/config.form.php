@@ -9,12 +9,14 @@ use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\ClassificationPolicy;
 use GlpiPlugin\Demandas\FieldsClassificationProvider;
 use GlpiPlugin\Demandas\WorkPackageTemplate;
+use GlpiPlugin\Demandas\PluginUpdateService;
 
 Session::checkLoginUser();
 $canManageConfiguration = DemandasConfig::canManageConfiguration();
 $currentUserId = (int) Session::getLoginUserID();
 $administrativeTabs = ['automation', 'classification', 'templates', 'tutorial'];
 $isPersonalAction = isset($_POST['save_personal_token']) || isset($_POST['test_personal_token']);
+$isUpdateCheckAction = isset($_POST['check_plugin_update']);
 // A negativa deve ocorrer antes do tratamento de erros e de qualquer escrita.
 if (!$canManageConfiguration && (
     in_array((string) ($_GET['tab'] ?? ''), $administrativeTabs, true)
@@ -24,6 +26,18 @@ if (!$canManageConfiguration && (
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($isUpdateCheckAction) {
+        try {
+            $status = PluginUpdateService::refresh();
+            $message = $status['available']
+                ? 'Atualização disponível: versão ' . $status['latest_version'] . '. Use o atualizador externo controlado para aplicá-la.'
+                : 'A instalação já está na versão mais recente publicada, ou não há release mais nova disponível.';
+            Session::addMessageAfterRedirect($message, true, INFO);
+        } catch (Throwable) {
+            Session::addMessageAfterRedirect('Não foi possível consultar o repositório oficial agora. Tente novamente mais tarde.', true, ERROR);
+        }
+        Html::redirect('/plugins/demandas/front/config.form.php?tab=automation');
+    }
     try {
         if ($isPersonalAction) {
             DemandasConfig::savePersonalToken($currentUserId, (string) ($_POST['personal_openproject_api_token'] ?? ''));
@@ -38,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $input = $_POST;
         $input['ticket_log_enabled'] = isset($_POST['ticket_log_enabled']) ? '1' : '0';
+        $input['plugin_update_check_enabled'] = isset($_POST['plugin_update_check_enabled']) ? '1' : '0';
         $phases = [];
         foreach ((array) ($_POST['public_phases'] ?? []) as $index => $phaseInput) {
             $name = trim((string) ($phaseInput['name'] ?? ''));
@@ -140,6 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $config = $canManageConfiguration ? DemandasConfig::all() : [];
+$updateStatus = $canManageConfiguration ? PluginUpdateService::status() : [];
 if ($canManageConfiguration) {
     $config['webhook_secret'] = DemandasConfig::webhookSecret();
 }
@@ -216,9 +232,10 @@ function demandasRenderConfigurationTutorial(): void
           <li class="mb-3"><strong>Consulte e exporte a listagem de WPs.</strong> Escolha 25, 50, 100 ou 200 itens por página e aplique os filtros. Os botões PDF e Excel exportam todos os resultados filtrados da última consulta. Cada pessoa exporta sua própria listagem; para exportar o consolidado, o perfil precisa de <strong>Acessar a visão gerencial</strong> e <strong>Exportar a visão gerencial em PDF e Excel</strong>.</li>
           <li class="mb-3"><strong>Configure e opere as pendências de integração.</strong> Na aba <strong>Integração e automação</strong>, informe os status iniciais e os prazos de alerta. Em <strong>Administração &gt; Perfis &gt; Gestão de Demandas</strong>, conceda <strong>Visualizar pendências operacionais da integração</strong> a quem fará a conferência e <strong>Executar e tratar pendências operacionais da integração</strong> somente a quem poderá executar a verificação e reconhecer, ignorar temporariamente ou reabrir itens. Os dois direitos também exigem <strong>Visualizar dados técnicos do OpenProject</strong>.</li>
           <li class="mb-3"><strong>Controle o preparo de contexto para IA externa.</strong> Em <strong>Administração &gt; Perfis &gt; Gestão de Demandas</strong>, conceda <strong>Preparar contexto de chamado e WP para IA externa</strong> somente a quem pode revisar e compartilhar esses dados. Na listagem de WPs, a pessoa seleciona os campos e anexos que deseja incluir; a extração ocorre localmente e o plugin não envia conteúdo a nenhuma IA. Antes de copiar o texto, o usuário confirma que possui autorização para compartilhá-lo.</li>
-          <li class="mb-3"><strong>Concilie os vínculos antigos.</strong> Na Visão Gerencial, use <strong>Conciliar Work Packages existentes</strong>. O campo Fields <strong>Atividade DevOps</strong> deve conter a URL completa da WP na URL externa configurada. Conceda <strong>Visualizar dados técnicos do OpenProject</strong> e <strong>Criar e vincular Work Packages</strong> aos responsáveis, que também precisam poder ler e alterar o chamado. Com token pessoal, confira e confirme até cinco referências por vez. A operação registra o vínculo local sem criar WPs nem publicar fases ou acompanhamentos. Conflitos ficam para revisão; vínculos anteriores são preservados. O painel abre em <strong>Abertos</strong>; escolha <strong>Todos</strong> para incluir solucionados e fechados.</li>
+          <li class="mb-3"><strong>Concilie os vínculos antigos.</strong> Na Visão Gerencial, use <strong>Conciliar Work Packages existentes</strong>. O campo Fields <strong>Atividade DevOps</strong> deve conter a URL completa da WP na URL externa configurada. Conceda <strong>Visualizar dados técnicos do OpenProject</strong> e <strong>Criar e vincular Work Packages</strong> aos responsáveis, que também precisam poder ler e alterar o chamado. Com token pessoal, confira e confirme até cinco referências por vez. A operação registra o vínculo local sem criar WPs nem publicar fases ou acompanhamentos. Em um conflito, use <strong>Detalhes</strong> para identificar as referências e, se o vínculo não possuir tempo, fase ou acompanhamento público, um perfil com <strong>Resolver conflitos de conciliação de Work Packages</strong> poderá transferir somente o vínculo local após confirmação. O painel abre em <strong>Abertos</strong>; escolha <strong>Todos</strong> para incluir solucionados e fechados.</li>
+          <li class="mb-3"><strong>Planeje as atualizações.</strong> Em <strong>Integração e automação</strong>, mantenha a verificação diária de release habilitada e confira a versão disponível. O navegador nunca baixa ou instala código. Durante uma janela de manutenção, um administrador executa o atualizador externo controlado, que valida o ZIP oficial, preserva a pasta anterior e depois exige o clique em <strong>Atualizar</strong> no GLPI.</li>
           <li class="mb-3"><strong>Preencha os templates.</strong> Na aba <strong>Templates</strong>, cadastre o Markdown de cada tipo de WP que poderá ser criado. O plugin bloqueia a criação quando o tipo não possui template.</li>
-          <li class="mb-3"><strong>Oriente os operadores.</strong> Cada usuário que cria, sincroniza ou lança tempo manualmente deve abrir <strong>Minhas configurações &gt; OpenProject</strong> e informar o próprio token.</li>
+          <li class="mb-3"><strong>Oriente os operadores.</strong> Cada usuário que cria, sincroniza ou lança tempo manualmente deve abrir <strong>Minhas configurações &gt; OpenProject</strong> e informar o próprio token da instância configurada. Em <strong>Entradas de Tempo &gt; Nova entrada</strong>, selecione <strong>Relacionada ao GLPI</strong> para uma WP vinculada a chamado ou <strong>Outra WP do OpenProject</strong> para pesquisar por ID ou título. A segunda opção não cria vínculo com chamado. Selecione a atividade, informe o período e salve no GLPI; sincronize quando desejar.</li>
           <li><strong>Configure os dias sem expediente.</strong> Em <strong>Gerência &gt; Horas e Ponto &gt; Administração do ponto</strong>, quem possui a permissão Administrar feriados e compensações cadastra feriados e dias não úteis. Eles são neutros e não geram crédito ou débito no banco de horas.</li>
         </ol>
       </div>
@@ -248,7 +265,7 @@ function demandasRenderConfigurationTutorial(): void
     <h3 class="h4">Permissões administrativas</h3>
     <p>Em Administração &gt; Perfis &gt; Gestão de Demandas, marque somente os direitos necessários para cada perfil e selecione esse perfil na sessão. Nomes como Master ou Administrador não alteram os direitos. <strong>Visualizar a evolução pública da demanda</strong> libera apenas a fase e os acompanhamentos públicos; não libera IDs, links, status ou demais dados técnicos das WPs. O monitoramento, alertas, exportações pessoais, preparo de IA e pendências de integração exigem <strong>Visualizar dados técnicos do OpenProject</strong>, além dos direitos específicos de cada ação. Para a central operacional, a visualização e a operação são direitos independentes. Sem <strong>Administrar as configurações do plugin</strong>, somente o token pessoal fica disponível. Feriados e exceções de acesso usam permissões próprias.</p>
     <h3 class="h4">Atualização do plugin</h3>
-    <p>Faça backup do banco e dos arquivos, substitua a pasta <code>plugins/demandas</code> pelo pacote novo e execute <strong>Atualizar</strong> em <strong>Configuração &gt; Plugins</strong>. Não desinstale para atualizar, pois isso apaga os dados do plugin. Na versão 0.18.3, mantenha o fuso horário do GLPI e confira os horários de ponto após a migração. Se a atualização indicar datas inválidas, solicite revisão ao administrador.</p>
+    <p>A verificação diária mostra apenas releases oficiais. Ela não instala arquivos pelo navegador. Durante janela de manutenção, faça backup do banco, pare o serviço web, execute o script externo controlado <code>update-plugin-release.ps1</code> em modo de verificação e então com <code>-Apply</code>. Ele valida o pacote e preserva a pasta anterior como backup. Inicie o GLPI e execute <strong>Atualizar</strong> em <strong>Configuração &gt; Plugins</strong>. Não desinstale para atualizar, pois isso apaga os dados do plugin.</p>
     <h3 class="h4">Checklist de validação</h3>
     <ul class="mb-0">
       <li>o teste de conexão automática foi concluído sem erro;</li>
@@ -304,6 +321,27 @@ demandasField('glpi_external_url', 'URL externa do GLPI', $config);
 demandasField('request_timeout', 'Timeout em segundos', $config, 'number');
 echo "<div class='col-md-6'><label class='form-label' for='openproject_automation_api_token'>Token automático do bot</label><input class='form-control' id='openproject_automation_api_token' name='openproject_automation_api_token' type='password' autocomplete='new-password' placeholder='" . (DemandasConfig::automationToken() !== '' ? 'Token já configurado — informe outro valor para substituí-lo' : 'Informe o token do usuário técnico') . "'><div class='form-hint'>Usado somente por webhook e sincronizações automáticas. O plugin bloqueia seu uso para criar Work Packages.</div></div>";
 echo '</div>';
+
+$updateCheckEnabled = (string) ($config['plugin_update_check_enabled'] ?? '1') === '1' ? ' checked' : '';
+$releaseLink = trim((string) ($updateStatus['release_url'] ?? ''));
+$latestVersion = htmlspecialchars((string) ($updateStatus['latest_version'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$currentVersion = htmlspecialchars((string) ($updateStatus['current_version'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+$lastChecked = htmlspecialchars((string) ($updateStatus['last_checked_at'] ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+echo "<hr class='my-4'><h3 class='h4'>Atualizações do plugin</h3>";
+echo "<p class='text-muted'>O GLPI consulta diariamente apenas a release oficial no GitHub. Nenhum arquivo é baixado ou instalado pelo navegador: a aplicação é feita por um agente externo controlado, com backup e validação.</p>";
+echo "<div class='row g-3 align-items-center'><div class='col-md-5'><label class='form-check form-switch'><input class='form-check-input' type='checkbox' name='plugin_update_check_enabled' value='1'{$updateCheckEnabled}><span class='form-check-label'>Verificar automaticamente novas releases</span></label></div><div class='col-md-7 d-flex flex-wrap align-items-center gap-2'><span class='badge text-bg-secondary'>Instalada: v{$currentVersion}</span>";
+if (!empty($updateStatus['available'])) {
+    echo "<span class='badge text-bg-warning'>Disponível: v{$latestVersion}</span>";
+} elseif ($latestVersion !== '') {
+    echo "<span class='badge text-bg-success'>Atualizada: v{$latestVersion}</span>";
+}
+echo "<button class='btn btn-outline-primary' type='submit' name='check_plugin_update' value='1' formnovalidate><i class='ti ti-refresh me-1'></i>Verificar agora</button>";
+if ($releaseLink !== '') {
+    echo "<a class='btn btn-outline-secondary' href='" . htmlspecialchars($releaseLink, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "' target='_blank' rel='noopener'>Ver release</a>";
+}
+echo "</div></div>";
+if ($lastChecked !== '') echo "<p class='form-hint mt-2 mb-0'>Última verificação: {$lastChecked}.</p>";
+if (!empty($updateStatus['last_error'])) echo "<div class='alert alert-warning mt-3 mb-0'>A última consulta não foi concluída. O plugin continuará usando a versão instalada.</div>";
 
 echo "<hr class='my-4'><h3 class='h4'>Pendências operacionais da integração</h3>";
 echo "<p class='text-muted'>Define as regras locais usadas em Gerência &gt; Pendências de Integração. A verificação não consulta nem altera o OpenProject: ela usa o último estado já salvo pelo plugin.</p><div class='row g-3'>";

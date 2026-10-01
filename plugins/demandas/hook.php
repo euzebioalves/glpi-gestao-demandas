@@ -297,9 +297,19 @@ function plugin_demandas_install(): bool
         'operational_health_initial_statuses' => 'Novo,Em especificação',
         'operational_health_initial_days' => '7',
         'operational_health_stale_days' => '7',
+        'plugin_update_check_enabled' => '1',
+        'plugin_update_latest_version' => '',
+        'plugin_update_release_url' => '',
+        'plugin_update_asset_url' => '',
+        'plugin_update_last_checked_at' => '',
+        'plugin_update_last_error' => '',
     ];
     $current = Config::getConfigurationValues('plugin:demandas');
     Config::setConfigurationValues('plugin:demandas', $current + $defaults);
+    CronTask::register(\GlpiPlugin\Demandas\PluginUpdateService::class, 'checkRelease', DAY_TIMESTAMP, [
+        'comment' => 'Verificar novas releases publicadas do plugin Gestão de Demandas',
+        'mode' => CronTask::MODE_EXTERNAL,
+    ]);
     if (
         trim((string) ($current['openproject_automation_api_token'] ?? '')) === ''
         && trim((string) ($current['openproject_api_token'] ?? '')) !== ''

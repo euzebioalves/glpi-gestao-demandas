@@ -297,7 +297,8 @@ final class TimeManagementService
     public function saveLocalTimeEntry(array $input,int $entryId=0):int
     {
         $user=(int)($input['users_id']??Session::getLoginUserID());$this->checkTimeEntryPermission($user);
-        $wp=(int)($input['work_package_id']??0);$ticket=(int)($input['tickets_id']??0);$this->assertLinkedWorkPackage($ticket,$wp);
+        $wp=(int)($input['work_package_id']??0);$ticket=(int)($input['tickets_id']??0);
+        if($ticket>0)$this->assertLinkedWorkPackage($ticket,$wp);else $this->assertExternalWorkPackage($wp);
         $spent=$this->date((string)($input['spent_on']??''));$started=$this->time((string)($input['started_at']??''));$endRaw=trim((string)($input['ended_at']??''));$ended=$endRaw===''?'':$this->time($endRaw);
         $minutes=$ended===''?0:$this->minutesBetween($started,$ended);if($ended!==''&&$minutes<=0)throw new RuntimeException('O horário final deve ser posterior ao horário inicial.');
         $activityHref=(string)($input['activity_href']??'');$activityName=(string)($input['activity_name']??'');$this->assertActivity($wp,$activityHref);
@@ -329,7 +330,8 @@ final class TimeManagementService
 
     private function timeEntry(int$id,int$userId):array{foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_time_entries','WHERE'=>['id'=>$id,'users_id'=>$userId],'LIMIT'=>1])as$row)return$row;throw new RuntimeException('Entrada de tempo não encontrada.');}
     private function checkTimeEntryPermission(int$user):void{if($user===(int)Session::getLoginUserID())AccessPolicy::check(Profile::LOG_OWN_TIME);else AccessPolicy::check(Profile::LOG_OTHERS_TIME);}
-    private function assertLinkedWorkPackage(int$ticket,int$wp):void{$linked=false;foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_links','WHERE'=>['tickets_id'=>$ticket,'openproject_work_package_id'=>$wp],'LIMIT'=>1])as$_)$linked=true;if(!$linked)throw new RuntimeException('A Work Package não está vinculada ao chamado informado.');}
+    private function assertLinkedWorkPackage(int$ticket,int$wp):void{$item=new \Ticket();if(!$item->getFromDB($ticket)||!$item->can($ticket,READ))throw new \Glpi\Exception\Http\AccessDeniedHttpException();$linked=false;foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_links','WHERE'=>['tickets_id'=>$ticket,'openproject_work_package_id'=>$wp],'LIMIT'=>1])as$_)$linked=true;if(!$linked)throw new RuntimeException('A Work Package não está vinculada ao chamado informado.');}
+    private function assertExternalWorkPackage(int$wp):void{if($wp<=0)throw new RuntimeException('Selecione uma Work Package válida.');$workPackage=OpenProjectClient::forCurrentUser()->getWorkPackage($wp);if((int)($workPackage['id']??0)!==$wp)throw new RuntimeException('O OpenProject não confirmou a Work Package selecionada.');}
     private function assertActivity(int$wp,string$href):void{if($wp<=0||$href===''||!str_starts_with($href,'/api/v3/time_entries/activities/'))throw new RuntimeException('Selecione uma atividade válida para a Work Package.');}
 
     private function holidayRows():array{if($this->holidayRows===null)$this->holidayRows=array_values(iterator_to_array($this->db->request(['FROM'=>'glpi_plugin_demandas_holidays','ORDER'=>['scope DESC']])));return$this->holidayRows;}

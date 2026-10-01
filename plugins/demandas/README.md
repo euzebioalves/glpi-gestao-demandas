@@ -2,6 +2,16 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.24.0
+
+- detalha conflitos da conciliação de **Atividade DevOps** em modal, com referências visíveis, vínculo local atual e bloqueios de segurança;
+- permite transferir somente o vínculo local de uma WP em conflito simples, com direito próprio, confirmação e auditoria nos dois chamados; bloqueia automaticamente referências múltiplas, entradas de tempo, fases públicas e acompanhamentos públicos;
+- abre o número da WP indicada diretamente no OpenProject em nova aba e mostra o chamado GLPI vinculado nas entradas de tempo, respeitando a leitura nativa;
+- permite lançar tempo em WPs sem chamado, pesquisando por ID ou título com token pessoal; resolve o projeto para o link de Tempo e Custos e mantém o apontamento sem criar vínculo GLPI;
+- verifica diariamente a release oficial do GitHub, apresenta o estado aos administradores e disponibiliza um atualizador PowerShell externo que valida pacote e mantém backup; nenhuma instalação ocorre pelo navegador.
+
+Consulte [RELEASE_0.24.0.md](../../docs/RELEASE_0.24.0.md) para operação, homologação e limitações.
+
 ## Versão 0.23.0
 
 - abre a Visão Gerencial com chamados abertos (exclui solucionados/fechados), mantendo **Todos** nos filtros, gráficos, listagem e exportações;

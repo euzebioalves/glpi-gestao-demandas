@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.23.0** · Compatível com GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.24.0** · Compatível com GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -24,6 +24,7 @@ As permissões em **Administração > Perfis > Gestão de Demandas** são a úni
 | Preparar contexto de chamado e WP para IA externa | Preparar um texto local para cópia consciente em uma IA externa. |
 | Visualizar pendências operacionais da integração | Consultar a Central de Pendências de Integração. |
 | Executar e tratar pendências operacionais da integração | Executar a verificação e reconhecer, ignorar temporariamente ou reabrir pendências. |
+| Resolver conflitos de conciliação de Work Packages | Transferir, sob confirmação, apenas um vínculo local que esteja inequivocamente seguro para correção. |
 
 As permissões de monitoramento, alertas, IA e pendências exigem também **Visualizar dados técnicos do OpenProject**. O plugin repete as verificações no servidor; ocultar um menu não permite acesso direto por URL.
 
@@ -35,6 +36,20 @@ As permissões de monitoramento, alertas, IA e pendências exigem também **Visu
 4. Na primeira utilização, clique em **Instalar** e depois em **Ativar**.
 5. Para atualizar, clique somente em **Atualizar**. **Não desinstale** o plugin: a desinstalação remove seus vínculos, configurações e históricos.
 6. Após a atualização, revise os novos direitos em **Administração > Perfis > Gestão de Demandas**.
+
+### 3.1 Monitoramento e aplicação controlada de releases
+
+Em **Configuração do plugin > Integração e automação**, administradores podem habilitar a consulta diária da release oficial. A tela permite verificar manualmente e mostra a versão instalada, a release disponível e o link da release. A consulta aceita somente a API e os domínios oficiais do GitHub, com TLS validado, e **nunca** baixa ou instala arquivos pelo navegador do GLPI.
+
+Para aplicar uma atualização, use uma janela de manutenção e um agente/terminal administrativo que possua acesso à pasta do GLPI. Pare o serviço web ou contêiner antes da troca e execute primeiro a validação sem alteração:
+
+```powershell
+./update-plugin-release.ps1 -PluginDirectory 'C:\caminho\para\glpi\plugins\demandas' -ValidatePackage
+```
+
+Depois de revisar a release e o backup planejado, execute com `-Apply`. O script baixa somente o ZIP da release oficial, confere a estrutura e a versão declarada, preserva a pasta anterior em `demandas-backup-<data>` e substitui somente a pasta do plugin. Em seguida, inicie o GLPI e clique em **Atualizar**. O script não acessa o banco, não guarda tokens e não exclui o backup. Mantenha a rotina sob controle da infraestrutura/configuração de servidores.
+
+Em Linux, use PowerShell (`pwsh`) e informe em `-PluginDirectory` o caminho real de `plugins/demandas`. A verificação diária depende do cron externo nativo do GLPI; confirme esse agendamento com a infraestrutura. **Verificar agora** permite consultar manualmente mesmo sem o cron.
 
 ## 4. Configuração administrativa inicial
 
@@ -97,6 +112,10 @@ Na **Visão Gerencial de Demandas**, use **Conciliar Work Packages existentes** 
 4. Verifique o vínculo na **Evolução da Demanda** e a cobertura no painel. A conciliação não cria outra WP, não altera a WP externa e não publica fase ou acompanhamento. Depois, a sincronização normal e o webhook passam a reconhecer o vínculo.
 
 Referências de outra instância, WPs sem acesso e conflitos não são importados. WPs já vinculadas são preservadas. O campo original não é alterado. Solucionados e fechados podem ser incluídos escolhendo **Todos**. A cobertura contabiliza os vínculos confirmados, não apenas a presença de uma URL.
+
+Quando houver conflito, clique em **Detalhes**. O modal informa se a mesma WP aparece em outros chamados, se já existe vínculo local e quais referências são visíveis para o perfil ativo. O número da WP abre a tarefa correspondente no OpenProject em nova aba. A transferência automática aparece somente para um conflito de vínculo local simples, quando o operador possui o novo direito, pode alterar ambos os chamados e o vínculo não possui entradas de tempo, fase pública nem acompanhamento público. Após a confirmação, ela move exclusivamente o registro local e cria eventos de auditoria nos dois chamados; a WP, o campo Fields e o OpenProject não são alterados. Os demais conflitos devem ser corrigidos por procedimento administrativo controlado.
+
+![Detalhes de conflito — captura de ambiente fictício](assets/manual/conciliacao-detalhes-conflito.png)
 
 #### Acompanhamento dos vínculos
 
@@ -207,7 +226,18 @@ Perfis com **Administrar feriados e compensações** configuram os dias sem expe
 
 ## 12. Entradas de tempo em Work Packages
 
-Em **Gerência > Entradas de Tempo**, lance horas efetivamente dedicadas a WPs vinculadas. Selecione chamado/WP, data, atividade, início, fim e comentário quando aplicável. Essas entradas são independentes do ponto.
+Em **Gerência > Entradas de Tempo**, clique em **Nova entrada**, ao lado de **Sincronizar selecionadas**, e escolha a origem:
+
+- **Relacionada ao GLPI**: selecione uma WP vinculada a um chamado que você possa ler.
+- **Outra WP do OpenProject**: pesquise pelo ID ou por pelo menos três caracteres do título, usando seu token pessoal. Selecione um dos resultados acessíveis (até 20 por pesquisa). Essa operação não cria vínculo nem exige um chamado GLPI.
+
+Informe data, atividade, início, fim e comentário quando aplicável. As atividades vêm do formulário da WP no OpenProject. Salve primeiro no GLPI e sincronize quando a entrada estiver completa. Edições e exclusões de uma entrada já sincronizada também são enviadas ao OpenProject com seu token pessoal.
+
+A grade mostra o **Chamado GLPI** quando houver vínculo; o número abre o chamado em nova aba somente quando você possui leitura nativa dele. Para entradas sem chamado, a coluna mostra um traço. O ID sincronizado abre o relatório de **Tempo e Custos** da WP quando seu projeto puder ser identificado. Essas entradas são independentes do ponto.
+
+O token deve pertencer ao mesmo OpenProject configurado na integração. No Docker local, use API interna `http://openproject/api/v3` e navegação `http://localhost:8280`; não use HTTPS no serviço interno sem TLS nem misture token local e URL de produção.
+
+![Entrada de tempo em WP sem chamado — captura de ambiente fictício](assets/manual/entrada-tempo-wp-externa.png)
 
 Somente entradas de tempo são sincronizadas com o OpenProject. Marcações de ponto nunca são enviadas como tempo de WP.
 

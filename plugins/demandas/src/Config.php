@@ -44,6 +44,7 @@ final class Config
             'operational_health_initial_statuses',
             'operational_health_initial_days',
             'operational_health_stale_days',
+            'plugin_update_check_enabled',
         ];
 
         $values = [];

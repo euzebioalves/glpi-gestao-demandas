@@ -1,7 +1,10 @@
 <?php
 declare(strict_types=1);
 // Synthetic fixtures only. Never run against shared or production databases.
-if (getenv('GLPI_DB_HOST') !== 'demandas-test-021-db') throw new RuntimeException('Use o banco isolado demandas-test-021-db.');
+if (getenv('GLPI_DB_HOST') !== 'demandas-test-021-db'
+    && !(getenv('GLPI_DB_HOST') === 'db' && getenv('GLPI_DB_NAME') === 'glpi_e2e')) {
+    throw new RuntimeException('Use exclusivamente o banco isolado de testes.');
+}
 require '/var/www/glpi/vendor/autoload.php';
 $kernel = new Glpi\Kernel\Kernel('production', false);
 $kernel->boot();
@@ -12,6 +15,7 @@ spl_autoload_register(static function (string $class): void {
 use GlpiPlugin\Demandas\Profile as DP;
 use GlpiPlugin\Demandas\Config as DC;
 use GlpiPlugin\Demandas\LegacyReconciliationService as Reconciliation;
+use GlpiPlugin\Demandas\TicketDemand;
 global $DB;
 $input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
 if ($input['mode'] === 'seed') {
@@ -23,6 +27,7 @@ if ($input['mode'] === 'seed') {
         DP::initializeProfile($pid, []);
         foreach (DP::definitions() as $right => $_) DP::setRight($pid, $right, false);
         foreach ([DP::VIEW_PUBLIC, DP::VIEW_DASHBOARD, DP::EXPORT_DASHBOARD, DP::VIEW_TECHNICAL, DP::CREATE_WORK_PACKAGE] as $right) DP::setRight($pid, $right, $role !== 'client' || $right === DP::VIEW_PUBLIC);
+        DP::setRight($pid, DP::MANAGE_RECONCILIATION_CONFLICTS, $role === 'admin');
         $right = new ProfileRight();
         $found = $right->find(['profiles_id' => $pid, 'name' => 'ticket']);
         $values = ['profiles_id' => $pid, 'name' => 'ticket', 'rights' => Ticket::READALL | READ | ($role === 'readonly' || $role === 'client' ? 0 : UPDATE)];
@@ -46,7 +51,7 @@ if ($input['mode'] === 'seed') {
         $DB->updateOrInsert('glpi_plugin_fields_fields', ['plugin_fields_containers_id' => 9000 + $id, 'name' => 'devops', 'label' => 'Atividade DevOps', 'type' => 'url'], ['id' => 9000 + $id]);
     }
     $tickets = [];
-    foreach (['open' => 1, 'solved' => 5, 'closed' => 6, 'internal' => 2, 'conflict1' => 1, 'conflict2' => 1, 'invalid' => 1, 'foreign' => 1, 'unauthorized' => 1, 'forbidden' => 1, 'missing' => 1, 'invalid_api' => 1, 'timeout' => 1, 'other_entity' => 1] as $kind => $status) {
+    foreach (['open' => 1, 'solved' => 5, 'closed' => 6, 'internal' => 2, 'conflict1' => 1, 'conflict2' => 1, 'transfer_source' => 1, 'transfer_target' => 1, 'invalid' => 1, 'foreign' => 1, 'unauthorized' => 1, 'forbidden' => 1, 'missing' => 1, 'invalid_api' => 1, 'timeout' => 1, 'other_entity' => 1] as $kind => $status) {
         $name = 'QA conciliação ' . $kind . ' <b>& teste</b>';
         $found = $DB->request(['FROM' => 'glpi_tickets', 'WHERE' => ['name' => $name]])->current();
         if (!$found) {
@@ -55,13 +60,16 @@ if ($input['mode'] === 'seed') {
         } else $tid = (int) $found['id'];
         $tickets[$kind] = $tid;
     }
-    $wps = ['open' => 91001, 'solved' => 91002, 'closed' => 91003, 'internal' => 91004, 'conflict1' => 91005, 'conflict2' => 91005, 'invalid' => 0, 'foreign' => 91006, 'unauthorized' => 91401, 'forbidden' => 91403, 'missing' => 91404, 'invalid_api' => 91999, 'timeout' => 91504, 'other_entity' => 91007];
+    $wps = ['open' => 91001, 'solved' => 91002, 'closed' => 91003, 'internal' => 91004, 'conflict1' => 91005, 'conflict2' => 91005, 'transfer_source' => 0, 'transfer_target' => 91008, 'invalid' => 0, 'foreign' => 91006, 'unauthorized' => 91401, 'forbidden' => 91403, 'missing' => 91404, 'invalid_api' => 91999, 'timeout' => 91504, 'other_entity' => 91007];
     foreach ($tickets as $kind => $tid) {
-        $url = $kind === 'invalid' ? '91009' : ($kind === 'foreign' ? 'https://other.example.invalid' : 'https://openproject.example.invalid') . '/projects/qa/work_packages/' . $wps[$kind] . '/activity';
+        $url = $kind === 'transfer_source' ? '' : ($kind === 'invalid' ? '91009' : ($kind === 'foreign' ? 'https://other.example.invalid' : 'https://openproject.example.invalid') . '/projects/qa/work_packages/' . $wps[$kind] . '/activity');
         $table = $kind === 'internal' ? 'glpi_plugin_fields_ticketreconciliationoldqas' : 'glpi_plugin_fields_ticketreconciliationqas';
         $col = $kind === 'internal' ? 'plugin_fields_devops' : 'devops';
         $DB->updateOrInsert($table, [$col => $url, 'itemtype' => 'Ticket'], ['items_id' => $tid]);
     }
+    TicketDemand::saveLink($tickets['transfer_source'], 91008, 1, 'Projeto QA', 'qa', 1, 'User Story', 'Novo');
+    $DB->update('glpi_plugin_demandas_links', ['public_phase' => '', 'public_message' => null], ['openproject_work_package_id' => 91008]);
+    $DB->delete('glpi_plugin_demandas_events', ['openproject_work_package_id'=>91008,'event_type'=>'legacy_link_transferred','source'=>'legacy_reconciliation']);
     echo json_encode(['users' => $users, 'tickets' => $tickets, 'wps' => $wps]);
 } elseif ($input['mode'] === 'reset-imports') {
     // Explicit reset of this suite's two imported fixtures only, in the guarded test DB.
@@ -107,6 +115,26 @@ if ($input['mode'] === 'seed') {
     try { $handler->handle($body, 'invalid'); } catch (GlpiPlugin\Demandas\WebhookAuthenticationException) { $rejected = true; }
     if (!$rejected || $ok['processed']) throw new RuntimeException('Assinatura inválida aceita.');
     echo json_encode(['ok' => true]);
+} elseif ($input['mode'] === 'protect-transfer') {
+    // This sentinel touches only WP 91008 and its explicitly synthetic entry.
+    $link = TicketDemand::findByWorkPackage(91008);
+    if (!$link) throw new RuntimeException('Vínculo fictício ausente.');
+    $DB->delete('glpi_plugin_demandas_time_entries', ['openproject_work_package_id'=>91008,'comment'=>'QA bloqueio transferência']);
+    $DB->update('glpi_plugin_demandas_links', ['public_phase'=>$input['kind'] === 'public' ? 'Em análise' : '', 'public_message'=>null], ['id'=>(int)$link['id']]);
+    if ($input['kind'] === 'time') {
+        $DB->insert('glpi_plugin_demandas_time_entries', ['tickets_id'=>(int)$link['tickets_id'],'openproject_work_package_id'=>91008,'users_id'=>2,'spent_on'=>'2026-10-01','started_at'=>'09:00:00','ended_at'=>'10:00:00','minutes'=>60,'comment'=>'QA bloqueio transferência','created_by'=>2]);
+    }
+    echo json_encode(['ok'=>true]);
+} elseif ($input['mode'] === 'time-seed') {
+    foreach (['admin', 'internal', 'client'] as $role) {
+        $profile = $DB->request(['FROM' => 'glpi_profiles', 'WHERE' => ['name' => 'Reconciliation QA ' . $role]])->current();
+        foreach ([DP::VIEW_TIME_PORTAL, DP::LOG_OWN_TIME] as $right) DP::setRight((int) $profile['id'], $right, $role !== 'client');
+    }
+    Config::setConfigurationValues(DC::CONTEXT, ['openproject_internal_url' => 'http://127.0.0.1:8394/api/v3']);
+    echo json_encode(['ok' => true]);
+} elseif ($input['mode'] === 'time-snapshot') {
+    $user = $DB->request(['FROM'=>'glpi_users', 'WHERE'=>['name'=>'reconciliation-admin']])->current();
+    echo json_encode(array_values(iterator_to_array($DB->request(['FROM'=>'glpi_plugin_demandas_time_entries','WHERE'=>['users_id'=>(int)$user['id']],'ORDER'=>'id']))));
 } elseif ($input['mode'] === 'snapshot') {
     $tables = ['glpi_plugin_demandas_links', 'glpi_plugin_demandas_events', 'glpi_itilfollowups'];
     $data = [];

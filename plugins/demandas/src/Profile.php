@@ -34,6 +34,7 @@ final class Profile extends CommonDBTM
     public const PREPARE_AI_CONTEXT = 'demandas_prepare_ai_context';
     public const VIEW_OPERATIONAL_HEALTH = 'demandas_view_operational_health';
     public const MANAGE_OPERATIONAL_HEALTH = 'demandas_manage_operational_health';
+    public const MANAGE_RECONCILIATION_CONFLICTS = 'demandas_manage_reconciliation_conflicts';
 
     public static function getTypeName($nb = 0): string
     {
@@ -78,6 +79,7 @@ final class Profile extends CommonDBTM
             self::PREPARE_AI_CONTEXT => 'Preparar contexto de chamado e WP para IA externa',
             self::VIEW_OPERATIONAL_HEALTH => 'Visualizar pendências operacionais da integração',
             self::MANAGE_OPERATIONAL_HEALTH => 'Executar e tratar pendências operacionais da integração',
+            self::MANAGE_RECONCILIATION_CONFLICTS => 'Resolver conflitos de conciliação de Work Packages',
         ];
     }
 
