@@ -1,9 +1,9 @@
 """Synthetic regression: isolated GLPI 11.0.9 at localhost:8386. See RELEASE_0.23.0.md."""
-import http.cookiejar, io, json, re, secrets, subprocess, urllib.error, urllib.parse, urllib.request, zipfile
+import http.cookiejar, io, json, os, re, secrets, subprocess, urllib.error, urllib.parse, urllib.request, zipfile
 import xml.etree.ElementTree as ET
 
-BASE = 'http://127.0.0.1:8386'
-CONTAINER = 'demandas-test-021-glpi'
+BASE = os.environ.get('RECONCILIATION_BASE', 'http://127.0.0.1:8386')
+CONTAINER = os.environ.get('RECONCILIATION_CONTAINER', 'demandas-test-021-glpi')
 PAGE = '/plugins/demandas/front/legacy-reconciliation.php'
 FORM = '/plugins/demandas/front/legacy-reconciliation.form.php'
 def fixture(mode, **args):
@@ -28,6 +28,11 @@ def login(role):
 def reconcile(opener, kind, token=True):
     _, html = request(opener, PAGE)
     data = {'pairs[]': [f"{seed['tickets'][kind]}:{seed['wps'][kind]}"], 'confirm': '1'}
+    if token: data['_glpi_csrf_token'] = csrf(html)
+    return request(opener, FORM, data)
+def transfer(opener, kind, token=True):
+    _, html = request(opener, PAGE)
+    data = {'action': 'transfer', 'pair': f"{seed['tickets'][kind]}:{seed['wps'][kind]}", 'confirm_transfer': '1'}
     if token: data['_glpi_csrf_token'] = csrf(html)
     return request(opener, FORM, data)
 def export_ids(opener, scope='open'):
@@ -87,6 +92,24 @@ status, _ = request(client, PAGE)
 check(status == 403, 'cliente sem direito técnico bloqueado')
 status, _ = request(client, FORM, {'_glpi_csrf_token': csrf(request(client, '/front/helpdesk.public.php')[1]), 'pairs[]': ['1:91001'], 'confirm': '1'})
 check(status == 403, 'backend bloqueia cliente')
+status, html = request(admin, PAGE)
+check(status == 200 and b'Detalhes' in html and b'/work_packages/91005' in html, 'conflito detalhado e link da WP no OpenProject')
+status, _ = transfer(admin, 'transfer_target', token=False)
+check(status == 403, 'transferência sem CSRF recusada')
+for protection in ['public', 'time']:
+    fixture('protect-transfer', kind=protection)
+    protected = fixture('snapshot')
+    status, _ = transfer(admin, 'transfer_target')
+    check(status == 200 and fixture('snapshot') == protected, 'transferência com histórico bloqueada: ' + protection)
+fixture('protect-transfer', kind='clear')
+status, _ = transfer(admin, 'transfer_target')
+transferred = fixture('snapshot')
+link = next(row for row in transferred['glpi_plugin_demandas_links'] if int(row['openproject_work_package_id']) == 91008)
+events = [row for row in transferred['glpi_plugin_demandas_events'] if int(row['openproject_work_package_id']) == 91008 and row['event_type'] == 'legacy_link_transferred']
+check(status == 200 and int(link['tickets_id']) == seed['tickets']['transfer_target'] and len(events) == 2, 'transferência local segura e auditada')
+internal = login('internal')
+status, _ = transfer(internal, 'transfer_target')
+check(status == 403, 'transferência exige direito específico')
 status, data = request(urllib.request.build_opener(), PAGE)
 check(b'QA concilia' not in data, 'anônimo sem acesso aos chamados')
 log = subprocess.run(['docker', 'exec', CONTAINER, 'cat', '/tmp/reconciliation-api-requests.log'], text=True, capture_output=True, check=True).stdout.splitlines()

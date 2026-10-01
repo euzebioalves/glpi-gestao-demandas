@@ -85,7 +85,7 @@ $pluginsJson = & docker compose --env-file .env.e2e -f docker-compose.e2e.yml ex
 if ($LASTEXITCODE -ne 0) { throw 'Não foi possível consultar o estado do plugin na base E2E.' }
 $demandasPlugin = @($pluginsJson | ConvertFrom-Json | Where-Object { $_.key -eq 'demandas' }) | Select-Object -First 1
 if ($null -eq $demandasPlugin) { throw 'O plugin demandas não foi encontrado no contêiner da base E2E.' }
-if ($demandasPlugin.state -eq 'Not installed') {
+if ($demandasPlugin.state -in @('Not installed', 'To update')) {
     Invoke-E2ECompose @('exec', '-T', 'glpi', 'php', 'bin/console', 'plugin:install', '--username=glpi', 'demandas')
     $demandasPlugin.state = 'Installed'
 }

@@ -65,6 +65,15 @@ final class OpenProjectClient
         return is_array($elements) ? $elements : [];
     }
 
+    public function getProject(int $projectId): array
+    {
+        if ($projectId <= 0) {
+            return [];
+        }
+
+        return $this->request('GET', 'projects/' . $projectId);
+    }
+
     public function getTypesForProject(int $projectId): array
     {
         $collection = $this->request('GET', 'projects/' . $projectId . '/types');
@@ -298,6 +307,48 @@ final class OpenProjectClient
     public function getWorkPackage(int $workPackageId): array
     {
         return $this->request('GET', 'work_packages/' . $workPackageId);
+    }
+
+    /**
+     * Searches only the Work Packages visible to the owner of the current
+     * personal token. It is intentionally separate from the GLPI-linked
+     * backlog, so time can also be reported to independent technical work.
+     */
+    public function searchWorkPackages(string $query, int $pageSize = 20): array
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return [];
+        }
+
+        if (ctype_digit($query)) {
+            try {
+                return [$this->getWorkPackage((int) $query)];
+            } catch (RuntimeException $exception) {
+                $previous = $exception->getPrevious();
+                if ($previous instanceof \GuzzleHttp\Exception\RequestException
+                    && in_array($previous->getResponse()?->getStatusCode(), [403, 404], true)) {
+                    return [];
+                }
+                throw $exception;
+            }
+        }
+
+        if (mb_strlen($query) < 3) {
+            return [];
+        }
+
+        $filters = json_encode([
+            ['subjectOrId' => ['operator' => '**', 'values' => [$query]]],
+        ], JSON_THROW_ON_ERROR);
+        $request = 'work_packages?' . http_build_query([
+            'filters' => $filters,
+            'pageSize' => min(50, max(1, $pageSize)),
+            'sortBy' => json_encode([['updatedAt', 'desc']], JSON_THROW_ON_ERROR),
+        ], '', '&', PHP_QUERY_RFC3986);
+        $collection = $this->request('GET', $request);
+        $elements = $collection['_embedded']['elements'] ?? [];
+        return is_array($elements) ? $elements : [];
     }
 
     public function getStatuses(): array

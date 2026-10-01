@@ -71,6 +71,35 @@ final class LegacyReconciliationService
         return $ticket;
     }
 
+    /** @return array<string, int|string|bool> */
+    private function ticketReference(int $id): array
+    {
+        $ticket = $this->ticket($id);
+        if ($ticket === null) {
+            return ['visible' => false];
+        }
+        return [
+            'visible' => true,
+            'id' => $id,
+            'name' => (string) $ticket->fields['name'],
+            'can_update' => $ticket->can($id, UPDATE),
+        ];
+    }
+
+    private function linkedTimeEntriesCount(int $ticketId, int $wpId): int
+    {
+        $db = \DBConnection::getReadConnection();
+        $count = 0;
+        foreach ($db->request([
+            'SELECT' => ['id'],
+            'FROM' => 'glpi_plugin_demandas_time_entries',
+            'WHERE' => ['tickets_id' => $ticketId, 'openproject_work_package_id' => $wpId],
+        ]) as $row) {
+            $count++;
+        }
+        return $count;
+    }
+
     public function preview(bool $all = false, int $onlyTicket = 0): array
     {
         self::checkAccess();
@@ -87,11 +116,49 @@ final class LegacyReconciliationService
             foreach ($ids ?: [0] as $wpId) {
                 $link = $wpId > 0 ? TicketDemand::findByWorkPackage($wpId) : null;
                 $state = 'ready';
+                $sourceReferences = [];
+                $hiddenReferences = 0;
+                foreach (array_keys($owners[$wpId] ?? []) as $sourceTicketId) {
+                    $source = $this->ticketReference((int) $sourceTicketId);
+                    if (($source['visible'] ?? false) === true) $sourceReferences[] = $source;
+                    else $hiddenReferences++;
+                }
+                $existingReference = $link === null ? null : $this->ticketReference((int) $link['tickets_id']);
+                $reasons = [];
+                if (count($owners[$wpId] ?? []) > 1) $reasons[] = 'multiple_references';
+                $linkedElsewhere = $link !== null && (int) $link['tickets_id'] !== $ticketId;
+                if ($linkedElsewhere) $reasons[] = 'linked_elsewhere';
+                // This inspection is necessary only for a possible transfer.
+                // Avoid a time-entry query for every ordinary preview row.
+                $timeEntries = $linkedElsewhere ? $this->linkedTimeEntriesCount((int) $link['tickets_id'], $wpId) : 0;
+                $hasPublicData = $linkedElsewhere && (trim((string) ($link['public_phase'] ?? '')) !== '' || trim((string) ($link['public_message'] ?? '')) !== '');
+                $canTransfer = $reasons === ['linked_elsewhere']
+                    && $link !== null
+                    && ($existingReference['visible'] ?? false) === true
+                    && ($existingReference['can_update'] ?? false) === true
+                    && $ticket->can($ticketId, UPDATE)
+                    && $timeEntries === 0
+                    && !$hasPublicData
+                    && Profile::has(Profile::MANAGE_RECONCILIATION_CONFLICTS);
                 if ($wpId <= 0) $state = 'invalid';
-                elseif (count($owners[$wpId] ?? []) > 1 || ($link !== null && (int) $link['tickets_id'] !== $ticketId)) $state = 'conflict';
+                elseif ($reasons !== []) $state = 'conflict';
                 elseif ($link !== null) $state = 'linked';
                 elseif (!$ticket->can($ticketId, UPDATE)) $state = 'readonly';
-                $rows[] = ['ticket_id' => $ticketId, 'ticket_name' => (string) $ticket->fields['name'], 'wp_id' => $wpId, 'state' => $state];
+                $rows[] = [
+                    'ticket_id' => $ticketId,
+                    'ticket_name' => (string) $ticket->fields['name'],
+                    'wp_id' => $wpId,
+                    'state' => $state,
+                    'conflict' => [
+                        'reasons' => $reasons,
+                        'source_references' => $sourceReferences,
+                        'hidden_references' => $hiddenReferences,
+                        'existing_link' => $existingReference,
+                        'time_entries' => $timeEntries,
+                        'has_public_data' => $hasPublicData,
+                        'can_transfer' => $canTransfer,
+                    ],
+                ];
             }
         }
         usort($rows, static fn(array $a, array $b): int => $b['ticket_id'] <=> $a['ticket_id'] ?: $a['wp_id'] <=> $b['wp_id']);
@@ -176,6 +243,63 @@ final class LegacyReconciliationService
         } catch (\Throwable) {
             $DB->rollBack();
             throw new DomainException('Não foi possível gravar a conciliação. Atualize a prévia e tente novamente; vínculos existentes foram preservados.');
+        }
+    }
+
+    /**
+     * Moves only a safe local legacy link. It never updates the OpenProject
+     * object and refuses links with published data or time-entry history.
+     */
+    public function transferConflict(int $ticketId, int $wpId): void
+    {
+        self::checkAccess();
+        Profile::checkRight(Profile::MANAGE_RECONCILIATION_CONFLICTS);
+        $candidate = null;
+        foreach ($this->preview(true, $ticketId) as $row) {
+            if ((int) $row['wp_id'] === $wpId) $candidate = $row;
+        }
+        if ($candidate === null || ($candidate['conflict']['can_transfer'] ?? false) !== true) {
+            throw new DomainException('Este conflito não pode ser transferido automaticamente. Revise as referências, o histórico e as permissões dos chamados envolvidos.');
+        }
+        $existing = TicketDemand::findByWorkPackage($wpId);
+        $previousTicketId = (int) ($existing['tickets_id'] ?? 0);
+        $target = $this->ticket($ticketId);
+        $previous = $this->ticket($previousTicketId);
+        if ($existing === null || $target === null || $previous === null || !$target->can($ticketId, UPDATE) || !$previous->can($previousTicketId, UPDATE)) {
+            throw new \Glpi\Exception\Http\AccessDeniedHttpException();
+        }
+        if ($this->linkedTimeEntriesCount($previousTicketId, $wpId) > 0 || trim((string) ($existing['public_phase'] ?? '')) !== '' || trim((string) ($existing['public_message'] ?? '')) !== '') {
+            throw new DomainException('O vínculo possui dados públicos ou entradas de tempo e não pode ser transferido automaticamente. Corrija-o por procedimento administrativo controlado.');
+        }
+
+        global $DB;
+        $DB->beginTransaction();
+        try {
+            $updated = $DB->update('glpi_plugin_demandas_links', ['tickets_id' => $ticketId, 'date_mod' => date('Y-m-d H:i:s')], [
+                'id' => (int) $existing['id'],
+                'tickets_id' => $previousTicketId,
+                'openproject_work_package_id' => $wpId,
+            ]);
+            if (!$updated || $DB->affectedRows() !== 1) {
+                throw new DomainException('O vínculo mudou durante a operação. Atualize a prévia.');
+            }
+            $details = json_encode(['from_ticket_id' => $previousTicketId, 'to_ticket_id' => $ticketId, 'work_package_id' => $wpId], JSON_THROW_ON_ERROR);
+            foreach ([$previousTicketId, $ticketId] as $eventTicketId) {
+                $logged = $DB->insert('glpi_plugin_demandas_events', [
+                    'tickets_id' => $eventTicketId,
+                    'openproject_work_package_id' => $wpId,
+                    'event_type' => 'legacy_link_transferred',
+                    'source' => 'legacy_reconciliation',
+                    'is_success' => 1,
+                    'message' => 'Vínculo local da WP #' . $wpId . ' transferido entre chamados por usuário #' . (int) Session::getLoginUserID() . '. Nenhuma WP foi alterada no OpenProject.',
+                    'details_json' => $details,
+                ]);
+                if (!$logged) throw new DomainException('Não foi possível registrar a auditoria da transferência.');
+            }
+            $DB->commit();
+        } catch (\Throwable) {
+            $DB->rollBack();
+            throw new DomainException('Não foi possível transferir o vínculo local. Os vínculos existentes foram preservados.');
         }
     }
 }

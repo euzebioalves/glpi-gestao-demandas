@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 // Execute somente no contêiner descartável descrito em docs/RELEASE_0.18.3.md.
-if (getenv('GLPI_DB_HOST') !== 'demandas-release-0183-db') {
+if (getenv('GLPI_DB_HOST') !== 'demandas-release-0183-db'
+    && !(getenv('GLPI_DB_HOST') === 'db' && getenv('GLPI_DB_NAME') === 'glpi_e2e')) {
     throw new RuntimeException('Teste permitido apenas no banco Docker isolado da release.');
 }
 require '/var/www/glpi/vendor/autoload.php';

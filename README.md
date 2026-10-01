@@ -6,6 +6,10 @@ Os testes práticos e as capturas sanitizadas do manual usam Playwright. O coman
 
 Para uma base isolada exclusivamente para Playwright, sem usar a homologação compartilhada, execute `./start-e2e.ps1`. Ela sobe GLPI 11.0.9 em `http://localhost:8190`; os comandos de teste ficam descritos em [tests/e2e/README.md](tests/e2e/README.md).
 
+## Plugin 0.24.0
+
+A versão 0.24.0 detalha conflitos da conciliação de WPs, permite transferência local controlada somente em casos sem histórico sensível, mostra o chamado vinculado nas entradas de tempo, permite apontar horas em WPs sem chamado e monitora releases oficiais sem instalar código pelo navegador. Veja [docs/RELEASE_0.24.0.md](docs/RELEASE_0.24.0.md).
+
 ## Plugin 0.23.0
 
 A Visão Gerencial passa a abrir com chamados não solucionados/fechados e mantém a opção **Todos**. A conciliação de **Atividade DevOps** permite validar URLs completas e vincular WPs já existentes à Evolução da Demanda, sem criar WPs. Veja [docs/RELEASE_0.23.0.md](docs/RELEASE_0.23.0.md).
