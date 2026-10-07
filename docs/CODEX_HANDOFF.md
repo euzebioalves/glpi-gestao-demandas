@@ -1,5 +1,9 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.24.1 — modal de ponto responsivo
+
+Em `front/timeclock.php`, o próprio formulário é o `.modal-content` diretamente dentro de `.modal-dialog-scrollable`. Preserve essa estrutura: um formulário intermediário sem limite de altura impede a rolagem nativa e corta o rodapé. A grade das marcações usa colunas flexíveis e as opções de ausência podem quebrar linha. Backend, permissões, CSRF e regras de saldo permanecem iguais. Veja `RELEASE_0.24.1.md` e `tests/timeclock-modal.cjs`.
+
 ## Atualização 0.24.0 — conciliação assistida e release controlada
 
 Na versão `0.24.0`, `LegacyReconciliationService` entrega detalhes estruturados de conflito à página `front/legacy-reconciliation.php`. A transferência é local e excepcional: exige `MANAGE_RECONCILIATION_CONFLICTS`, leitura/UPDATE nativos nos dois chamados e um conflito exclusivamente `linked_elsewhere`, sem entradas de tempo, `public_phase` ou `public_message`. Ela atualiza somente o vínculo existente em transação e registra eventos nos dois chamados. Não use `TicketDemand::saveLink()` nesse fluxo, pois o upsert pode mover um vínculo fora desses bloqueios. Referências múltiplas continuam sem transferência automática.
@@ -14,7 +18,7 @@ Entradas de tempo também admitem `tickets_id=0`, sem criar vínculo. `front/tim
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.24.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.24.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -23,7 +27,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.24.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.24.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.24.1 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
