@@ -1,5 +1,11 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.25.0 — coluna nativa de Work Package
+
+`TicketSearch` adiciona a opção estável `925001` ao itemtype `Ticket` pelos hooks automáticos `getAddSearchOptionsNew`, `addWhere` e `giveItem`. Não mudar esse ID: preferências e buscas salvas o persistem. A opção e o renderizador exigem `VIEW_TECHNICAL`; a renderização confirma também `Ticket::can(READ)`. A consulta principal mantém as restrições nativas de entidade/chamado. Filtros usam subconsultas sobre os vínculos, sem restringir o join de exibição: buscar uma WP mostra todas as WPs do chamado e filtros negativos excluem o chamado inteiro se qualquer WP corresponder. Não aplicar filtros ao agregado que contém IDs internos dos vínculos.
+
+O renderizador usa os valores agrupados fornecidos pelo GLPI, sem API OpenProject. Resultado vazio retorna um espaço porque string vazia acionaria o formatador padrão do GLPI. URLs aceitam somente HTTP(S) externo válido; sem URL válida, o ID fica em texto. Exportações nativas usam texto com pipe. Não há mudança de esquema, migração de vínculos ou concessão de direitos. Veja `RELEASE_0.25.0.md` e `tests/ticket-search.cjs`.
+
 ## Atualização 0.24.1 — modal de ponto responsivo
 
 Em `front/timeclock.php`, o próprio formulário é o `.modal-content` diretamente dentro de `.modal-dialog-scrollable`. Preserve essa estrutura: um formulário intermediário sem limite de altura impede a rolagem nativa e corta o rodapé. A grade das marcações usa colunas flexíveis e as opções de ausência podem quebrar linha. Backend, permissões, CSRF e regras de saldo permanecem iguais. Veja `RELEASE_0.24.1.md` e `tests/timeclock-modal.cjs`.
@@ -18,7 +24,7 @@ Entradas de tempo também admitem `tickets_id=0`, sem criar vínculo. `front/tim
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.24.1` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.25.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -27,7 +33,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.24.1` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.24.1 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.25.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
