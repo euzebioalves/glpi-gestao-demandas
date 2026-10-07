@@ -2,6 +2,13 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.24.1
+
+- corrige o modal de edição de ponto para manter **Cancelar** e **Salvar alterações** visíveis enquanto os registros rolam dentro do modal;
+- adapta as colunas das marcações e as opções de ausência a telas menores, preservando o formulário e as regras de ponto.
+
+Consulte [RELEASE_0.24.1.md](../../docs/RELEASE_0.24.1.md) para homologação e limitações.
+
 ## Versão 0.24.0
 
 - detalha conflitos da conciliação de **Atividade DevOps** em modal, com referências visíveis, vínculo local atual e bloqueios de segurança;
