@@ -2,6 +2,16 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.25.0
+
+- disponibiliza **Plugins > Work Package** na configuração de colunas e nos filtros nativos da listagem de chamados;
+- apresenta todas as WPs vinculadas como links separados por ` | `, mantendo uma linha por chamado;
+- mantém a célula vazia quando não há vínculo local e suporta **está vazio**, sua negação, igualdade e busca parcial por número;
+- exige **Visualizar dados técnicos do OpenProject** e respeita o acesso nativo aos chamados; exportações nativas apresentam os números como texto;
+- usa vínculos criados ou conciliados pelo Gestão de Demandas. Uma URL somente no More Fields ainda não constitui esse vínculo.
+
+Consulte [RELEASE_0.25.0.md](../../docs/RELEASE_0.25.0.md) para configuração e homologação.
+
 ## Versão 0.24.1
 
 - corrige o modal de edição de ponto para manter **Cancelar** e **Salvar alterações** visíveis enquanto os registros rolam dentro do modal;

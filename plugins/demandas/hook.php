@@ -3,6 +3,28 @@
 declare(strict_types=1);
 
 use GlpiPlugin\Demandas\Profile as DemandasProfile;
+use GlpiPlugin\Demandas\TicketSearch;
+
+function plugin_demandas_getAddSearchOptionsNew($itemtype): array
+{
+    return TicketSearch::options((string) $itemtype);
+}
+
+function plugin_demandas_giveItem($itemtype, $id, $data, $num): string
+{
+    if ($itemtype !== Ticket::class || (int) $id !== TicketSearch::WORK_PACKAGE) {
+        return '';
+    }
+    return TicketSearch::render($data, (string) $num);
+}
+
+function plugin_demandas_addWhere($link, $not, $itemtype, $id, $value, $searchtype): array
+{
+    if ($itemtype !== Ticket::class || (int) $id !== TicketSearch::WORK_PACKAGE) {
+        return [];
+    }
+    return TicketSearch::criteria((bool) $not, (string) $value, (string) $searchtype);
+}
 
 /**
  * Converte somente as colunas legadas do plugin, mantendo o fuso da sessão.

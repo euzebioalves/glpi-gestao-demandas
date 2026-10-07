@@ -6,6 +6,10 @@ Os testes práticos e as capturas sanitizadas do manual usam Playwright. O coman
 
 Para uma base isolada exclusivamente para Playwright, sem usar a homologação compartilhada, execute `./start-e2e.ps1`. Ela sobe GLPI 11.0.9 em `http://localhost:8190`; os comandos de teste ficam descritos em [tests/e2e/README.md](tests/e2e/README.md).
 
+## Plugin 0.25.0
+
+Adiciona **Work Package** às colunas e filtros nativos de chamados do GLPI, com múltiplos links separados por pipe e filtro de chamados sem vínculo. Consulte [docs/RELEASE_0.25.0.md](docs/RELEASE_0.25.0.md).
+
 ## Plugin 0.24.1
 
 Corrige o modal de edição de ponto: rolagem interna dos registros, botões acessíveis e campos adaptáveis a telas menores. Veja [docs/RELEASE_0.24.1.md](docs/RELEASE_0.24.1.md).
