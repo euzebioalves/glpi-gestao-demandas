@@ -2,6 +2,17 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.26.0
+
+- adiciona **Backlog** ao menu Gerência: WPs de qualquer tipo sob responsabilidade do usuário do token pessoal, agrupadas por status;
+- permite escolher colunas com persistência individual, inclusive status fechados ou nenhuma coluna;
+- separa direitos de visualizar e configurar o próprio quadro; ambos exigem acesso técnico e não são concedidos automaticamente;
+- apresenta número, título, projeto, cliente e responsável; o relógio soma o tempo daquele usuário registrado no OpenProject, inclusive fora do plugin;
+- abre detalhes em painel lateral com link para o OpenProject, sem alterar WPs;
+- preserva preferências nas atualizações e sinaliza falhas de consulta sem mostrar zero como se fosse um total confirmado.
+
+Veja [RELEASE_0.26.0.md](../../docs/RELEASE_0.26.0.md).
+
 ## Versão 0.25.0
 
 - disponibiliza **Plugins > Work Package** na configuração de colunas e nos filtros nativos da listagem de chamados;

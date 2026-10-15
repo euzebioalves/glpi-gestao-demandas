@@ -15,6 +15,8 @@ final class Profile extends CommonDBTM
     public static $rightname = 'profile';
 
     public const VIEW_PUBLIC = 'demandas_view_public';
+    public const VIEW_BACKLOG = 'demandas_view_backlog';
+    public const CONFIGURE_BACKLOG = 'demandas_configure_backlog';
     public const VIEW_TECHNICAL = 'demandas_view_technical';
     public const VIEW_HISTORY = 'demandas_view_history';
     public const CREATE_WORK_PACKAGE = 'demandas_create_workpackage';
@@ -59,6 +61,8 @@ final class Profile extends CommonDBTM
     public static function definitions(): array
     {
         return [
+            self::VIEW_BACKLOG => 'Visualizar o Backlog pessoal',
+            self::CONFIGURE_BACKLOG => 'Configurar as colunas do próprio Backlog',
             self::VIEW_PUBLIC => 'Visualizar a evolução pública da demanda',
             self::VIEW_TECHNICAL => 'Visualizar dados técnicos do OpenProject',
             self::VIEW_HISTORY => 'Visualizar o histórico da integração',

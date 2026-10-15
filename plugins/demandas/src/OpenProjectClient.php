@@ -358,6 +358,69 @@ final class OpenProjectClient
         return is_array($elements) ? $elements : [];
     }
 
+    /** Personal board, independent of local ticket links and demand types. */
+    public function getBacklogWorkPackages(int $userId, array $statusIds): array
+    {
+        if ($userId <= 0 || $statusIds === []) return [];
+        return $this->backlogCollection('work_packages', [
+            ['responsible' => ['operator' => '=', 'values' => [(string) $userId]]],
+            ['status' => ['operator' => '=', 'values' => array_map('strval', $statusIds)]],
+        ]);
+    }
+
+    /** Sum only this token owner's entries, never the WP's shared spentTime. */
+    public function getBacklogMinutes(int $userId, array $workPackageIds): array
+    {
+        $totals = array_fill_keys($workPackageIds, 0);
+        $seen = [];
+        foreach (array_chunk($workPackageIds, 25) as $ids) {
+            $entries = $this->backlogCollection('time_entries', [
+                ['user_id' => ['operator' => '=', 'values' => [(string) $userId]]],
+                ['entity_type' => ['operator' => '=', 'values' => ['WorkPackage']]],
+                ['entity_id' => ['operator' => '=', 'values' => array_map('strval', $ids)]],
+            ]);
+            foreach ($entries as $entry) {
+                $id = (int) ($entry['id'] ?? 0);
+                $href = (string) ($entry['_links']['entity']['href'] ?? $entry['_links']['workPackage']['href'] ?? '');
+                if ($id <= 0 || isset($seen[$id]) || $this->linkedResourceId($entry, 'user') !== $userId
+                    || !preg_match('~/work_packages/(\d+)$~', $href, $match)) continue;
+                $wpId = (int) $match[1];
+                if (!array_key_exists($wpId, $totals)) continue;
+                $duration = (string) ($entry['hours'] ?? '');
+                if (!preg_match('/^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$/', $duration, $parts)) {
+                    throw new RuntimeException('Duração de tempo não reconhecida.');
+                }
+                $totals[$wpId] += (float) ($parts[1] ?? 0) * 60 + (float) ($parts[2] ?? 0) + (float) ($parts[3] ?? 0) / 60;
+                $seen[$id] = true;
+            }
+        }
+        return array_map(static fn($minutes): int => (int) round($minutes), $totals);
+    }
+
+    private function backlogCollection(string $resource, array $filters): array
+    {
+        $rows = [];
+        for ($page = 1; $page <= 1000; $page++) {
+            $collection = $this->request('GET', $resource . '?' . http_build_query([
+                'filters' => json_encode($filters, JSON_THROW_ON_ERROR),
+                'pageSize' => 25, 'offset' => $page,
+                'sortBy' => json_encode([['id', 'asc']], JSON_THROW_ON_ERROR),
+            ], '', '&', PHP_QUERY_RFC3986));
+            $elements = $collection['_embedded']['elements'] ?? null;
+            if (!is_array($elements)) throw new RuntimeException('Resposta incompleta do OpenProject.');
+            $before = count($rows);
+            foreach ($elements as $element) {
+                if (is_array($element) && (int) ($element['id'] ?? 0) > 0) $rows[(int) $element['id']] = $element;
+            }
+            $total = $collection['total'] ?? $collection['_meta']['total'] ?? null;
+            $size = max(1, (int) ($collection['pageSize'] ?? 25));
+            if ($elements === [] || (is_numeric($total) && count($rows) >= (int) $total)
+                || (!is_numeric($total) && count($elements) < $size)) return array_values($rows);
+            if (count($rows) === $before) throw new RuntimeException('Paginação repetida no OpenProject.');
+        }
+        throw new RuntimeException('A consulta excedeu o limite de páginas.');
+    }
+
     public function getTimeEntryActivities(array $workPackageIds = []): array
     {
         $activities = [];
