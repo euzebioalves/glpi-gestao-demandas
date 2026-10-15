@@ -114,7 +114,10 @@ final class LegacyReconciliationService
             $ticket = $this->ticket($ticketId);
             if ($ticket === null || (!$all && in_array((int) $ticket->fields['status'], [Ticket::SOLVED, Ticket::CLOSED], true))) continue;
             foreach ($ids ?: [0] as $wpId) {
-                $link = $wpId > 0 ? TicketDemand::findByWorkPackage($wpId) : null;
+                $links = $wpId > 0 ? TicketDemand::findAllByWorkPackage($wpId) : [];
+                $ownLink = TicketDemand::findByWorkPackage($wpId, $ticketId);
+                $otherLinks = array_values(array_filter($links, static fn($l) => (int) $l['tickets_id'] !== $ticketId));
+                $link = $otherLinks[0] ?? $ownLink;
                 $state = 'ready';
                 $sourceReferences = [];
                 $hiddenReferences = 0;
@@ -126,6 +129,8 @@ final class LegacyReconciliationService
                 $existingReference = $link === null ? null : $this->ticketReference((int) $link['tickets_id']);
                 $reasons = [];
                 if (count($owners[$wpId] ?? []) > 1) $reasons[] = 'multiple_references';
+                $ticketWps = array_unique(array_merge(array_values($ids), array_column(TicketDemand::findAllByTicket($ticketId), 'openproject_work_package_id')));
+                if (count($ticketWps) > 1) $reasons[] = 'multiple_work_packages';
                 $linkedElsewhere = $link !== null && (int) $link['tickets_id'] !== $ticketId;
                 if ($linkedElsewhere) $reasons[] = 'linked_elsewhere';
                 // This inspection is necessary only for a possible transfer.
@@ -133,6 +138,7 @@ final class LegacyReconciliationService
                 $timeEntries = $linkedElsewhere ? $this->linkedTimeEntriesCount((int) $link['tickets_id'], $wpId) : 0;
                 $hasPublicData = $linkedElsewhere && (trim((string) ($link['public_phase'] ?? '')) !== '' || trim((string) ($link['public_message'] ?? '')) !== '');
                 $canTransfer = $reasons === ['linked_elsewhere']
+                    && count($links) === 1
                     && $link !== null
                     && ($existingReference['visible'] ?? false) === true
                     && ($existingReference['can_update'] ?? false) === true
@@ -141,9 +147,9 @@ final class LegacyReconciliationService
                     && !$hasPublicData
                     && Profile::has(Profile::MANAGE_RECONCILIATION_CONFLICTS);
                 if ($wpId <= 0) $state = 'invalid';
-                elseif ($reasons !== []) $state = 'conflict';
-                elseif ($link !== null) $state = 'linked';
                 elseif (!$ticket->can($ticketId, UPDATE)) $state = 'readonly';
+                elseif ($ownLink !== null) $state = 'linked';
+                elseif ($reasons !== []) $state = 'conflict';
                 $rows[] = [
                     'ticket_id' => $ticketId,
                     'ticket_name' => (string) $ticket->fields['name'],
@@ -157,6 +163,8 @@ final class LegacyReconciliationService
                         'time_entries' => $timeEntries,
                         'has_public_data' => $hasPublicData,
                         'can_transfer' => $canTransfer,
+                        'can_reconcile' => $ticket->can($ticketId, UPDATE) && Profile::has(Profile::MANAGE_RECONCILIATION_CONFLICTS),
+                        'existing_links' => array_map(fn($l) => $this->ticketReference((int) $l['tickets_id']), $links),
                     ],
                 ];
             }
@@ -165,7 +173,7 @@ final class LegacyReconciliationService
         return $rows;
     }
 
-    public function reconcile(int $ticketId, int $wpId): string
+    public function reconcile(int $ticketId, int $wpId, string $reason = ''): string
     {
         self::checkAccess();
         $ticket = $this->ticket($ticketId);
@@ -176,10 +184,12 @@ final class LegacyReconciliationService
         foreach ($this->preview(true, $ticketId) as $row) {
             if ($row['wp_id'] === $wpId) $candidate = $row;
         }
-        if ($candidate === null || !in_array($candidate['state'], ['ready', 'linked'], true)) {
+        if ($candidate === null || !in_array($candidate['state'], ['ready', 'linked', 'conflict'], true)) {
             throw new DomainException('Referência ausente, inválida ou conflitante. Revise Atividade DevOps antes de conciliar.');
         }
         if ($candidate['state'] === 'linked') return 'already_linked';
+        $reason = trim($reason);
+        $this->assertDecision($candidate, $reason);
 
         try {
             // Fixed API endpoint, using the personal token; the field URL is never fetched.
@@ -205,13 +215,18 @@ final class LegacyReconciliationService
         if ($fresh === null || !$fresh->can($ticketId, UPDATE)) throw new \Glpi\Exception\Http\AccessDeniedHttpException();
         $valid = false;
         foreach ($this->preview(true, $ticketId) as $row) {
-            if ($row['wp_id'] === $wpId && in_array($row['state'], ['ready', 'linked'], true)) $valid = true;
+            if ($row['wp_id'] === $wpId && in_array($row['state'], ['ready', 'linked', 'conflict'], true)) {
+                if ($row['state'] === 'linked') return 'already_linked';
+                $this->assertDecision($row, $reason);
+                $candidate = $row;
+                $valid = true;
+            }
         }
         if (!$valid) throw new DomainException('A referência mudou durante a validação. Atualize a prévia.');
         $DB->beginTransaction();
         try {
-            // Do not use saveLink(): its upsert can move an existing WP to another ticket.
-            $existing = iterator_to_array($DB->request(['FROM' => 'glpi_plugin_demandas_links', 'WHERE' => ['openproject_work_package_id' => $wpId]]));
+            // Never move or overwrite another pair when sharing a WP.
+            $existing = iterator_to_array($DB->request(['FROM' => 'glpi_plugin_demandas_links', 'WHERE' => ['openproject_work_package_id' => $wpId, 'tickets_id' => $ticketId]]));
             if ($existing !== []) {
                 if ((int) reset($existing)['tickets_id'] === $ticketId) {
                     $DB->rollBack();
@@ -220,6 +235,9 @@ final class LegacyReconciliationService
                 throw new DomainException('A WP já possui outro vínculo. Nenhum vínculo foi alterado.');
             }
             $now = date('Y-m-d H:i:s');
+            $details['reconciliation_reason'] = $reason;
+            $details['reconciliation_user_id'] = (int) Session::getLoginUserID();
+            $details['reconciliation_warnings'] = $candidate['conflict']['reasons'];
             $ok = $DB->insert('glpi_plugin_demandas_links', [
                 'tickets_id' => $ticketId, 'openproject_work_package_id' => $wpId,
                 'openproject_project_id' => $projectId, 'openproject_project_name' => mb_substr($details['project'], 0, 255),
@@ -242,8 +260,25 @@ final class LegacyReconciliationService
             return 'linked';
         } catch (\Throwable) {
             $DB->rollBack();
+            if (TicketDemand::findByWorkPackage($wpId, $ticketId) !== null) return 'already_linked';
             throw new DomainException('Não foi possível gravar a conciliação. Atualize a prévia e tente novamente; vínculos existentes foram preservados.');
         }
+    }
+
+    private function assertDecision(array $candidate, string $reason): void
+    {
+        if (mb_strlen($reason) > 2000) throw new DomainException('A justificativa deve ter no máximo 2.000 caracteres.');
+        if ($candidate['state'] === 'conflict') {
+            Profile::checkRight(Profile::MANAGE_RECONCILIATION_CONFLICTS);
+            if (mb_strlen($reason) < 10) throw new DomainException('Para confirmar múltiplos vínculos, informe uma justificativa com 10 a 2.000 caracteres.');
+        }
+    }
+
+    public static function ticketReturnUrl(int $ticketId): ?string
+    {
+        self::checkAccess();
+        if ((new self())->ticket($ticketId) === null) return null;
+        return '/front/ticket.form.php?id=' . $ticketId . '&forcetab=' . rawurlencode(TicketDemand::class . '$1');
     }
 
     /**

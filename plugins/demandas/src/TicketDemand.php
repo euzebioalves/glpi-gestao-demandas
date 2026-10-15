@@ -68,20 +68,27 @@ final class TicketDemand extends CommonDBTM
         return $rows;
     }
 
-    public static function findByWorkPackage(int $workPackageId): ?array
+    public static function findByWorkPackage(int $workPackageId, ?int $ticketId = null): ?array
+    {
+        $links = self::findAllByWorkPackage($workPackageId);
+        if ($ticketId !== null) {
+            foreach ($links as $link) if ((int) $link['tickets_id'] === $ticketId) return $link;
+            return null;
+        }
+        // Legacy callers must not silently pick a ticket when the WP is shared.
+        return count($links) === 1 ? $links[0] : null;
+    }
+
+    public static function findAllByWorkPackage(int $workPackageId): array
     {
         $db = \DBConnection::getReadConnection();
         $iterator = $db->request([
             'FROM' => 'glpi_plugin_demandas_links',
             'WHERE' => ['openproject_work_package_id' => $workPackageId],
-            'LIMIT' => 1,
+            'ORDER' => 'id',
         ]);
 
-        foreach ($iterator as $row) {
-            return $row;
-        }
-
-        return null;
+        return array_values(iterator_to_array($iterator));
     }
 
     public static function saveLink(
@@ -110,7 +117,7 @@ final class TicketDemand extends CommonDBTM
             'work_package_details_json' => json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 
-        $existing = self::findByWorkPackage($workPackageId);
+        $existing = self::findByWorkPackage($workPackageId, $ticketId);
         if ($existing !== null) {
             $db->update('glpi_plugin_demandas_links', $values, ['id' => (int) $existing['id']]);
         } else {
@@ -168,7 +175,7 @@ final class TicketDemand extends CommonDBTM
 
         echo "<div class='card m-3'><div class='card-header'><h3 class='card-title'>" . htmlspecialchars(self::getTypeName()) . "</h3></div><div class='card-body'>";
         if ($showTechnical && Profile::has(Profile::CREATE_WORK_PACKAGE) && $ticket->can($ticket->getID(), UPDATE)) {
-            echo "<p><a class='btn btn-outline-primary' href='/plugins/demandas/front/legacy-reconciliation.php?ticket_scope=all&amp;ticket=" . (int) $ticket->getID() . "'>Conciliar WP existente de Atividade DevOps</a></p>";
+            echo "<p><a class='btn btn-outline-primary' href='/plugins/demandas/front/legacy-reconciliation.php?ticket_scope=all&amp;origin_ticket=" . (int) $ticket->getID() . "&amp;ticket=" . (int) $ticket->getID() . "'>Conciliar WP existente de Atividade DevOps</a></p>";
         }
 
         if ($links !== []) {
@@ -328,7 +335,7 @@ final class TicketDemand extends CommonDBTM
      */
     private static function historyFallbackDetails(int $ticketId, int $workPackageId = 0): array
     {
-        $link = $workPackageId > 0 ? self::findByWorkPackage($workPackageId) : self::findByTicket($ticketId);
+        $link = $workPackageId > 0 ? self::findByWorkPackage($workPackageId, $ticketId) : self::findByTicket($ticketId);
         if ($link === null) {
             return [];
         }
@@ -350,7 +357,7 @@ final class TicketDemand extends CommonDBTM
                 $db = \DBConnection::getReadConnection();
                 $db->update('glpi_plugin_demandas_links', [
                     'work_package_details_json' => json_encode($details, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                ], ['openproject_work_package_id' => $wpId]);
+                ], ['openproject_work_package_id' => $wpId, 'tickets_id' => $ticketId]);
             }
             return $details;
         } catch (\Throwable) {
@@ -381,12 +388,13 @@ final class TicketDemand extends CommonDBTM
             'responsible' => 'Encarregado',
             'customer' => 'Cliente',
             'creation_reason' => 'Motivo da nova Work Package',
+            'reconciliation_reason' => 'Justificativa da conciliação',
             'created_at' => 'Criada em',
             'updated_at' => 'Atualizada em',
         ];
         echo "<div class='row g-3'>";
         foreach ($labels as $key => $label) {
-            if ($key === 'creation_reason' && empty($details[$key])) {
+            if (in_array($key, ['creation_reason', 'reconciliation_reason'], true) && empty($details[$key])) {
                 continue;
             }
             $value = trim((string) ($details[$key] ?? ''));

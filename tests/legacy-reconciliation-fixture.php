@@ -67,6 +67,8 @@ if ($input['mode'] === 'seed') {
         $col = $kind === 'internal' ? 'plugin_fields_devops' : 'devops';
         $DB->updateOrInsert($table, [$col => $url, 'itemtype' => 'Ticket'], ['items_id' => $tid]);
     }
+    // Reset only this suite's transferred pair; saveLink no longer moves links.
+    $DB->delete('glpi_plugin_demandas_links', ['tickets_id'=>$tickets['transfer_target'], 'openproject_work_package_id'=>91008]);
     TicketDemand::saveLink($tickets['transfer_source'], 91008, 1, 'Projeto QA', 'qa', 1, 'User Story', 'Novo');
     $DB->update('glpi_plugin_demandas_links', ['public_phase' => '', 'public_message' => null], ['openproject_work_package_id' => 91008]);
     $DB->delete('glpi_plugin_demandas_events', ['openproject_work_package_id'=>91008,'event_type'=>'legacy_link_transferred','source'=>'legacy_reconciliation']);

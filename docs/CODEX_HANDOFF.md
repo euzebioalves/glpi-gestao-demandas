@@ -1,5 +1,13 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.27.0 — conciliação de múltiplos vínculos
+
+A tabela de links agora usa `unicity_ticket_work_package(tickets_id, openproject_work_package_id)` e índice não único por WP. A migração adiciona os índices e remove `unicity_work_package` em um ALTER, sem regravar linhas. `TicketDemand::saveLink()` atualiza somente o par. `findByWorkPackage($wp, $ticket)` resolve um par; sem ticket, retorna null quando houver ambiguidade. Use `findAllByWorkPackage()` para percorrer todos os vínculos. O webhook sincroniza todos; histórico/cache e sincronização manual continuam separados por chamado. Não copiar fases, históricos ou tempo de um vínculo para outro.
+
+`LegacyReconciliationService` mantém avisos de compartilhamento e de múltiplas WPs, mas permite confirmação com `MANAGE_RECONCILIATION_CONFLICTS` e justificativa de 10–2.000 caracteres, além dos direitos anteriores. O evento do novo par registra usuário, justificativa e motivos. Pares já existentes não são regravados. A transferência antiga continua excepcional, somente quando há um único vínculo seguro; a adição justificada preserva todos os anteriores. Referências inacessíveis não expõem IDs ou títulos.
+
+O parâmetro numérico `origin_ticket` acompanha filtros, paginação e POST. O retorno é construído internamente com `forcetab=GlpiPlugin\\Demandas\\TicketDemand$1` após checar leitura e entidade; não recebe URL arbitrária. Sem origem, o fluxo permanece na listagem geral. Consulte `RELEASE_0.27.0.md` e `tests/reconciliation-many.cjs`.
+
 ## Atualização 0.26.0 — Backlog pessoal
 
 `BacklogHub` exige `VIEW_TECHNICAL` e `VIEW_BACKLOG`; salvar também exige `CONFIGURE_BACKLOG`, POST e CSRF nativo. `BacklogService` usa exclusivamente a identidade do token pessoal para filtrar responsável, sem restringir tipos de WP nem depender dos vínculos locais. O endpoint não aceita um usuário-alvo. Preferências em `glpi_plugin_demandas_backlog_preferences` são únicas por usuário GLPI e só são gravadas pelo POST explícito. IDs de status removidos são preservados até a pessoa desmarcá-los. Sem preferência salva, são apresentados os status abertos do catálogo, priorizando Novo, Em Especificação e Em Dúvida. Nenhum direito novo é concedido automaticamente.
