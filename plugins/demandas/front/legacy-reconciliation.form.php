@@ -5,6 +5,8 @@ use GlpiPlugin\Demandas\LegacyReconciliationService;
 
 LegacyReconciliationService::checkAccess();
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Glpi\Exception\Http\BadRequestHttpException();
+$originId = is_scalar($_POST['origin_ticket'] ?? null) ? max(0, (int) $_POST['origin_ticket']) : 0;
+$returnUrl = $originId > 0 ? LegacyReconciliationService::ticketReturnUrl($originId) : null;
 $service = new LegacyReconciliationService();
 if (($_POST['action'] ?? '') === 'transfer') {
     $pair = is_string($_POST['pair'] ?? null) ? $_POST['pair'] : '';
@@ -30,7 +32,8 @@ if (($_POST['action'] ?? '') === 'transfer') {
     foreach (array_unique(array_filter($pairs, 'is_string')) as $pair) {
         if (!preg_match('/^([1-9][0-9]*):([1-9][0-9]*)$/', $pair, $m)) continue;
         try {
-            $result = $service->reconcile((int) $m[1], (int) $m[2]);
+            $reason = is_array($_POST['reasons'] ?? null) && is_string($_POST['reasons'][$pair] ?? null) ? $_POST['reasons'][$pair] : '';
+            $result = $service->reconcile((int) $m[1], (int) $m[2], $reason);
             Session::addMessageAfterRedirect($result === 'linked' ? "Chamado #{$m[1]} vinculado à WP #{$m[2]}. Nenhuma WP criada." : 'Vínculo já existente, preservado sem duplicação.', true, INFO);
         } catch (Glpi\Exception\Http\AccessDeniedHttpException $e) {
             throw $e;
@@ -42,4 +45,5 @@ if (($_POST['action'] ?? '') === 'transfer') {
     }
     }
 }
+if ($returnUrl !== null) Html::redirect($returnUrl);
 Html::redirect('/plugins/demandas/front/legacy-reconciliation.php?ticket_scope=' . (($_POST['ticket_scope'] ?? '') === 'all' ? 'all' : 'open'));

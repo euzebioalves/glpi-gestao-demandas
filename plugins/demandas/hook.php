@@ -117,7 +117,8 @@ function plugin_demandas_install(): bool
             `date_mod` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             KEY `idx_ticket` (`tickets_id`),
-            UNIQUE KEY `unicity_work_package` (`openproject_work_package_id`),
+            UNIQUE KEY `unicity_ticket_work_package` (`tickets_id`,`openproject_work_package_id`),
+            KEY `idx_work_package` (`openproject_work_package_id`),
             KEY `idx_last_synced_at` (`last_synced_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
     );
@@ -127,8 +128,17 @@ function plugin_demandas_install(): bool
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ADD COLUMN IF NOT EXISTS `openproject_project_identifier` varchar(255) DEFAULT NULL AFTER `openproject_project_name`');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ADD COLUMN IF NOT EXISTS `openproject_type_name` varchar(255) DEFAULT NULL AFTER `openproject_type_id`');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ADD COLUMN IF NOT EXISTS `work_package_details_json` longtext DEFAULT NULL AFTER `last_synced_at`');
-    // Migração 0.12.0: um chamado pode possuir várias Work Packages. A WP
-    // continua globalmente única, mas tickets_id deixa de ser chave única.
+    // Migração 0.27.0: preserva linhas/IDs/históricos e torna único o par.
+    $indexes = [];
+    foreach ($db->request(['FROM' => 'information_schema.STATISTICS', 'WHERE' => [
+        'TABLE_SCHEMA' => $db->dbdefault, 'TABLE_NAME' => 'glpi_plugin_demandas_links',
+    ]]) as $index) $indexes[$index['INDEX_NAME']] = true;
+    $clauses = [];
+    if (!isset($indexes['unicity_ticket_work_package'])) $clauses[] = 'ADD UNIQUE KEY `unicity_ticket_work_package` (`tickets_id`,`openproject_work_package_id`)';
+    if (!isset($indexes['idx_work_package'])) $clauses[] = 'ADD KEY `idx_work_package` (`openproject_work_package_id`)';
+    if (isset($indexes['unicity_work_package'])) $clauses[] = 'DROP INDEX `unicity_work_package`';
+    if ($clauses !== []) $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ' . implode(', ', $clauses));
+    // Migração 0.12.0: tickets_id deixa de ser chave única.
     $ticketUniqueIndex = $db->request([
         'FROM' => 'information_schema.STATISTICS',
         'WHERE' => [

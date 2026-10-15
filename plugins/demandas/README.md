@@ -2,6 +2,16 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.27.0
+
+- retorna à aba **Evolução da Demanda** quando a conciliação começa no chamado;
+- permite múltiplos chamados na mesma WP e múltiplas WPs no chamado, sem remover os vínculos anteriores;
+- exige **Resolver conflitos de conciliação de Work Packages** e justificativa de 10 a 2.000 caracteres nos casos de múltiplos vínculos;
+- mantém unicidade por par chamado–WP e auditoria individual, preservando históricos e entradas de tempo;
+- sincroniza todos os chamados vinculados à WP no webhook; consultas e cache do histórico respeitam o par chamado–WP.
+
+Veja [RELEASE_0.27.0.md](../../docs/RELEASE_0.27.0.md).
+
 ## Versão 0.26.0
 
 - adiciona **Backlog** ao menu Gerência: WPs de qualquer tipo sob responsabilidade do usuário do token pessoal, agrupadas por status;

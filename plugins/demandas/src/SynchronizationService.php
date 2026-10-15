@@ -10,12 +10,19 @@ final class SynchronizationService
 {
     public function synchronizeByWorkPackage(int $workPackageId, string $source = 'webhook'): array
     {
-        $link = TicketDemand::findByWorkPackage($workPackageId);
-        if ($link === null) {
+        $links = TicketDemand::findAllByWorkPackage($workPackageId);
+        if ($links === []) {
             throw new RuntimeException('A Work Package recebida não possui vínculo no GLPI.');
         }
 
-        return $this->synchronizeLink($link, $source);
+        $results = [];
+        $failed = false;
+        foreach ($links as $link) {
+            try { $results[] = $this->synchronizeLink($link, $source); }
+            catch (\Throwable) { $failed = true; }
+        }
+        if ($failed) throw new RuntimeException('Não foi possível sincronizar todos os vínculos da Work Package. A operação pode ser repetida.');
+        return $results[0] + ['links_count' => count($results)];
     }
 
     public function synchronize(int $ticketId, string $source = 'manual'): array
