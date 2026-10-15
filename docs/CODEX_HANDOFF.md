@@ -1,5 +1,11 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.26.0 — Backlog pessoal
+
+`BacklogHub` exige `VIEW_TECHNICAL` e `VIEW_BACKLOG`; salvar também exige `CONFIGURE_BACKLOG`, POST e CSRF nativo. `BacklogService` usa exclusivamente a identidade do token pessoal para filtrar responsável, sem restringir tipos de WP nem depender dos vínculos locais. O endpoint não aceita um usuário-alvo. Preferências em `glpi_plugin_demandas_backlog_preferences` são únicas por usuário GLPI e só são gravadas pelo POST explícito. IDs de status removidos são preservados até a pessoa desmarcá-los. Sem preferência salva, são apresentados os status abertos do catálogo, priorizando Novo, Em Especificação e Em Dúvida. Nenhum direito novo é concedido automaticamente.
+
+O cliente pagina WPs e entradas de tempo, valida usuário/entidade ao somar e não utiliza `spentTime` da WP, que inclui outras pessoas. Uma falha na leitura de horas produz valor indisponível. Dados da WP não são persistidos nem publicados em chamados; detalhes usam texto, não HTML da API. A interface não movimenta cards entre status. Consulte `RELEASE_0.26.0.md` e `tests/backlog.cjs`.
+
 ## Atualização 0.25.0 — coluna nativa de Work Package
 
 `TicketSearch` adiciona a opção estável `925001` ao itemtype `Ticket` pelos hooks automáticos `getAddSearchOptionsNew`, `addWhere` e `giveItem`. Não mudar esse ID: preferências e buscas salvas o persistem. A opção e o renderizador exigem `VIEW_TECHNICAL`; a renderização confirma também `Ticket::can(READ)`. A consulta principal mantém as restrições nativas de entidade/chamado. Filtros usam subconsultas sobre os vínculos, sem restringir o join de exibição: buscar uma WP mostra todas as WPs do chamado e filtros negativos excluem o chamado inteiro se qualquer WP corresponder. Não aplicar filtros ao agregado que contém IDs internos dos vínculos.

@@ -90,6 +90,14 @@ function plugin_demandas_install(): bool
     $db = $DB; // O instalador deve usar a conexão de escrita do GLPI.
     plugin_demandas_migrate_timestamps($db);
 
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_backlog_preferences` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT,
+        `users_id` int unsigned NOT NULL,
+        `status_ids_json` text NOT NULL,
+        `date_mod` timestamp NULL DEFAULT NULL,
+        PRIMARY KEY (`id`), UNIQUE KEY `uniq_user` (`users_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     $db->doQuery(
         "CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_links` (
             `id` int unsigned NOT NULL AUTO_INCREMENT,
@@ -461,6 +469,7 @@ function plugin_demandas_install(): bool
 function plugin_demandas_uninstall(): bool
 {
     $db = DBConnection::getReadConnection();
+    $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_backlog_preferences`');
     foreach (['operational_actions','operational_findings','operational_runs','work_package_notifications','work_package_monitors','user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
         $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_' . $table . '`');
     }
