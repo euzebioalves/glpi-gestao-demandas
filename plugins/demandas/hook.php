@@ -128,6 +128,7 @@ function plugin_demandas_install(): bool
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ADD COLUMN IF NOT EXISTS `openproject_project_identifier` varchar(255) DEFAULT NULL AFTER `openproject_project_name`');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ADD COLUMN IF NOT EXISTS `openproject_type_name` varchar(255) DEFAULT NULL AFTER `openproject_type_id`');
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ADD COLUMN IF NOT EXISTS `work_package_details_json` longtext DEFAULT NULL AFTER `last_synced_at`');
+    $db->doQuery('ALTER TABLE `glpi_plugin_demandas_links` ADD COLUMN IF NOT EXISTS `release_details_json` longtext DEFAULT NULL AFTER `work_package_details_json`');
     // Migração 0.27.0: preserva linhas/IDs/históricos e torna único o par.
     $indexes = [];
     foreach ($db->request(['FROM' => 'information_schema.STATISTICS', 'WHERE' => [

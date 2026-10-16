@@ -237,6 +237,7 @@ final class LegacyReconciliationService
             $now = date('Y-m-d H:i:s');
             $details['reconciliation_reason'] = $reason;
             $details['reconciliation_user_id'] = (int) Session::getLoginUserID();
+            $details += IntegrationActor::snapshot();
             $details['reconciliation_warnings'] = $candidate['conflict']['reasons'];
             $ok = $DB->insert('glpi_plugin_demandas_links', [
                 'tickets_id' => $ticketId, 'openproject_work_package_id' => $wpId,
@@ -318,7 +319,7 @@ final class LegacyReconciliationService
             if (!$updated || $DB->affectedRows() !== 1) {
                 throw new DomainException('O vínculo mudou durante a operação. Atualize a prévia.');
             }
-            $details = json_encode(['from_ticket_id' => $previousTicketId, 'to_ticket_id' => $ticketId, 'work_package_id' => $wpId], JSON_THROW_ON_ERROR);
+            $details = json_encode(['from_ticket_id' => $previousTicketId, 'to_ticket_id' => $ticketId, 'work_package_id' => $wpId] + IntegrationActor::snapshot(), JSON_THROW_ON_ERROR);
             foreach ([$previousTicketId, $ticketId] as $eventTicketId) {
                 $logged = $DB->insert('glpi_plugin_demandas_events', [
                     'tickets_id' => $eventTicketId,

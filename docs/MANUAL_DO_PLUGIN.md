@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.24.0** · Compatível com GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.28.0** · Compatível com GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -124,7 +124,30 @@ Quando houver conflito, clique em **Detalhes**. O modal informa se a mesma WP ap
 - O histórico técnico é visível somente a perfis autorizados.
 - Clientes com somente visão pública não devem ver ID, link, status técnico ou responsáveis da WP.
 
+#### Autor do vínculo e publicações SGE
+
+A grade **Work Packages vinculadas** apresenta **Vinculado por**. O **Histórico da integração** e seu modal mostram **Usuário GLPI**. O plugin resolve nomes para conciliações antigas que guardavam o ID. Quando não há identidade registrada, informa **Não registrado**; eventos de webhook indicam automação.
+
+1. Na aba **Evolução da Demanda**, clique em **TASKs e versões** na WP desejada.
+2. O modal abre a última consulta salva. Para buscar dados atuais, clique em **Consultar agora**. É necessário token pessoal, **Visualizar dados técnicos do OpenProject**, **Executar sincronização manual** e permissão nativa de ler/alterar o chamado na entidade ativa.
+3. Aguarde a descoberta e a consulta por etapas. São lidas subtarefas imediatas e relações diretas, incluindo tarefas concluídas, conforme o acesso do token. Outros tipos relacionados também aparecem com seu tipo explícito; descendentes de níveis adicionais não são percorridos.
+4. Confira o número/link, título, tipo, relação, status e as publicações de cada tarefa. O texto **Incluída na build v1.112.0-beta.198 (Beta (homologação))**, por exemplo, identifica homologação; **v1.112.0 (Produção)** identifica produção. Referência a pull request sem esse comentário não é publicação. Ambiente não reconhecido fica explicitamente não informado.
+5. A grade exibe as builds encontradas e a data da consulta. Reabra a aba para ver o evento correspondente no histórico, com autor e versões. Sincronizações posteriores preservam a data da consulta de publicações que utilizaram.
+
+Uma publicação em uma TASK não confirma a entrega de todas as TASKs ou da WP inteira. **Nenhuma publicação identificada** significa que a consulta completa não encontrou o padrão nos comentários acessíveis; não comprova ausência de deploy. O plugin não consulta o GitHub privado e não confirma o estado real dos ambientes. A consulta é manual; use **Consultar agora** após novas publicações. Abrir a aba, sincronizar status ou receber webhook não refaz essa varredura.
+
+Falhas de rede, autenticação, acesso, paginação ou expiração preservam o último resultado completo. A consulta aceita até 500 tarefas e 1.000 páginas por coleção, com prazo de 15 minutos. Se o acesso a uma tarefa falhar, revise o token e repita; não há gravação parcial. Somente versões, datas, identificadores de comentários e metadados das tarefas são salvos, sem o texto integral dos comentários. O recurso não modifica o OpenProject, fases públicas, acompanhamentos ou horas.
+
+![Consulta fictícia de TASKs e builds de homologação/produção](assets/manual/sge-publications-1440-light.png)
+
+Captura obtida na base isolada pelo teste `tests/publications.cjs`.
+
+Em telas pequenas, as informações das TASKs aparecem empilhadas, com rolagem apenas dentro do modal.
+
+![Detalhes de uma TASK em tela pequena — dados fictícios](assets/manual/sge-publications-390-light.png)
+
 ## 7. Monitoramento de Work Packages
+
 
 Em **Gerência > Monitoramento de Work Packages > Minhas Work Packages**, o usuário autorizado pode consultar User Stories, Épicos e Bugs abertos dos quais é responsável no OpenProject.
 
@@ -193,6 +216,8 @@ Veja [tests/e2e/README.md](../tests/e2e/README.md) para preparar o ambiente e ge
 ## 10. Visão Gerencial de Demandas
 
 Acesse **Gerência > Visão Gerencial de Demandas** com a permissão própria. O painel apresenta cobertura de WPs, demandas sem documentação, envelhecimento, sincronização e distribuições por classificação, cliente, status, fase, projeto e tipo.
+
+A legenda de **Cobertura no OpenProject** aparece abaixo do gráfico. Em **Clientes com maior demanda**, os rótulos exibem o segundo nível da entidade (ex.: `PONTO ID > GOIÂNIA-GO` aparece como `GOIÂNIA-GO`). As contagens e o destino do filtro continuam correspondendo à entidade original; entidades sem segundo nível mantêm seu nome.
 
 O escopo inicial é **Abertos**, excluindo chamados solucionados e fechados. Para consultar o histórico completo, abra **Filtros estratégicos**, selecione **Todos** em **Escopo dos chamados** e aplique os filtros. Cards, gráficos, grade e exportações PDF/Excel usam o mesmo escopo. A cobertura inclui os vínculos antigos após a conciliação descrita na seção 6.2.
 

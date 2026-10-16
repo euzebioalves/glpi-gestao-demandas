@@ -309,6 +309,18 @@ final class OpenProjectClient
         return $this->request('GET', 'work_packages/' . $workPackageId);
     }
 
+    /** One bounded read per browser step; never follow URLs supplied by comments. */
+    public function getPublicationPage(string $kind, int $wpId, int $page): array
+    {
+        if ($wpId <= 0 || $page < 1 || $page > 1000 || !in_array($kind, ['relations', 'activities'], true)) {
+            throw new RuntimeException('Consulta inválida.');
+        }
+        $query = ['pageSize' => 25, 'offset' => $page];
+        if ($kind === 'relations') $query['filters'] = json_encode([['involved' => ['operator' => '=', 'values' => [(string) $wpId]]]], JSON_THROW_ON_ERROR);
+        $resource = $kind === 'relations' ? 'relations' : 'work_packages/' . $wpId . '/activities';
+        return $this->request('GET', $resource . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986));
+    }
+
     /**
      * Searches only the Work Packages visible to the owner of the current
      * personal token. It is intentionally separate from the GLPI-linked
