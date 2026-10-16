@@ -2,6 +2,18 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.29.0
+
+- adiciona a aba **Bugs e Melhorias** com seleção explícita dos status nativos abertos do GLPI;
+- conta chamados únicos e mostra todas as WPs vinculadas mesmo ao filtrar por status de uma WP;
+- distingue todas as WPs em **Entregue**, entrega parcial e ausência de entrega, sem fechar chamados;
+- mostra alertas técnicos individuais e a data da última sincronização, sem consultas externas;
+- permite salvar a aba padrão do próprio usuário e revalida o perfil ativo em cada acesso;
+- introduz quatro permissões independentes, desabilitadas por padrão; preserva o acesso e o comportamento da visão geral;
+- atualiza manual, tutorial e testes sintéticos com capturas Playwright.
+
+Atualize sem desinstalar. A migração cria somente a tabela de preferências pessoais. Veja [RELEASE_0.29.0.md](../../docs/RELEASE_0.29.0.md).
+
 ## Versão 0.28.0
 
 - posiciona a legenda de cobertura abaixo do gráfico e mostra o segundo nível da entidade no ranking de clientes, preservando os valores de filtros e contagens;

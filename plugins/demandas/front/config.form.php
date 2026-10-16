@@ -282,6 +282,13 @@ function demandasRenderConfigurationTutorial(): void
       <li>os status iniciais e os prazos da central de pendências foram revisados, e apenas os perfis responsáveis receberam suas permissões.</li>
       <li>os feriados e dias não úteis locais foram cadastrados antes da conferência do banco de horas.</li>
     </ul>
+    <section class="mt-4">
+      <h4>Bugs e Melhorias e conferência de entregas</h4>
+      <p>Em Administração &gt; Perfis &gt; Gestão de Demandas, conceda explicitamente <strong>Acessar a aba Bugs e Melhorias</strong>, além de acesso gerencial e leitura técnica. Para os cards de entregas, conceda também <strong>Conferir entregas com chamado aberto</strong>. Os novos direitos começam desabilitados.</p>
+      <p>Na aba Bugs e Melhorias, selecione os status nativos abertos do GLPI nos filtros expandidos. A classificação usa as regras já configuradas no plugin. Solucionados, fechados, sugestões e coletores ficam fora. Cada chamado aparece uma vez, com todas as WPs e seus status, mesmo ao filtrar por uma WP.</p>
+      <p>Apenas <strong>Entregue</strong> indica conclusão. Entrega parcial ou status desconhecido exige avaliação. Confira a última sincronização; o painel usa dados locais e não encerra chamados automaticamente. “Para desenvolvimento” não é convertido em outro status GLPI.</p>
+      <p>Conceda <strong>Visualizar alerta de WPs no chamado</strong> junto com leitura técnica para exibir o bloco individual de status, sempre respeitando leitura nativa e entidade. Conceda <strong>Definir minha visão gerencial padrão</strong> para permitir que cada pessoa salve sua aba inicial no topo do painel. A escolha é revalidada pelo perfil ativo e não concede acesso adicional. Saia e entre novamente após alterar direitos.</p>
+    </section>
     <p class="form-hint mt-4 mb-0">Este tutorial é parte da configuração do plugin. Toda nova funcionalidade que altere o processo de configuração deve atualizar esta aba e o histórico do plugin.</p>
   </div>
 </div>

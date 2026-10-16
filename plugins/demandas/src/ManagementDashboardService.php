@@ -37,16 +37,45 @@ final class ManagementDashboardService
 
     public function result(array $input): array
     {
+        $input['view'] = DashboardView::resolve($input);
         $filters = $this->normalizeFilters($input);
+        if ($filters['delivery'] !== '' && ($filters['view'] !== 'bugs' || !DashboardView::canReview())) {
+            throw new \Glpi\Exception\Http\AccessDeniedHttpException();
+        }
         $allRows = $this->loadRows($filters['ticket_scope']);
+        if ($filters['view'] === 'bugs') {
+            $allRows = array_values(array_filter($allRows, static fn($row) => in_array($row['classification_kind'], ['bug', 'improvement'], true)));
+        }
         $scopeRows = array_values(array_filter($allRows, fn(array $row): bool => $this->matchesBaseFilters($row, $filters)));
+        if ($filters['view'] === 'bugs') {
+            // WP filters select tickets, never hide the other linked WPs.
+            $ids = array_fill_keys(array_column($scopeRows, 'ticket_id'), true);
+            $scopeRows = array_values(array_filter($allRows, static fn($row) => isset($ids[$row['ticket_id']])));
+        }
+        $deliveryGroups = $filters['view'] === 'bugs' ? $this->groupTickets($scopeRows) : [];
+        $deliveryCounts = ['any' => 0, 'all_delivered' => 0, 'partial' => 0];
+        foreach ($deliveryGroups as $group) {
+            if ($group['is_open'] && $group['delivery_state'] !== 'none') {
+                $deliveryCounts['any']++;
+                $deliveryCounts[$group['delivery_state']]++;
+            }
+        }
         $rows = array_values(array_filter($scopeRows, fn(array $row): bool => $this->matchesDrillDown($row, $filters)));
         $rows = $this->sortRows($rows, $filters['sort'], $filters['sort_direction']);
+        if ($filters['view'] === 'bugs') {
+            $selected = array_values(array_unique(array_column($rows, 'ticket_id')));
+            $rows = array_map(static fn($id) => $deliveryGroups[$id], $selected);
+            if ($filters['delivery'] !== '') {
+                $rows = array_values(array_filter($rows, static fn($row) => $row['is_open']
+                    && ($filters['delivery'] === 'any' ? $row['delivery_state'] !== 'none' : $row['delivery_state'] === $filters['delivery'])));
+            }
+        }
 
         return [
             'filters' => $filters,
             'rows' => $rows,
             'summary' => $this->summary($scopeRows),
+            'delivery_counts' => $filters['view'] === 'bugs' && DashboardView::canReview() ? $deliveryCounts : [],
             'breakdowns' => [
                 'age_bucket' => $this->ageBreakdown($scopeRows),
                 'glpi_status' => $this->breakdown($scopeRows, 'glpi_status_name', 'glpi_status'),
@@ -65,6 +94,29 @@ final class ManagementDashboardService
                 'client' => $this->options($allRows, 'entity_name'),
             ],
         ];
+    }
+
+    private function groupTickets(array $rows): array
+    {
+        $groups = [];
+        foreach ($rows as $row) {
+            $id = (int) $row['ticket_id'];
+            $groups[$id] ??= $row + ['work_packages' => []];
+            if ($row['has_wp']) $groups[$id]['work_packages'][(int) $row['openproject_work_package_id']] = $row;
+        }
+        foreach ($groups as &$group) {
+            $group['work_packages'] = array_values($group['work_packages']);
+            $group['delivery_state'] = DeliveryReview::state($group['work_packages']);
+        }
+        unset($group);
+        return $groups;
+    }
+
+    public static function openStatuses(): array
+    {
+        $statuses = Ticket::getAllStatusArray();
+        unset($statuses[Ticket::SOLVED], $statuses[Ticket::CLOSED]);
+        return $statuses;
     }
 
     private function loadRows(string $ticketScope): array
@@ -143,8 +195,14 @@ final class ManagementDashboardService
         $hasWp = (string) ($input['has_wp'] ?? '');
         $sort = (string) ($input['sort'] ?? 'ticket');
         $sortDirection = strtolower((string) ($input['sort_direction'] ?? 'desc'));
+        $statusInput = $input['statuses'] ?? (isset($input['statuses_set']) ? [] : array_keys(self::openStatuses()));
+        $statuses = is_array($statusInput) ? array_values(array_intersect(array_keys(self::openStatuses()), array_filter($statusInput, 'is_scalar'))) : [];
         return [
-            'ticket_scope' => ($input['ticket_scope'] ?? 'open') === 'all' ? 'all' : 'open',
+            'view' => $input['view'],
+            'statuses' => $input['view'] === 'bugs' ? $statuses : [],
+            'statuses_set' => $input['view'] === 'bugs' ? '1' : '',
+            'delivery' => in_array($input['delivery'] ?? '', ['any', 'all_delivered', 'partial'], true) ? $input['delivery'] : '',
+            'ticket_scope' => $input['view'] === 'bugs' ? 'open' : (($input['ticket_scope'] ?? 'open') === 'all' ? 'all' : 'open'),
             'date_from' => $this->date((string) ($input['date_from'] ?? '')),
             'date_to' => $this->date((string) ($input['date_to'] ?? '')),
             'has_wp' => in_array($hasWp, ['yes', 'no'], true) ? $hasWp : '',
@@ -207,6 +265,7 @@ final class ManagementDashboardService
 
     private function matchesBaseFilters(array $row, array $filters): bool
     {
+        if ($filters['view'] === 'bugs' && !in_array((int) $row['glpi_status'], $filters['statuses'], true)) return false;
         if ($filters['ticket_scope'] === 'open' && !$row['is_open']) return false;
         $opened = substr((string) $row['opened_at'], 0, 10);
         if ($filters['date_from'] !== '' && $opened < $filters['date_from']) return false;

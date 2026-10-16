@@ -1,5 +1,13 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.29.0 — Bugs e Melhorias e conferência de entregas
+
+`DashboardView` autoriza a aba focada com VIEW_DASHBOARD + VIEW_TECHNICAL + VIEW_BUGS_DASHBOARD. Conferência exige adicionalmente VIEW_DELIVERY_REVIEW. Preferência exige CONFIGURE_DASHBOARD, POST/CSRF e usa exclusivamente o usuário autenticado. `glpi_plugin_demandas_dashboard_preferences` tem unicidade por usuário; a preferência não concede direitos e retorna à visão geral quando o perfil ativo deixa de permitir a aba. Não há concessão automática de novos direitos.
+
+`ManagementDashboardService` reutiliza a classificação existente (bugs e melhorias, excluindo sugestões/coletores), força chamados abertos e aplica os status selecionados. Filtros de WP selecionam chamados; em seguida todos os vínculos desses chamados são restaurados. A grade focada e os totais de conferência deduplicam por chamado. Indicadores consideram o escopo dos filtros; drill-down e conferência detalham esse escopo na grade e exportação. A visão geral mantém seu comportamento anterior.
+
+`DeliveryReview` reconhece somente o nome Entregue (ignorando caixa/espaços externos), nunca IDs fixos ou isClosed. Status desconhecidos não contam como entrega; com outra WP entregue, o caso é parcial. Não encerrar chamados. O hook `post_itil_info_section` apresenta o alerta apenas com VIEW_TICKET_WP_ALERT + VIEW_TECHNICAL + leitura nativa/entidade. Somente dados locais; mostrar última sincronização e alerta após sete dias/sem data. Não alterar fase pública nem enviar acompanhamentos. `tests/dashboard-bugs.cjs`/fixture usam Docker descartável 8192 com dados fictícios. Veja release/manual para homologação.
+
 ## Atualização 0.28.0 — autores e publicações SGE
 
 `IntegrationActor` resolve o nome atual do GLPI pelo ID estruturado do evento (ou pelo padrão legado de conciliação), com fallback para o nome capturado. Não regrava auditoria antiga nem atribui eventos sem identidade ao usuário atual. Novas ações manuais e de conciliação capturam ID/nome; webhook é identificado como automação.
@@ -48,7 +56,7 @@ Entradas de tempo também admitem `tickets_id=0`, sem criar vínculo. `front/tim
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.28.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.29.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -57,7 +65,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.28.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.28.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.29.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 

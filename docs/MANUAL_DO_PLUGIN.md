@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.28.0** · Compatível com GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.29.0** · Compatível com GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -225,6 +225,43 @@ O escopo inicial é **Abertos**, excluindo chamados solucionados e fechados. Par
 - Os indicadores levam ao detalhamento correspondente.
 - Clique nos títulos das colunas para ordenar a grade mantendo os filtros aplicados.
 - PDF e Excel exigem a permissão de exportação e preservam os filtros e a ordenação atual.
+
+### 10.1 Aba Bugs e Melhorias
+
+Após atualizar, conceda os direitos necessários em **Administração > Perfis > Gestão de Demandas**. Nenhum direito novo é habilitado automaticamente, nem para perfis administrativos. Saia e entre novamente após alterar o perfil.
+
+| Recurso | Direitos necessários |
+|---|---|
+| Aba Bugs e Melhorias | Acessar a visão gerencial + Visualizar dados técnicos do OpenProject + Acessar a aba Bugs e Melhorias |
+| Cards e filtro de conferência | Os anteriores + Conferir entregas com chamado aberto |
+| Alerta no próprio chamado | Visualizar dados técnicos do OpenProject + Visualizar alerta de WPs no chamado + leitura nativa do chamado na entidade ativa |
+| Salvar aba padrão pessoal | Acessar a visão gerencial + Definir minha visão gerencial padrão; a aba escolhida também precisa estar autorizada |
+| PDF/Excel | Direitos de acesso à visão/conferência escolhida + Exportar a visão gerencial |
+
+1. Abra **Gerência > Visão Gerencial de Demandas > Bugs e Melhorias**.
+2. Os filtros aparecem expandidos. Marque os **Status GLPI incluídos** e aplique os filtros. Por padrão são todos os status nativos não solucionados/fechados; desmarcar todos produz zero resultados. O rótulo operacional “Para desenvolvimento” não é convertido arbitrariamente em um status GLPI.
+3. Combine cliente, classificação, datas, status WP e demais critérios. A classificação usa a mesma origem/regras do painel geral: bugs/erros técnicos e melhorias; sugestões, coletores e outras classificações ficam fora. Sem classificação válida, o chamado não entra nessa aba.
+4. Confira cobertura, demandas sem WP, idade, sincronização e demais indicadores sobre esse escopo. A grade conta cada chamado uma vez e apresenta **todas** as WPs vinculadas, mesmo se o filtro corresponder a apenas uma delas.
+
+### 10.2 Conferir entregas com chamado aberto
+
+Use os cards **Com alguma entrega**, **Todas as WPs em Entregue** e **Entrega parcial** para detalhar os chamados. Somente **Entregue** representa entrega concluída. Desenvolvido, Em testes e demais status não equivalem a entrega. Uma WP sem status conhecido não confirma conclusão; se outra estiver Entregue, o chamado fica em entrega parcial.
+
+Os indicadores mostram o escopo dos filtros; clicar em um indicador ou selecionar a conferência restringe a grade e a exportação. Por isso o total detalhado pode ser menor que o total do escopo. Os números por status de WP podem se sobrepor: um mesmo chamado pode ter WPs em diferentes situações.
+
+Confira a última sincronização de cada WP e, se necessário, use o fluxo de sincronização existente antes de decidir. Sem data ou com mais de sete dias, aparece um aviso de desatualização. **Painel gerado** é o horário de montagem da página, não de atualização do OpenProject. Nenhuma página nova consulta a API, fecha chamados, altera WPs, fases públicas ou acompanhamentos. A decisão permanece com o analista.
+
+![Bugs e Melhorias — ambiente fictício](assets/manual/dashboard-bugs-1440-light.png)
+
+### 10.3 Alerta individual e visão padrão
+
+No próprio chamado, o bloco **Status das WPs vinculadas** aparece na área de informações do atendimento para perfis autorizados, mostrando IDs com links, status e sincronização. Chamados sem vínculo não exibem o bloco. Perfis de clientes sem os direitos técnicos não recebem esse conteúdo.
+
+![Alerta individual no chamado — dados fictícios](assets/manual/dashboard-ticket-alert.png)
+
+No topo do painel, selecione **Minha visão padrão** e clique em **Salvar visão padrão**. A escolha vale apenas para seu usuário e só define qual aba abrir quando não houver uma aba explícita na URL. Links de drill-down continuam abrindo a aba indicada. A preferência não é compartilhada com outros usuários e não guarda os filtros. Se mudar para um perfil sem acesso à aba escolhida, o painel abre a visão geral; sem acesso gerencial, o acesso é negado.
+
+Capturas do manual são geradas com dados sintéticos por `tests/dashboard-bugs.cjs`, incluindo desktop, celular e temas claro/escuro. Não gere capturas com dados de produção.
 
 ## 11. Horas, ponto e ausências
 

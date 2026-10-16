@@ -23,6 +23,10 @@ final class Profile extends CommonDBTM
     public const SYNC_WORK_PACKAGE = 'demandas_sync_workpackage';
     public const MANAGE_CONFIG = 'demandas_manage_config';
     public const VIEW_DASHBOARD = 'demandas_view_dashboard';
+    public const VIEW_BUGS_DASHBOARD = 'demandas_view_bugs_dashboard';
+    public const VIEW_DELIVERY_REVIEW = 'demandas_view_delivery_review';
+    public const VIEW_TICKET_WP_ALERT = 'demandas_view_ticket_wp_alert';
+    public const CONFIGURE_DASHBOARD = 'demandas_configure_dashboard';
     public const EXPORT_DASHBOARD = 'demandas_export_dashboard';
     public const VIEW_TICKET_LOG = 'demandas_view_ticket_log';
     public const VIEW_TIME_PORTAL = 'demandas_view_time_portal';
@@ -70,6 +74,10 @@ final class Profile extends CommonDBTM
             self::SYNC_WORK_PACKAGE => 'Executar sincronização manual',
             self::MANAGE_CONFIG => 'Administrar as configurações do plugin',
             self::VIEW_DASHBOARD => 'Acessar a visão gerencial',
+            self::VIEW_BUGS_DASHBOARD => 'Acessar a aba Bugs e Melhorias (exige visão gerencial e dados técnicos)',
+            self::VIEW_DELIVERY_REVIEW => 'Conferir entregas com chamado aberto (exige aba Bugs e Melhorias)',
+            self::VIEW_TICKET_WP_ALERT => 'Visualizar alerta de WPs no chamado (exige dados técnicos)',
+            self::CONFIGURE_DASHBOARD => 'Definir minha visão gerencial padrão',
             self::EXPORT_DASHBOARD => 'Exportar a visão gerencial em PDF e Excel',
             self::VIEW_TICKET_LOG => 'Visualizar o log organizado do chamado',
             self::VIEW_TIME_PORTAL => 'Acessar o portal de horas e ponto',

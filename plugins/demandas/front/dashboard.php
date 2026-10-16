@@ -6,10 +6,19 @@ use GlpiPlugin\Demandas\ManagementDashboard;
 use GlpiPlugin\Demandas\ManagementDashboardService;
 use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\Config as DemandasConfig;
+use GlpiPlugin\Demandas\DashboardView;
+use GlpiPlugin\Demandas\DeliveryReview;
 
 DemandasProfile::checkRight(DemandasProfile::VIEW_DASHBOARD);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // GLPI's native firewall validates CSRF before this controller runs.
+    DashboardView::save($_POST['default_view'] ?? '');
+    Session::addMessageAfterRedirect('Visão padrão salva para o seu usuário.');
+    Html::redirect('/plugins/demandas/front/dashboard.php?view=' . rawurlencode((string) $_POST['default_view']));
+}
 $result = (new ManagementDashboardService())->result($_GET);
 $filters = $result['filters'];
+$bugsView = $filters['view'] === 'bugs';
 $summary = $result['summary'];
 $rows = $result['rows'];
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -79,8 +88,8 @@ $total = (int) $summary['total'];
 $coverage = demandasPercent((int) $summary['with_wp'], $total);
 $riskTotal = (int) $summary['undocumented_improvement_bug'] + (int) $summary['older_30'] + (int) $summary['stale'];
 $activeFilterCount = count(array_filter(
-    array_diff_key($filters, ['sort' => true, 'sort_direction' => true]),
-    static fn(mixed $value): bool => $value !== '' && $value !== null
+    array_diff_key($filters, ['sort' => true, 'sort_direction' => true, 'view' => true, 'statuses_set' => true]),
+    static fn(mixed $value): bool => $value !== '' && $value !== null && $value !== []
 ));
 $dashboardUpdatedAt = (new DateTimeImmutable())->format('d/m/Y H:i');
 
@@ -105,12 +114,25 @@ echo <<<'CSS'
 CSS;
 
 echo "<div class='container-fluid px-4 pb-4 demandas-exec'>";
-echo "<section class='demandas-hero'><div class='row align-items-center'><div class='col-lg'><div class='demandas-eyebrow'>Central de inteligência operacional</div><h1><i class='" . demandasH(ManagementDashboard::getIcon()) . " me-2'></i>" . demandasH(ManagementDashboard::getTypeName()) . "</h1><p>Acompanhe cobertura de documentação, riscos operacionais, evolução e concentração das demandas em uma única visão executiva.</p></div><div class='col-lg-auto demandas-hero-actions'><div class='demandas-hero-meta justify-content-lg-end mb-3'><span class='demandas-live'>Dados atualizados</span><span>{$dashboardUpdatedAt}</span></div>";
+echo "<section class='demandas-hero'><div class='row align-items-center'><div class='col-lg'><div class='demandas-eyebrow'>Central de inteligência operacional</div><h1><i class='" . demandasH(ManagementDashboard::getIcon()) . " me-2'></i>" . demandasH(ManagementDashboard::getTypeName()) . "</h1><p>Acompanhe cobertura de documentação, riscos operacionais, evolução e concentração das demandas em uma única visão executiva.</p></div><div class='col-lg-auto demandas-hero-actions'><div class='demandas-hero-meta justify-content-lg-end mb-3'><span class='demandas-live'>Painel gerado</span><span>{$dashboardUpdatedAt}</span></div>";
 if (DemandasProfile::has(DemandasProfile::EXPORT_DASHBOARD)) {
     $exportQuery = demandasQuery($filters);
     echo "<div class='btn-group'><a class='btn btn-light' href='/plugins/demandas/front/dashboard-export.php?format=pdf&amp;" . demandasH($exportQuery) . "'><i class='ti ti-file-type-pdf me-1'></i>PDF</a><a class='btn btn-light' href='/plugins/demandas/front/dashboard-export.php?format=xlsx&amp;" . demandasH($exportQuery) . "'><i class='ti ti-file-spreadsheet me-1'></i>Excel</a></div>";
 }
 echo '</div></div></section>';
+echo '<nav class="nav nav-tabs mt-3" aria-label="Visões gerenciais"><a class="nav-link' . (!$bugsView ? ' active' : '') . '" href="?view=general">Visão geral</a>';
+if (DashboardView::canBugs()) echo '<a class="nav-link' . ($bugsView ? ' active' : '') . '" href="?view=bugs">Bugs e Melhorias</a>';
+echo '</nav>';
+if (DemandasProfile::has(DemandasProfile::CONFIGURE_DASHBOARD)) {
+    echo '<form method="post" class="d-flex flex-wrap align-items-center gap-2 my-3"><input type="hidden" name="_glpi_csrf_token" value="' . demandasH(Session::getNewCSRFToken()) . '"><label for="dashboard-default">Minha visão padrão</label><select class="form-select w-auto" id="dashboard-default" name="default_view">';
+    $default = DashboardView::resolve([]);
+    foreach (['general' => 'Visão geral', 'bugs' => 'Bugs e Melhorias'] as $key => $label) {
+        if ($key === 'bugs' && !DashboardView::canBugs()) continue;
+        echo '<option value="' . $key . '"' . ($default === $key ? ' selected' : '') . '>' . $label . '</option>';
+    }
+    echo '</select><button class="btn btn-outline-primary" type="submit">Salvar visão padrão</button></form>';
+}
+if ($bugsView) echo '<p class="alert alert-info d-block mt-3">Somente bugs e melhorias, conforme a classificação configurada no plugin. Os filtros selecionam chamados; todas as WPs vinculadas são apresentadas. Dados locais da última sincronização, sem consulta em tempo real ao OpenProject.</p>';
 $scopeLabel = $filters['ticket_scope'] === 'open' ? 'Chamados abertos — exclui solucionados e fechados' : 'Todos os chamados';
 echo "<div class='d-flex flex-wrap justify-content-between align-items-center gap-2 my-3'><strong>" . demandasH($scopeLabel) . "</strong>";
 if (DemandasProfile::has(DemandasProfile::VIEW_TECHNICAL) && DemandasProfile::has(DemandasProfile::CREATE_WORK_PACKAGE)) {
@@ -119,9 +141,19 @@ if (DemandasProfile::has(DemandasProfile::VIEW_TECHNICAL) && DemandasProfile::ha
 echo '</div>';
 
 
-echo "<details class='demandas-filter-card'><summary class='demandas-filter-summary'><h2><i class='ti ti-adjustments-horizontal me-2 text-primary'></i>Filtros estratégicos</h2><span class='demandas-filter-summary-right'><span class='demandas-filter-count'>{$activeFilterCount} filtro(s) ativo(s)</span><span class='demandas-filter-toggle'><span class='demandas-filter-toggle-text'></span><i class='ti ti-chevron-down ms-1'></i></span></span></summary><form method='get' class='row g-3 demandas-filter-form'>";
+echo "<details class='demandas-filter-card'" . ($bugsView ? ' open' : '') . "><summary class='demandas-filter-summary'><h2><i class='ti ti-adjustments-horizontal me-2 text-primary'></i>Filtros estratégicos</h2><span class='demandas-filter-summary-right'><span class='demandas-filter-count'>{$activeFilterCount} filtro(s) ativo(s)</span><span class='demandas-filter-toggle'><span class='demandas-filter-toggle-text'></span><i class='ti ti-chevron-down ms-1'></i></span></span></summary><form method='get' class='row g-3 demandas-filter-form'>";
+echo '<input type="hidden" name="view" value="' . demandasH($filters['view']) . '">';
+if ($bugsView) {
+    echo '<div class="col-12" role="group" aria-labelledby="demandas-statuses-label"><div id="demandas-statuses-label" class="form-label">Status GLPI incluídos</div><input type="hidden" name="statuses_set" value="1"><div class="d-flex flex-wrap gap-3">';
+    foreach (ManagementDashboardService::openStatuses() as $id => $label) {
+        echo '<label class="form-check"><input class="form-check-input" type="checkbox" name="statuses[]" value="' . (int) $id . '"' . (in_array((int) $id, $filters['statuses'], true) ? ' checked' : '') . '><span class="form-check-label">' . demandasH($label) . '</span></label>';
+    }
+    echo '</div><small class="text-muted">Nomes nativos do GLPI. “Para desenvolvimento” não é convertido em outro status automaticamente. Desmarcar todos resulta em zero chamados.</small></div>';
+    demandasSelect('classification', 'Classificação', ['bug' => 'Bug', 'improvement' => 'Melhoria'], $filters['classification']);
+    if (DashboardView::canReview()) demandasSelect('delivery', 'Conferência de entregas', ['any' => 'Com pelo menos uma WP Entregue', 'all_delivered' => 'Todas as WPs em Entregue', 'partial' => 'Entrega parcial'], $filters['delivery']);
+}
 echo "<div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Busca</label><input class='form-control' name='q' value='" . demandasH($filters['q']) . "' placeholder='Número ou título'></div><div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Abertos desde</label><input class='form-control' type='date' name='date_from' value='" . demandasH($filters['date_from']) . "'></div><div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label'>Abertos até</label><input class='form-control' type='date' name='date_to' value='" . demandasH($filters['date_to']) . "'></div>";
-echo "<div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label' for='demandas-ticket-scope'>Escopo dos chamados</label><select id='demandas-ticket-scope' class='form-select' name='ticket_scope'><option value='open'" . ($filters['ticket_scope'] === 'open' ? ' selected' : '') . ">Abertos (não solucionados/fechados)</option><option value='all'" . ($filters['ticket_scope'] === 'all' ? ' selected' : '') . ">Todos, inclusive solucionados e fechados</option></select></div>";
+if (!$bugsView) echo "<div class='col-sm-6 col-lg-4 col-xxl-2'><label class='form-label' for='demandas-ticket-scope'>Escopo dos chamados</label><select id='demandas-ticket-scope' class='form-select' name='ticket_scope'><option value='open'" . ($filters['ticket_scope'] === 'open' ? ' selected' : '') . ">Abertos (não solucionados/fechados)</option><option value='all'" . ($filters['ticket_scope'] === 'all' ? ' selected' : '') . ">Todos, inclusive solucionados e fechados</option></select></div>";
 demandasSelect('has_wp', 'Vínculo', ['yes' => 'Com WP', 'no' => 'Sem WP'], $filters['has_wp']);
 demandasSelect('age_bucket', 'Idade', ManagementDashboardService::AGE_BUCKETS, $filters['age_bucket']);
 demandasSelect('glpi_status', 'Status GLPI', $result['options']['glpi_status'], $filters['glpi_status']);
@@ -130,7 +162,14 @@ demandasSelect('public_phase', DemandasConfig::label('public_phase'), $result['o
 demandasSelect('project', 'Projeto', $result['options']['project'], $filters['project']);
 demandasSelect('type', 'Tipo da WP', $result['options']['type'], $filters['type']);
 demandasSelect('client', 'Cliente', $result['options']['client'], $filters['client']);
-echo "<div class='col-12 d-flex gap-2 justify-content-end'><a class='btn btn-outline-secondary' href='/plugins/demandas/front/dashboard.php'>Limpar</a><button class='btn btn-primary px-4' type='submit'><i class='ti ti-filter me-1'></i>Aplicar filtros</button></div></form></details>";
+echo "<div class='col-12 d-flex gap-2 justify-content-end'><a class='btn btn-outline-secondary' href='?view=" . demandasH($filters['view']) . "'>Limpar</a><button class='btn btn-primary px-4' type='submit'><i class='ti ti-filter me-1'></i>Aplicar filtros</button></div></form></details>";
+if ($bugsView && DashboardView::canReview()) {
+    echo '<section class="demandas-panel my-3" aria-label="Entregas com chamado aberto"><h2 class="demandas-panel-title">Entregas com chamado aberto</h2><p class="text-muted">Conferência humana: somente o status exato “Entregue” indica entrega. Outros status, inclusive desconhecidos, não confirmam conclusão.</p><div class="d-flex flex-wrap gap-3">';
+    foreach (['any' => 'Com alguma entrega', 'all_delivered' => 'Todas as WPs em Entregue', 'partial' => 'Entrega parcial'] as $key => $label) {
+        echo '<a class="btn btn-outline-primary" href="?' . demandasH(demandasQuery($filters, ['delivery' => $key, 'metric' => ''])) . '">' . $label . ': <strong class="ms-2">' . (int) $result['delivery_counts'][$key] . '</strong></a>';
+    }
+    echo '</div></section>';
+}
 
 $kpis = [
     ['metric' => 'all', 'label' => 'Chamados no escopo', 'value' => $total, 'hint' => 'Volume analisado', 'icon' => 'ti ti-ticket', 'class' => 'dm-blue'],
@@ -157,6 +196,7 @@ $classItems = [
     ['metric' => 'suggestions', 'label' => 'Sugestões', 'value' => (int) $summary['suggestions'], 'fill' => 'fill-purple'],
 ];
 $classMax = max(1, ...array_column($classItems, 'value'));
+if ($bugsView) $classItems = array_slice($classItems, 0, 2);
 echo "<article class='demandas-panel'><div class='demandas-panel-head'><div><h2 class='demandas-panel-title'>Demandas por classificação</h2><div class='demandas-panel-subtitle'>Pendências que exigem acompanhamento</div></div><span class='demandas-panel-icon'><i class='ti ti-category-2'></i></span></div><div class='demandas-classification-grid'>";
 foreach ($classItems as $item) {
     $width = max($item['value'] > 0 ? 5 : 0, round(($item['value'] / $classMax) * 100, 1));
@@ -192,6 +232,20 @@ foreach ($secondaryPanels as $panel) {
 }
 echo '</section>';
 
+if ($bugsView) {
+    echo '<section class="demandas-table-card"><div class="demandas-table-head"><h2>Chamados correspondentes</h2><span class="demandas-result-badge">' . count($rows) . ' chamado(s)</span></div><div class="table-responsive"><table class="table table-vcenter"><thead><tr>';
+    foreach (['ticket' => 'Chamado', 'client' => 'Cliente', 'classification' => 'Classificação', 'glpi_status' => 'Status GLPI', 'age' => 'Idade'] as $key => $label) demandasSortHeader($key, $label, $filters);
+    echo '<th>Todas as WPs vinculadas / última sincronização</th>';
+    if (DashboardView::canReview()) echo '<th>Conferência</th>';
+    echo '</tr></thead><tbody>';
+    foreach ($visibleRows as $row) {
+        echo '<tr><td><a target="_blank" rel="noopener noreferrer" href="/front/ticket.form.php?id=' . (int) $row['ticket_id'] . '">#' . (int) $row['ticket_id'] . '</a><div>' . demandasH($row['ticket_name']) . '</div></td><td>' . demandasH($row['entity_name']) . '</td><td>' . demandasH($row['classification_label']) . '</td><td>' . demandasH($row['glpi_status_name']) . '</td><td>' . (int) $row['age_days'] . ' dia(s)</td><td>' . ($row['work_packages'] ? DeliveryReview::linksHtml($row['work_packages']) : 'Sem WP vinculada') . '</td>';
+        if (DashboardView::canReview()) echo '<td>' . demandasH(DeliveryReview::LABELS[$row['delivery_state']]) . '</td>';
+        echo '</tr>';
+    }
+    if (!$visibleRows) echo '<tr><td colspan="' . (DashboardView::canReview() ? '7' : '6') . '">Nenhum chamado corresponde aos filtros selecionados.</td></tr>';
+    echo '</tbody></table></div>';
+} else {
 echo "<section class='demandas-table-card'><div class='demandas-table-head'><div><h2>Chamados correspondentes</h2><div class='demandas-panel-subtitle'>Detalhamento para análise e tomada de decisão</div></div><span class='demandas-result-badge'>" . count($rows) . " resultado(s)</span></div><div class='table-responsive'><table class='table table-hover table-vcenter mb-0'><thead><tr>";
 demandasSortHeader('ticket', 'Chamado', $filters);
 demandasSortHeader('client', 'Cliente', $filters);
@@ -212,6 +266,7 @@ foreach ($visibleRows as $row) {
 }
 if ($visibleRows === []) echo "<tr><td colspan='11' class='text-center text-muted py-5'>Nenhum chamado corresponde aos filtros selecionados.</td></tr>";
 echo '</tbody></table></div>';
+}
 if ($pages > 1) {
     echo "<div class='p-3 d-flex justify-content-between align-items-center border-top'><span class='text-muted small'>Página {$page} de {$pages}</span><div class='btn-group'>";
     if ($page > 1) echo "<a class='btn btn-outline-secondary' href='?" . demandasH(demandasQuery($filters)) . "&amp;page=" . ($page - 1) . "'>Anterior</a>";

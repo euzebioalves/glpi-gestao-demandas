@@ -6,6 +6,8 @@ use GlpiPlugin\Demandas\ManagementDashboardService;
 use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\Config as DemandasConfig;
 use GlpiPlugin\Demandas\ManagementDashboard;
+use GlpiPlugin\Demandas\DashboardView;
+use GlpiPlugin\Demandas\DeliveryReview;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -22,8 +24,21 @@ if (!in_array($format, ['pdf', 'xlsx'], true)) {
 $result = (new ManagementDashboardService())->result($_GET);
 $rows = $result['rows'];
 $summary = $result['summary'];
+$bugsView = $result['filters']['view'] === 'bugs';
+// A single export row per ticket in the focused view, preserving every WP.
+if ($bugsView) {
+    foreach ($rows as &$row) {
+        foreach (['openproject_work_package_id', 'openproject_project_name', 'openproject_type_name', 'openproject_status', 'public_phase', 'last_synced_at'] as $field) {
+            $row[$field] = implode(' | ', array_map(static fn($wp) => '#' . (int) $wp['openproject_work_package_id'] . ($field === 'openproject_work_package_id' ? '' : ': ' . (trim((string) ($wp[$field] ?? '')) ?: 'Não informado')), $row['work_packages']));
+        }
+    }
+    unset($row);
+}
 $headers = ['Chamado', 'Título', 'Cliente', 'Classificação', 'Status GLPI', 'Idade (dias)', 'Work Package', 'Projeto', 'Tipo da WP', 'Status da WP', DemandasConfig::label('public_phase'), 'Abertura', 'Última sincronização'];
 $summaryRows = [
+    ['Visão', $bugsView ? 'Bugs e Melhorias' : 'Visão geral'],
+    ['Filtros aplicados', json_encode($result['filters'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
+    ['Atualidade', 'Dados locais da última sincronização; não consultados em tempo real'],
     ['Escopo dos chamados', $result['filters']['ticket_scope'] === 'open' ? 'Abertos (exclui solucionados e fechados)' : 'Todos, inclusive solucionados e fechados'],
     ['Chamados no escopo', $summary['total']],
     ['Com Work Package', $summary['with_wp']],
@@ -38,6 +53,11 @@ $summaryRows = [
     ['Sugestões de melhoria', $summary['suggestions']],
     ['Chamados exportados após o drill-down', count($rows)],
 ];
+if ($bugsView && DashboardView::canReview()) {
+    $headers[] = 'Conferência de entregas';
+    foreach (['any' => 'Chamados abertos com alguma entrega', 'all_delivered' => 'Todas as WPs em Entregue', 'partial' => 'Entrega parcial'] as $key => $label) $summaryRows[] = [$label, $result['delivery_counts'][$key]];
+}
+$lastColumn = count($headers) === 14 ? 'N' : 'M';
 foreach ($summary['top_clients'] as $position => $client) {
     $summaryRows[] = [($position + 1) . 'º cliente com mais melhorias ou bugs abertos — ' . $client['label'], $client['count']];
 }
@@ -51,7 +71,7 @@ if ($format === 'xlsx') {
     $sheet->setCellValue('B1', 'Valor');
     foreach ($summaryRows as $rowIndex => $summaryRow) {
         $sheet->setCellValueExplicit([1, $rowIndex + 2], (string) $summaryRow[0], DataType::TYPE_STRING);
-        $sheet->setCellValue([2, $rowIndex + 2], $summaryRow[1]);
+        $sheet->setCellValueExplicit([2, $rowIndex + 2], (string) $summaryRow[1], DataType::TYPE_STRING);
     }
     $sheet->getStyle('A1:B1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
     $sheet->getStyle('A1:B1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF206BC4');
@@ -63,17 +83,18 @@ if ($format === 'xlsx') {
     foreach ($headers as $index => $header) {
         $sheet->setCellValue([$index + 1, 1], $header);
     }
-    $sheet->getStyle('A1:M1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
-    $sheet->getStyle('A1:M1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF206BC4');
+    $sheet->getStyle('A1:' . $lastColumn . '1')->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
+    $sheet->getStyle('A1:' . $lastColumn . '1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF206BC4');
     foreach ($rows as $rowIndex => $row) {
         $values = [
             (int) $row['ticket_id'], (string) $row['ticket_name'], (string) ($row['entity_name'] ?: 'Entidade raiz'),
             (string) ($row['classification_label'] ?? 'Sem classificação'), (string) $row['glpi_status_name'],
-            (int) $row['age_days'], $row['has_wp'] ? (int) $row['openproject_work_package_id'] : '',
+            (int) $row['age_days'], $row['has_wp'] ? ($bugsView ? $row['openproject_work_package_id'] : (int) $row['openproject_work_package_id']) : '',
             (string) ($row['openproject_project_name'] ?? ''), (string) ($row['openproject_type_name'] ?? ''),
             (string) ($row['openproject_status'] ?? ''), (string) ($row['public_phase'] ?? ''),
             (string) $row['opened_at'], (string) ($row['last_synced_at'] ?? ''),
         ];
+        if ($bugsView && DashboardView::canReview()) $values[] = DeliveryReview::LABELS[$row['delivery_state']];
         foreach ($values as $columnIndex => $value) {
             $cell = [$columnIndex + 1, $rowIndex + 2];
             if (is_int($value)) $sheet->setCellValue($cell, $value);
@@ -81,8 +102,8 @@ if ($format === 'xlsx') {
         }
     }
     $sheet->freezePane('A2');
-    $sheet->setAutoFilter('A1:M' . max(1, count($rows) + 1));
-    foreach (range('A', 'M') as $column) $sheet->getColumnDimension($column)->setAutoSize(true);
+    $sheet->setAutoFilter('A1:' . $lastColumn . max(1, count($rows) + 1));
+    foreach (range('A', $lastColumn) as $column) $sheet->getColumnDimension($column)->setAutoSize(true);
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="visao-gerencial-demandas.xlsx"');
     header('Cache-Control: no-store');
@@ -104,10 +125,11 @@ foreach ($rows as $row) {
     $values = [
         '#' . (int) $row['ticket_id'], $row['ticket_name'], $row['entity_name'] ?: 'Entidade raiz',
         $row['classification_label'] ?? 'Sem classificação', $row['glpi_status_name'], $row['age_days'],
-        $row['has_wp'] ? '#' . (int) $row['openproject_work_package_id'] : '—',
+        $row['has_wp'] ? ($bugsView ? $row['openproject_work_package_id'] : '#' . (int) $row['openproject_work_package_id']) : '—',
         $row['openproject_project_name'] ?: '—', $row['openproject_type_name'] ?: '—', $row['openproject_status'] ?: '—',
         $row['public_phase'] ?: '—', $row['opened_at'], $row['last_synced_at'] ?: '—',
     ];
+    if ($bugsView && DashboardView::canReview()) $values[] = DeliveryReview::LABELS[$row['delivery_state']];
     $html .= '<tr>';
     foreach ($values as $value) $html .= '<td>' . htmlspecialchars((string) $value) . '</td>';
     $html .= '</tr>';
