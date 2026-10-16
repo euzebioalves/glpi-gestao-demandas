@@ -1,5 +1,15 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.28.0 — autores e publicações SGE
+
+`IntegrationActor` resolve o nome atual do GLPI pelo ID estruturado do evento (ou pelo padrão legado de conciliação), com fallback para o nome capturado. Não regrava auditoria antiga nem atribui eventos sem identidade ao usuário atual. Novas ações manuais e de conciliação capturam ID/nome; webhook é identificado como automação.
+
+`WorkPackagePublicationService` consulta somente GETs do OpenProject com token pessoal, em etapas POST autenticadas/CSRF. O servidor descobre filhos diretos e relações `involved` da WP vinculada, valida identidades, percorre atividades e extrai declarações `Incluída na build vX.Y.Z`. PRs não são evidência. Não assume que a WP inteira foi publicada quando uma TASK tem build. A sessão mantém um único trabalho com prazo de 15 minutos, proprietário, par chamado/WP, identidade do token e instância. Cada etapa revalida permissão técnica, sincronização, entidade, READ/UPDATE e vínculo. Limites: 500 tarefas, 1.000 páginas por coleção, 1.000 evidências por tarefa; ultrapassagens falham sem gravar resultado parcial.
+
+A migração adiciona `release_details_json` em links. A gravação completa compara o cache original e cria evento em transação. Não gravar comentários brutos nem URLs extraídas. Não sobrescrever esse cache nas sincronizações normais. Eventos de sincronização incluem a última consulta conhecida com sua data original. O botão **Consultar agora** atualiza publicações; a abertura da aba e webhooks não disparam essa varredura. O GET do modal usa somente o cache e exige leitura técnica e nativa. Eventos antigos não recebem retrospectivamente versões atuais. Renderização usa escaping/textContent e links construídos pela URL configurada.
+
+`publications.js` percorre etapas e renova o token CSRF, mostrando descoberta/quantidade de tarefas. Novos endpoints não fazem chamadas ao GitHub. Consulte `RELEASE_0.28.0.md`, `tests/publications.cjs` e fixtures exclusivamente sintéticas. O ranking do dashboard encurta somente o rótulo ao segundo nível da entidade, sem reagrupar valores nem alterar drill-down.
+
 ## Atualização 0.27.0 — conciliação de múltiplos vínculos
 
 A tabela de links agora usa `unicity_ticket_work_package(tickets_id, openproject_work_package_id)` e índice não único por WP. A migração adiciona os índices e remove `unicity_work_package` em um ALTER, sem regravar linhas. `TicketDemand::saveLink()` atualiza somente o par. `findByWorkPackage($wp, $ticket)` resolve um par; sem ticket, retorna null quando houver ambiguidade. Use `findAllByWorkPackage()` para percorrer todos os vínculos. O webhook sincroniza todos; histórico/cache e sincronização manual continuam separados por chamado. Não copiar fases, históricos ou tempo de um vínculo para outro.
@@ -38,7 +48,7 @@ Entradas de tempo também admitem `tickets_id=0`, sem criar vínculo. `front/tim
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.25.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.28.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -47,7 +57,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.25.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.25.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.28.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 

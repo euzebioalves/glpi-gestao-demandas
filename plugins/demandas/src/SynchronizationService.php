@@ -85,6 +85,9 @@ final class SynchronizationService
             if (is_array($cachedDetails) && !empty($cachedDetails['creation_reason'])) {
                 $details['creation_reason'] = (string) $cachedDetails['creation_reason'];
             }
+            // Keep the date of the explicit publication read; status sync is not a new build scan.
+            $publications = json_decode((string) ($link['release_details_json'] ?? ''), true);
+            if (is_array($publications)) $details['sge_publications'] = $publications;
             TicketDemand::updateSynchronization($ticketId, $status, $phase, null, $details, $wpId);
             $this->record($link, $source, true, $status, $phase, $followupError, $details);
 
@@ -104,6 +107,7 @@ final class SynchronizationService
         ?string $message,
         array $details
     ): void {
+        if (in_array($source, ['manual', 'creation'], true)) $details += IntegrationActor::snapshot();
         $db = \DBConnection::getReadConnection();
         $db->insert('glpi_plugin_demandas_events', [
             'tickets_id' => (int) $link['tickets_id'],

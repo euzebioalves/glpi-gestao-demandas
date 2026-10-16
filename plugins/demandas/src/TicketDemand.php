@@ -183,7 +183,7 @@ final class TicketDemand extends CommonDBTM
             if (Profile::has(Profile::CREATE_WORK_PACKAGE) && $ticket->can($ticket->getID(), UPDATE)) {
                 self::showAdditionalWorkPackageModal($ticket);
             }
-            if (Profile::has(Profile::VIEW_HISTORY)) {
+            if ($showTechnical && Profile::has(Profile::VIEW_HISTORY)) {
                 self::showHistory($ticket->getID());
             }
         } elseif (Profile::has(Profile::CREATE_WORK_PACKAGE)) {
@@ -231,11 +231,20 @@ final class TicketDemand extends CommonDBTM
         echo '</div>';
 
         if ($isInternal) {
+            $linkActors = [];
+            foreach (\DBConnection::getReadConnection()->request([
+                'SELECT' => ['openproject_work_package_id', 'source', 'message', 'details_json'],
+                'FROM' => 'glpi_plugin_demandas_events',
+                'WHERE' => ['tickets_id' => $ticket->getID(), 'is_success' => 1, 'source' => ['creation', 'legacy_reconciliation']],
+                'ORDER' => ['id DESC'],
+            ]) as $event) {
+                $linkActors[(int) $event['openproject_work_package_id']] ??= IntegrationActor::eventName($event);
+            }
             if ((Profile::has(Profile::CREATE_WORK_PACKAGE) || Profile::has(Profile::SYNC_WORK_PACKAGE)) && !Config::hasPersonalToken()) {
                 echo "<div class='alert alert-warning mt-3 mb-0'>Configure seu token pessoal do OpenProject para criar ou sincronizar Work Packages manualmente. <a href='/front/preference.php?forcetab=GlpiPlugin%5CDemandas%5COpenProjectPersonalToken%241'>Configurar meu acesso</a>.</div>";
             }
             echo "<hr><h4>Work Packages vinculadas</h4><div class='table-responsive'><table class='table table-sm table-vcenter'>";
-            echo '<thead><tr><th>WP</th><th>Status</th><th>Atribuído para</th><th>Responsável</th><th>Data de abertura</th><th>Projeto</th><th>Prioridade</th><th>Cliente</th><th>Tempo</th></tr></thead><tbody>';
+            echo '<thead><tr><th>WP</th><th>Status</th><th>Atribuído para</th><th>Responsável</th><th>Data de abertura</th><th>Projeto</th><th>Prioridade</th><th>Cliente</th><th>Vinculado por</th><th>Publicações SGE</th><th>Detalhes</th><th>Tempo</th></tr></thead><tbody>';
             foreach ($links as $linked) {
                 $wpId = (int) ($linked['openproject_work_package_id'] ?? 0);
                 $details = json_decode((string) ($linked['work_package_details_json'] ?? ''), true);
@@ -258,6 +267,10 @@ final class TicketDemand extends CommonDBTM
                 echo '<td>' . htmlspecialchars(self::displayValue($project)) . '</td>';
                 echo '<td>' . htmlspecialchars(self::displayValue($details['priority'] ?? null)) . '</td>';
                 echo '<td>' . htmlspecialchars(self::displayValue($details['customer'] ?? null)) . '</td>';
+                echo '<td>' . htmlspecialchars($linkActors[$wpId] ?? 'Não registrado') . '</td>';
+                $report = json_decode((string) ($linked['release_details_json'] ?? ''), true);
+                echo '<td data-publications-summary="' . $wpId . '">' . self::publicationSummary(is_array($report) ? $report : []) . '</td>';
+                echo '<td><button type="button" class="btn btn-sm btn-outline-primary demandas-publications-open" data-bs-toggle="modal" data-bs-target="#demandas-publications-modal" data-ticket="' . $ticket->getID() . '" data-wp="' . $wpId . '">TASKs e versões</button></td>';
                 if (AccessPolicy::has(Profile::LOG_OWN_TIME)) {
                     $entryUrl = '/plugins/demandas/front/time-entry.php?link=' . $ticket->getID() . ':' . $wpId . '&date=' . date('Y-m-d');
                     echo "<td><a class='btn btn-sm btn-outline-primary text-nowrap' href='" . htmlspecialchars($entryUrl, ENT_QUOTES) . "'><i class='ti ti-clock-plus me-1'></i>Lançar</a></td>";
@@ -267,7 +280,29 @@ final class TicketDemand extends CommonDBTM
                 echo '</tr>';
             }
             echo '</tbody></table></div>';
+            self::showPublicationsModal($ticket);
         }
+    }
+
+    private static function publicationSummary(array $report): string
+    {
+        if (!$report) return 'Ainda não consultado';
+        $versions = WorkPackagePublicationService::versions($report);
+        return htmlspecialchars($versions ?: 'Nenhuma publicação identificada') . '<br><small class="text-muted">Consulta: '
+            . self::formatDateTime((string) ($report['checked_at'] ?? '')) . '</small>';
+    }
+
+    private static function showPublicationsModal(Ticket $ticket): void
+    {
+        $canRefresh = Profile::has(Profile::SYNC_WORK_PACKAGE) && $ticket->can($ticket->getID(), UPDATE);
+        $url = htmlspecialchars(rtrim((string) Config::get('openproject_external_url', ''), '/'), ENT_QUOTES);
+        echo '<div class="modal fade" id="demandas-publications-modal" tabindex="-1" aria-hidden="true" data-op-url="' . $url . '"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">';
+        echo '<div class="modal-header"><h5 class="modal-title">TASKs e publicações SGE</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body">';
+        echo '<p class="text-muted">Subtarefas e relações diretas visíveis ao token pessoal, incluindo tarefas concluídas. As versões vêm de comentários “Incluída na build”, não de referências a pull requests. Uma build em uma TASK não confirma a publicação de toda a WP.</p>';
+        echo '<div class="demandas-publications-status" role="status" aria-live="polite"></div><div class="demandas-publications-content mt-3"></div></div><div class="modal-footer">';
+        if ($canRefresh) echo '<button type="button" class="btn btn-primary demandas-publications-refresh" data-csrf="' . htmlspecialchars(Session::getNewCSRFToken(), ENT_QUOTES) . '">Consultar agora</button>';
+        else echo '<span class="text-muted small">Atualizar exige permissão de sincronização e alteração do chamado.</span>';
+        echo '<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button></div></div></div></div>';
     }
 
     private static function displayValue(mixed $value): string
@@ -290,10 +325,10 @@ final class TicketDemand extends CommonDBTM
         }
 
         echo "<hr><h4>Histórico da integração</h4><div class='table-responsive'><table class='table table-sm table-vcenter'>";
-        echo '<thead><tr><th>Data e hora</th><th>WP</th><th>Origem</th><th>Status da WP</th><th>' . htmlspecialchars(Config::label('public_phase')) . '</th><th class="text-center">Resultado</th><th>Detalhes</th></tr></thead><tbody>';
+        echo '<thead><tr><th>Data e hora</th><th>WP</th><th>Origem</th><th>Usuário GLPI</th><th>Status da WP</th><th>Publicações SGE</th><th>' . htmlspecialchars(Config::label('public_phase')) . '</th><th class="text-center">Resultado</th><th>Detalhes</th></tr></thead><tbody>';
         foreach ($events as $event) {
             $success = (int) $event['is_success'] === 1;
-            $sourceLabels = ['webhook' => 'Webhook', 'manual' => 'Manual', 'creation' => 'Criação', 'legacy_reconciliation' => 'Conciliação de Atividade DevOps'];
+            $sourceLabels = ['webhook' => 'Webhook', 'manual' => 'Manual', 'creation' => 'Criação', 'legacy_reconciliation' => 'Conciliação de Atividade DevOps', 'publications' => 'Consulta de TASKs e versões'];
             $source = (string) ($event['source'] ?? '');
             $details = json_decode((string) ($event['details_json'] ?? ''), true);
             if (!is_array($details)) $details = [];
@@ -307,7 +342,9 @@ final class TicketDemand extends CommonDBTM
                 ? "<td><a href='" . htmlspecialchars($wpUrl, ENT_QUOTES) . "' target='_blank' rel='noopener'>#{$wpId}</a></td>"
                 : '<td>—</td>';
             echo '<td>' . htmlspecialchars($sourceLabels[$source] ?? ucfirst($source)) . '</td>';
+            echo '<td>' . htmlspecialchars(IntegrationActor::eventName($event)) . '</td>';
             echo '<td>' . htmlspecialchars((string) ($event['new_status'] ?? '—')) . '</td>';
+            echo '<td>' . (isset($details['sge_publications']) ? self::publicationSummary($details['sge_publications']) : 'Não consultado neste evento') . '</td>';
             echo '<td>' . htmlspecialchars((string) ($event['new_public_phase'] ?? '—')) . '</td>';
             echo "<td class='text-center'><span class='d-inline-block rounded-circle " . ($success ? 'bg-success' : 'bg-danger') . "' style='width:12px;height:12px' title='" . ($success ? 'Sincronização realizada com sucesso' : 'Falha na sincronização') . "' aria-label='" . ($success ? 'Sucesso' : 'Falha') . "'></span></td>";
             echo "<td><button class='btn btn-sm btn-outline-primary' type='button' data-bs-toggle='modal' data-bs-target='#{$modalId}'><i class='ti ti-list-details me-1'></i>Visualizar</button></td>";
@@ -374,10 +411,12 @@ final class TicketDemand extends CommonDBTM
         echo "<div class='modal fade' id='" . htmlspecialchars($modalId, ENT_QUOTES) . "' tabindex='-1' aria-hidden='true'><div class='modal-dialog modal-lg modal-dialog-scrollable'><div class='modal-content'>";
         echo "<div class='modal-header'><h5 class='modal-title'>Detalhes da Work Package #{$wpId}</h5><button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Fechar'></button></div><div class='modal-body'>";
         if (!$success) {
-            echo "<div class='alert alert-danger'>" . htmlspecialchars((string) ($event['message'] ?? 'Falha não detalhada.')) . '</div>';
+            echo "<div class='alert alert-danger'>" . htmlspecialchars(IntegrationActor::message($event) ?: 'Falha não detalhada.') . '</div>';
         } elseif (!empty($event['message'])) {
-            echo "<div class='alert alert-warning'>" . htmlspecialchars((string) $event['message']) . '</div>';
+            echo "<div class='alert alert-warning'>" . htmlspecialchars(IntegrationActor::message($event)) . '</div>';
         }
+        echo '<p><strong>Usuário GLPI:</strong> ' . htmlspecialchars(IntegrationActor::eventName($event)) . '</p>';
+        if (isset($details['sge_publications'])) echo '<p><strong>Última consulta de publicações conhecida neste evento:</strong><br>' . self::publicationSummary($details['sge_publications']) . '</p>';
         $labels = [
             'subject' => 'Título',
             'project' => 'Projeto',

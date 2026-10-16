@@ -65,3 +65,7 @@ O relatório HTML fica em `playwright-report/`. Trace, vídeo e screenshot de fa
 | Capturas do manual | documentação | gera imagens apenas no ambiente fictício confirmado. |
 
 Ao adicionar um recurso, inclua neste arquivo o cenário, uma conta/perfil necessário e uma captura se ele mudar o processo de configuração ou utilização.
+
+### Publicações SGE (0.28.0)
+
+A suíte complementar `node tests/publications.cjs` usa exclusivamente `demandas-sge028-glpi` em `http://127.0.0.1:8191`, com banco descartável `glpi_e2e` no host `db`. Copie as fixtures `legacy-reconciliation-fixture.php`, `publications-fixture.php` e `publications-api.php` para `/tmp` do container e inicie `php -S 127.0.0.1:8395 /tmp/publications-api.php`. O script cria usuários fictícios, valida leitura/atualização por perfil e testa builds, paginação, CSRF, falhas e layout. As capturas vão para `docs/assets/manual/sge-publications-*.png` e devem ser inspecionadas antes de publicar. Não execute no GLPI compartilhado da porta 8180.

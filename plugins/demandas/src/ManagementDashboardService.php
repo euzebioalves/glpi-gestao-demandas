@@ -292,9 +292,15 @@ final class ManagementDashboardService
         arsort($clients, SORT_NUMERIC);
         $result = [];
         foreach (array_slice($clients, 0, 5, true) as $name => $count) {
-            $result[] = ['label' => $name, 'value' => $name === 'Entidade raiz' ? '__empty__' : $name, 'count' => $count];
+            $result[] = ['label' => self::clientLabel($name), 'value' => $name === 'Entidade raiz' ? '__empty__' : $name, 'count' => $count];
         }
         return $result;
+    }
+
+    public static function clientLabel(string $entityPath): string
+    {
+        $levels = array_map('trim', explode('>', $entityPath));
+        return ($levels[1] ?? '') !== '' ? $levels[1] : trim($entityPath);
     }
 
     private function classificationKind(string $label): string

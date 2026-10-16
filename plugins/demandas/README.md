@@ -2,6 +2,18 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.28.0
+
+- posiciona a legenda de cobertura abaixo do gráfico e mostra o segundo nível da entidade no ranking de clientes, preservando os valores de filtros e contagens;
+- mostra o nome do autor no histórico/modal da integração e o autor do vínculo na grade, inclusive em conciliações antigas que registravam somente o ID;
+- acrescenta **TASKs e versões** às WPs vinculadas: consulta explícita das subtarefas e relações diretas visíveis, com seus status e builds extraídas dos comentários;
+- distingue homologação e produção e não confunde referências a PR com publicação;
+- usa exclusivamente o token pessoal, com progresso por tarefa, CSRF, direitos técnicos/sincronização e acesso nativo ao chamado;
+- salva apenas consultas completas, identificadas por data, em coluna própria do vínculo e em eventos de auditoria; falhas preservam a consulta anterior;
+- não consulta GitHub, não altera tarefas, fases públicas, acompanhamentos ou apontamentos. Não acompanha publicações em tempo real.
+
+Atualize sem desinstalar. Consulte [RELEASE_0.28.0.md](../../docs/RELEASE_0.28.0.md) e o manual.
+
 ## Versão 0.27.0
 
 - retorna à aba **Evolução da Demanda** quando a conciliação começa no chamado;
