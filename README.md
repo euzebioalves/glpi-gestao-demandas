@@ -6,6 +6,14 @@ Os testes práticos e as capturas sanitizadas do manual usam Playwright. O coman
 
 Para uma base isolada exclusivamente para Playwright, sem usar a homologação compartilhada, execute `./start-e2e.ps1`. Ela sobe GLPI 11.0.9 em `http://localhost:8190`; os comandos de teste ficam descritos em [tests/e2e/README.md](tests/e2e/README.md).
 
+## Plugin 0.29.1
+
+Corrige consultas automáticas sem permissão ao feed de notificações e à fase pública, preservando os direitos atuais e os bloqueios no servidor. Veja [docs/RELEASE_0.29.1.md](docs/RELEASE_0.29.1.md).
+
+## Plugin 0.29.0
+
+Adiciona documentação de WPs na criação e edição, com código, imagens e anexos, e relações opcionais com WPs anteriores. A conciliação bloqueia cliques repetidos e exige justificativa somente nos vínculos adicionais efetivos. Veja [docs/RELEASE_0.29.0.md](docs/RELEASE_0.29.0.md).
+
 ## Plugin 0.28.0
 
 Adiciona consulta de TASKs e publicações SGE pelos comentários do OpenProject, com token pessoal, progresso, auditoria e distinção entre homologação e produção. Também melhora a legenda do dashboard, os rótulos de clientes e a identificação dos autores de vínculos. Veja [docs/RELEASE_0.28.0.md](docs/RELEASE_0.28.0.md).

@@ -2,6 +2,26 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.29.1
+
+- consulta as permissões da sessão antes de carregar automaticamente notificações e fase pública;
+- limita a consulta de fase à tela de um chamado existente, evitando interpretar IDs de outras páginas como chamados;
+- mantém as permissões atuais e a autorização independente de cada endpoint; não altera dados ou configuração de perfis;
+- em falha na consulta de permissões, não dispara as consultas protegidas.
+
+Consulte [RELEASE_0.29.1.md](../../docs/RELEASE_0.29.1.md). Após atualizar, recarregue as páginas abertas com Ctrl+F5.
+
+## Versão 0.29.0
+
+- bloqueia o envio repetido da conciliação e oferece seleção conjunta de até cinco referências;
+- dispensa justificativa no primeiro vínculo efetivo; vínculos adicionais do chamado ou WP continuam exigindo direito de resolver conflitos e justificativa, inclusive em lote;
+- permite confirmar uma relação entre a nova WP e uma WP anterior do chamado, com tipo e direção explícitos;
+- acrescenta documentação na criação e o botão **Documentar** nas WPs vinculadas, com editor visual/Markdown, blocos de código por linguagem, imagens redimensionáveis e anexos;
+- reutiliza TinyMCE, Monaco e conversores do GLPI; grava no OpenProject com token pessoal e controla alterações simultâneas por `lockVersion`;
+- preserva a WP criada quando o relacionamento falha, permitindo repetir somente a relação na mesma sessão de edição.
+
+Veja [RELEASE_0.29.0.md](../../docs/RELEASE_0.29.0.md) para limites, permissões e homologação. Atualize sem desinstalar.
+
 ## Versão 0.28.0
 
 - posiciona a legenda de cobertura abaixo do gráfico e mostra o segundo nível da entidade no ranking de clientes, preservando os valores de filtros e contagens;

@@ -216,7 +216,9 @@ final class OpenProjectClient
         int $projectId,
         int $typeId,
         array $selection = [],
-        string $additionalReason = ''
+        string $additionalReason = '',
+        ?string $documentation = null,
+        array $attachments = []
     ): array
     {
         if (!$this->allowsWorkPackageCreation) {
@@ -290,6 +292,8 @@ final class OpenProjectClient
             }
         }
 
+        if ($documentation !== null) $payload['description']['raw'] = $documentation;
+        if ($attachments !== []) $payload['_links']['attachments'] = array_map(static fn($id) => ['href' => '/api/v3/attachments/' . (int) $id], $attachments);
         $created = $this->request('POST', 'work_packages', $payload);
         $created['_demandas'] = [
             'project_id' => $projectId,
@@ -307,6 +311,72 @@ final class OpenProjectClient
     public function getWorkPackage(int $workPackageId): array
     {
         return $this->request('GET', 'work_packages/' . $workPackageId);
+    }
+
+    public function updateDocumentation(int $id, int $lockVersion, string $markdown, array $attachments): array
+    {
+        if (!$this->allowsWorkPackageCreation) throw new RuntimeException('Use o token pessoal.');
+        return $this->request('PATCH', 'work_packages/' . $id, [
+            'lockVersion' => $lockVersion,
+            'description' => ['format' => 'markdown', 'raw' => $markdown],
+            '_links' => ['attachments' => array_map(static fn($id) => ['href' => '/api/v3/attachments/' . (int) $id], $attachments)],
+        ]);
+    }
+
+    public function workPackageAttachments(int $id): array
+    {
+        return $this->request('GET', 'work_packages/' . $id . '/attachments')['_embedded']['elements'] ?? [];
+    }
+
+    public function uploadDocumentationAttachment(string $path, string $name, string $mime): array
+    {
+        if (!$this->allowsWorkPackageCreation) throw new RuntimeException('Use o token pessoal.');
+        $stream = fopen($path, 'rb');
+        try {
+            $multipart = new \GuzzleHttp\Psr7\MultipartStream([
+                ['name' => 'metadata', 'contents' => json_encode(['fileName' => $name], JSON_THROW_ON_ERROR), 'headers' => ['Content-Type' => 'application/json']],
+                ['name' => 'file', 'contents' => $stream, 'filename' => $name, 'headers' => ['Content-Type' => $mime]],
+            ]);
+            $response = $this->client->request('POST', 'attachments', [
+                'headers' => ['Content-Type' => 'multipart/form-data; boundary=' . $multipart->getBoundary()],
+                'body' => $multipart,
+            ]);
+            return json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        } finally {
+            if (is_resource($stream)) fclose($stream);
+        }
+    }
+
+    public function documentationImage(int $id): string
+    {
+        // Never follow a download URL supplied by the browser or an HTTP redirect with credentials.
+        $response = $this->client->request('GET', 'attachments/' . $id . '/content', ['allow_redirects' => false, 'stream' => true]);
+        if ($response->getStatusCode() !== 200) throw new RuntimeException('Imagem indisponível.');
+        $stream = $response->getBody();
+        try {
+            $bytes = '';
+            while (!$stream->eof() && strlen($bytes) <= 15 * 1024 * 1024) $bytes .= $stream->read(65536);
+            if (strlen($bytes) > 15 * 1024 * 1024) throw new RuntimeException('Imagem muito grande.');
+            return $bytes;
+        } finally { $stream->close(); }
+    }
+
+    public function relateWorkPackages(int $from, int $to, string $type): array
+    {
+        if (!$this->allowsWorkPackageCreation) throw new RuntimeException('Use o token pessoal.');
+        // A pair cannot have two relations in OpenProject. Confirm an existing relation on retry.
+        $filters = json_encode([['involved' => ['operator' => '=', 'values' => [(string) $from]]]], JSON_THROW_ON_ERROR);
+        $relations = $this->request('GET', 'relations?' . http_build_query(['filters' => $filters, 'pageSize' => 1000]));
+        foreach ($relations['_embedded']['elements'] ?? [] as $relation) {
+            $source = (int) basename($relation['_links']['from']['href'] ?? '');
+            $target = (int) basename($relation['_links']['to']['href'] ?? '');
+            if (($source === $from && $target === $to) || ($source === $to && $target === $from)) {
+                $actual = $source === $from ? ($relation['type'] ?? '') : ($relation['reverseType'] ?? '');
+                if ($actual !== $type) throw new RuntimeException('Já existe uma relação diferente entre as WPs. Confira no OpenProject.');
+                return $relation;
+            }
+        }
+        return $this->request('POST', 'work_packages/' . $from . '/relations', ['type' => $type, '_links' => ['to' => ['href' => '/api/v3/work_packages/' . $to]]]);
     }
 
     /** One bounded read per browser step; never follow URLs supplied by comments. */

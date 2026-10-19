@@ -1,5 +1,9 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.29.1 — consultas automáticas e permissões
+
+`front/ui-permissions.php` exige sessão autenticada e retorna somente dois booleanos dos direitos efetivos do perfil ativo (`VIEW_PUBLIC` e `VIEW_TECHNICAL`), com `private, no-store`. `demandas.js` compartilha essa consulta durante a página, sem armazenamento persistente. A fase é consultada somente em `front/ticket.form.php` com ID e direito público; o feed exige direito técnico. Falhas fecham o acesso na interface. Os endpoints de dados mantêm integralmente a autorização existente, inclusive leitura nativa do chamado. Não conceder direitos para silenciar logs; acessos diretos indevidos continuam sendo registrados. Veja `RELEASE_0.29.1.md` e `tests/ui-permissions.cjs`.
+
 ## Atualização 0.28.0 — autores e publicações SGE
 
 `IntegrationActor` resolve o nome atual do GLPI pelo ID estruturado do evento (ou pelo padrão legado de conciliação), com fallback para o nome capturado. Não regrava auditoria antiga nem atribui eventos sem identidade ao usuário atual. Novas ações manuais e de conciliação capturam ID/nome; webhook é identificado como automação.
@@ -191,6 +195,12 @@ Depois que os serviços estiverem saudáveis, siga as instruções do `README.md
 Nunca confirme `APAGAR` no script de reset sem entender que os volumes e dados de homologação serão removidos.
 
 ## 7. Estratégia de versionamento
+
+### Documentação e relações — 0.29.0
+
+`WorkPackageDocumentation` e `front/work-package-documentation.php` controlam edição e criação com token pessoal, autorização técnica/nativa, CSRF e sessões temporárias vinculadas à identidade. O editor usa bibliotecas já distribuídas no GLPI. Anexos sem contêiner são associados ao salvar; descrições existentes usam `lockVersion`. Nunca repita a criação de uma WP ao tratar falha posterior de relação: a sessão guarda o ID confirmado e retoma somente as etapas pendentes. Resultado desconhecido exige conferência humana. Consulte `RELEASE_0.29.0.md` para limites e testes.
+
+A conciliação exige justificativa apenas quando existe outro vínculo local do chamado ou WP. Possibilidades no Fields continuam sendo mostradas em detalhes, mas não obrigam justificativa para a primeira associação. No lote, a validação no backend ocorre a cada vínculo e considera as associações gravadas anteriormente no mesmo envio.
 
 - versão declarada em `plugins/demandas/setup.php`;
 - histórico funcional em `plugins/demandas/README.md`;

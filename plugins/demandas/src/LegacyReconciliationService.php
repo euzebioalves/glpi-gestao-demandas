@@ -130,6 +130,8 @@ final class LegacyReconciliationService
                 $reasons = [];
                 if (count($owners[$wpId] ?? []) > 1) $reasons[] = 'multiple_references';
                 $ticketWps = array_unique(array_merge(array_values($ids), array_column(TicketDemand::findAllByTicket($ticketId), 'openproject_work_package_id')));
+                $otherTicketLinks = array_filter(TicketDemand::findAllByTicket($ticketId), static fn($l) => (int) $l['openproject_work_package_id'] !== $wpId);
+                $requiresReason = $otherLinks !== [] || $otherTicketLinks !== [];
                 if (count($ticketWps) > 1) $reasons[] = 'multiple_work_packages';
                 $linkedElsewhere = $link !== null && (int) $link['tickets_id'] !== $ticketId;
                 if ($linkedElsewhere) $reasons[] = 'linked_elsewhere';
@@ -149,12 +151,13 @@ final class LegacyReconciliationService
                 if ($wpId <= 0) $state = 'invalid';
                 elseif (!$ticket->can($ticketId, UPDATE)) $state = 'readonly';
                 elseif ($ownLink !== null) $state = 'linked';
-                elseif ($reasons !== []) $state = 'conflict';
+                elseif ($requiresReason) $state = 'conflict';
                 $rows[] = [
                     'ticket_id' => $ticketId,
                     'ticket_name' => (string) $ticket->fields['name'],
                     'wp_id' => $wpId,
                     'state' => $state,
+                    'requires_reason' => $requiresReason,
                     'conflict' => [
                         'reasons' => $reasons,
                         'source_references' => $sourceReferences,

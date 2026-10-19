@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.28.0** · Compatível com GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.29.0** · Compatível com GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -96,9 +96,17 @@ O valor não é mostrado novamente. Deixá-lo vazio em uma edição mantém o to
 1. Abra o chamado e confirme que o perfil possui **Criar e vincular Work Packages**.
 2. Na área técnica da demanda, escolha o projeto e o tipo de WP permitido.
 3. Preencha os campos solicitados pelo OpenProject.
-4. Confirme a criação.
+4. Carregue o template do tipo escolhido e complete a documentação no editor visual ou Markdown.
+5. Se desejar relacionar a nova WP a uma anterior, selecione a WP, escolha o tipo de relação e marque a confirmação. A direção apresentada é da nova WP para a anterior.
+6. Confirme a criação. Se a relação falhar depois de criar, repita na mesma tela para tentar apenas o relacionamento, sem criar outra WP.
 
 O plugin registra o vínculo, a fase pública e o histórico técnico. Um chamado pode possuir mais de uma WP. Ao criar uma WP adicional, informe o motivo solicitado pelo formulário.
+
+#### Documentar uma WP existente
+
+Na grade de WPs vinculadas, clique em **Documentar**. A edição exige dados técnicos, criação/vinculação de WPs, leitura/alteração do chamado e token pessoal autorizado no OpenProject. O botão **Código** oferece seleção de linguagem e realce; cole imagens no editor ou use a ferramenta de imagens, ajustando as dimensões. Use **Adicionar anexos** para documentos. Salvar grava a descrição e associa os anexos no OpenProject.
+
+Limites: 20 arquivos de até 15 MB por edição, documentação de até 500 KB e sessão de duas horas; limites menores da instância também se aplicam. Arquivos são enviados imediatamente, ainda sem contêiner, e associados ao salvar. O plugin não apaga anexos anteriores nem mantém cópias locais. Uma alteração simultânea exige recarregar e comparar: copie seu rascunho antes. Para macros/construções específicas do OpenProject, use Markdown. Veja [limitações e homologação](RELEASE_0.29.0.md).
 
 ### 6.2 Consultar e sincronizar
 
@@ -111,7 +119,7 @@ Na **Visão Gerencial de Demandas**, use **Conciliar Work Packages existentes** 
 3. Selecione até cinco referências por operação, marque a confirmação e clique em **Validar e conciliar selecionadas**.
 4. Verifique o vínculo na **Evolução da Demanda** e a cobertura no painel. A conciliação não cria outra WP, não altera a WP externa e não publica fase ou acompanhamento. Depois, a sincronização normal e o webhook passam a reconhecer o vínculo.
 
-Referências de outra instância e WPs sem acesso não são importadas. O mesmo par chamado–WP não é duplicado. A mesma WP pode ser conciliada a vários chamados, e um chamado pode receber várias WPs; nos casos com múltiplos vínculos, é necessária a permissão **Resolver conflitos de conciliação de Work Packages** e uma justificativa de 10 a 2.000 caracteres por referência selecionada. Os vínculos anteriores são preservados, inclusive históricos, fases e entradas de tempo. A justificativa é registrada no histórico do novo vínculo. O campo original não é alterado. Solucionados e fechados podem ser incluídos escolhendo **Todos**. A cobertura contabiliza os vínculos confirmados, não apenas a presença de uma URL.
+Referências de outra instância e WPs sem acesso não são importadas. O mesmo par chamado–WP não é duplicado. A mesma WP pode ser conciliada a vários chamados, e um chamado pode receber várias WPs. O primeiro vínculo efetivo dispensa justificativa, mesmo quando há várias referências possíveis. Para vínculos adicionais do mesmo chamado ou WP, é necessária a permissão **Resolver conflitos de conciliação de Work Packages** e uma justificativa de 10 a 2.000 caracteres. Use **Selecionar possibilidades desta página** para conciliar juntas até cinco referências e, quando necessário, preencha a justificativa comum. A ordem da grade determina o primeiro vínculo do lote. O botão fica bloqueado durante o envio. Os vínculos anteriores são preservados, inclusive históricos, fases e entradas de tempo. A justificativa é registrada no histórico do novo vínculo. O campo original não é alterado. Solucionados e fechados podem ser incluídos escolhendo **Todos**. A cobertura contabiliza os vínculos confirmados, não apenas a presença de uma URL.
 
 Quando houver conflito, clique em **Detalhes**. O modal informa se a mesma WP aparece em outros chamados, se já existe vínculo local e quais referências são visíveis para o perfil ativo. O número da WP abre a tarefa correspondente no OpenProject em nova aba. A transferência automática aparece somente para um conflito de vínculo local simples, quando o operador possui o novo direito, pode alterar ambos os chamados e o vínculo não possui entradas de tempo, fase pública nem acompanhamento público. Após a confirmação, ela move exclusivamente o registro local e cria eventos de auditoria nos dois chamados; a WP, o campo Fields e o OpenProject não são alterados. Para manter um compartilhamento correto, selecione a referência na listagem e informe a justificativa, em vez de transferir ou remover o vínculo anterior. Quem inicia a conciliação na Evolução da Demanda retorna à mesma aba do chamado de origem após confirmar. O webhook passa a processar todos os vínculos da WP, aplicando a regra de fase e acompanhamento de forma independente em cada chamado.
 
