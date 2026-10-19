@@ -73,6 +73,17 @@ if ($input['mode'] === 'seed') {
     $DB->update('glpi_plugin_demandas_links', ['public_phase' => '', 'public_message' => null], ['openproject_work_package_id' => 91008]);
     $DB->delete('glpi_plugin_demandas_events', ['openproject_work_package_id'=>91008,'event_type'=>'legacy_link_transferred','source'=>'legacy_reconciliation']);
     echo json_encode(['users' => $users, 'tickets' => $tickets, 'wps' => $wps]);
+} elseif ($input['mode'] === 'ui-rights') {
+    $profile = new Profile();
+    // Public-only client using the central interface, as in this deployment.
+    $client = $profile->find(['name' => 'Reconciliation QA client']);
+    $profile->update(['id' => (int) array_key_first($client), 'interface' => 'central']);
+    DP::setRight((int) array_key_first($client), DP::VIEW_PUBLIC, true);
+    $found = $profile->find(['name' => 'Reconciliation QA readonly']);
+    $pid = (int) array_key_first($found);
+    DP::setRight($pid, DP::VIEW_PUBLIC, false);
+    DP::setRight($pid, DP::VIEW_TECHNICAL, false);
+    echo '{}';
 } elseif ($input['mode'] === 'reset-imports') {
     // Explicit reset of this suite's two imported fixtures only, in the guarded test DB.
     foreach ($DB->request(['FROM' => 'glpi_tickets', 'WHERE' => ['name' => ['LIKE', 'QA conciliação %']]]) as $ticket) {

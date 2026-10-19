@@ -36,17 +36,18 @@ if ($rows === []) {
             ? "<a href='{$h($externalUrl . '/work_packages/' . $wp)}' target='_blank' rel='noopener' title='Abrir WP #{$wp} no OpenProject'>#{$wp}<i class='ti ti-external-link ms-1' aria-hidden='true'></i></a>"
             : '—';
         $detailsButton = '';
-        if ($row['state'] === 'conflict') {
+        if ($row['conflict']['reasons'] !== []) {
             $encoded = htmlspecialchars(json_encode($row, JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $detailsButton = "<button class='btn btn-sm btn-outline-secondary ms-2 legacy-conflict-details' type='button' data-conflict='{$encoded}' data-bs-toggle='modal' data-bs-target='#legacyConflictDetails'>Detalhes</button>";
         }
-        echo '<tr><td>' . (($row['state'] === 'ready' || ($row['state'] === 'conflict' && $row['conflict']['can_reconcile'])) ? "<input class='form-check-input' type='checkbox' name='pairs[]' value='{$tid}:{$wp}' aria-label='Conciliar chamado {$tid} com WP {$wp}'>" : '—') . "</td><td><a href='/front/ticket.form.php?id={$tid}' target='_blank' rel='noopener'>#{$tid} — {$h($row['ticket_name'])}</a></td><td>{$wpCell}</td><td>{$h($labels[$row['state']])}{$detailsButton}";
+        $needsReason = $row['requires_reason'] ? '1' : '0';
+        echo '<tr><td>' . (($row['state'] === 'ready' || ($row['state'] === 'conflict' && $row['conflict']['can_reconcile'])) ? "<input class='form-check-input' type='checkbox' name='pairs[]' data-requires-reason='{$needsReason}' value='{$tid}:{$wp}' aria-label='Conciliar chamado {$tid} com WP {$wp}'>" : '—') . "</td><td><a href='/front/ticket.form.php?id={$tid}' target='_blank' rel='noopener'>#{$tid} — {$h($row['ticket_name'])}</a></td><td>{$wpCell}</td><td>{$h($labels[$row['state']])}{$detailsButton}";
         if ($row['state'] === 'conflict' && $row['conflict']['can_reconcile']) {
             echo "<label class='form-label mt-2' for='reason-{$tid}-{$wp}'>Justificativa para manter múltiplos vínculos</label><textarea class='form-control' id='reason-{$tid}-{$wp}' name='reasons[{$tid}:{$wp}]' minlength='10' maxlength='2000' rows='2'></textarea><small>Obrigatória ao selecionar esta referência. Os vínculos anteriores serão mantidos.</small>";
         }
         echo '</td></tr>';
     }
-    echo "</tbody></table></div><label class='form-check my-3'><input class='form-check-input' type='checkbox' name='confirm' value='1' required><span class='form-check-label'>Conferi os chamados e confirmo a vinculação às WPs existentes selecionadas.</span></label><button class='btn btn-primary'>Validar e conciliar selecionadas</button></form>";
+    echo "</tbody></table></div><div class='alert alert-info mt-3'>Se todas as referências estiverem corretas, concilie-as juntas. Por segurança, cada envio valida até cinco referências; repita para as restantes. O primeiro vínculo não exige justificativa. Vínculos adicionais do mesmo chamado ou WP exigem a permissão de resolver conflitos e justificativa.</div><button type='button' class='btn btn-outline-primary' id='legacy-select-all'>Selecionar possibilidades desta página (até cinco)</button><div class='mt-3'><label class='form-label' for='legacy-batch-reason'>Justificativa comum aos vínculos adicionais selecionados</label><textarea id='legacy-batch-reason' class='form-control' name='batch_reason' minlength='10' maxlength='2000' rows='2'></textarea><small>Você também pode preencher a justificativa individual de cada referência.</small></div><div id='legacy-selection-status' role='status' class='my-2'></div><label class='form-check my-3'><input class='form-check-input' type='checkbox' name='confirm' value='1' required><span class='form-check-label'>Conferi os chamados e confirmo a vinculação às WPs existentes selecionadas.</span></label><button class='btn btn-primary'>Validar e conciliar selecionadas</button></form>";
     echo "<nav class='d-flex flex-wrap gap-3 my-3' aria-label='Paginação da conciliação'>";
     foreach (['Anterior' => $page['page'] - 1, 'Próxima' => $page['page'] + 1] as $label => $target) {
         if ($target < 1 || $target > $page['pages']) continue;
@@ -64,7 +65,38 @@ $modalConfig = json_encode([
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 $modalScript = <<<'JS'
 <script>
-document.querySelectorAll('input[name="pairs[]"]').forEach(input => input.addEventListener('change', () => { const reason = input.closest('tr').querySelector('textarea'); if (reason) reason.required = input.checked; }));
+const legacyPairs = [...document.querySelectorAll('input[name="pairs[]"]')];
+const legacyBatch = document.getElementById('legacy-batch-reason');
+function legacySelection() {
+  const tickets = new Set(), wps = new Set(); let missing = false, count = 0;
+  legacyPairs.forEach(input => {
+    const reason = input.closest('tr').querySelector('textarea');
+    if (reason) reason.required = false;
+    if (!input.checked) return;
+    count++;
+    const [ticket, wp] = input.value.split(':');
+    const additional = input.dataset.requiresReason === '1' || tickets.has(ticket) || wps.has(wp);
+    tickets.add(ticket); wps.add(wp);
+    if (additional && !(reason?.value.trim().length >= 10)) missing = true;
+  });
+  if (legacyBatch) legacyBatch.required = missing;
+  const status = document.getElementById('legacy-selection-status');
+  if (status) status.textContent = count + ' referência(s) selecionada(s).' + (missing ? ' Informe a justificativa para os vínculos adicionais.' : '');
+  legacyPairs.forEach(input => input.setCustomValidity(count > 5 && input.checked ? 'Selecione até cinco referências por envio.' : ''));
+}
+legacyPairs.forEach(input => input.addEventListener('change', legacySelection));
+legacyPairs[0]?.form.addEventListener('input', legacySelection);
+document.getElementById('legacy-select-all')?.addEventListener('click', () => { legacyPairs.forEach((input, index) => { input.checked = index < 5; }); legacySelection(); });
+document.addEventListener('submit', event => {
+  const form = event.target;
+  if (!form.action?.includes('/legacy-reconciliation.form.php')) return;
+  if (form.dataset.submitting === '1') { event.preventDefault(); return; }
+  form.dataset.submitting = '1'; form.setAttribute('aria-busy', 'true');
+  form.querySelectorAll('button').forEach(button => { button.disabled = true; });
+  const submit = form.querySelector('button:not([type="button"])');
+  if (submit) submit.textContent = 'Validando e conciliando…';
+});
+window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 const legacyConflictConfig = __CONFIG__;
 const legacyConflictContent = document.getElementById('legacy-conflict-content');
 const legacyEscape = value => { const element = document.createElement('span'); element.textContent = String(value ?? ''); return element.innerHTML; };
@@ -85,13 +117,13 @@ document.querySelectorAll('.legacy-conflict-details').forEach(button => button.a
     transfer = '<hr><div class="alert alert-warning mb-0"><strong>Transferência local disponível.</strong> A ação moverá somente o vínculo do plugin de ' + existing + ' para <a href="/front/ticket.form.php?id=' + Number(row.ticket_id) + '" target="_blank" rel="noopener">#' + Number(row.ticket_id) + '</a>. A WP não será alterada no OpenProject.</div><form method="post" action="/plugins/demandas/front/legacy-reconciliation.form.php" class="mt-3"><input type="hidden" name="_glpi_csrf_token" value="' + legacyEscape(legacyConflictConfig.csrf) + '"><input type="hidden" name="origin_ticket" value="' + Number(legacyConflictConfig.origin_ticket) + '"><input type="hidden" name="action" value="transfer"><input type="hidden" name="pair" value="' + Number(row.ticket_id) + ':' + Number(row.wp_id) + '"><input type="hidden" name="ticket_scope" value="' + legacyEscape(legacyConflictConfig.scope) + '"><label class="form-check"><input class="form-check-input" type="checkbox" name="confirm_transfer" value="1" required><span class="form-check-label">Confirmo que o chamado selecionado é o vínculo local correto para esta WP.</span></label><button class="btn btn-danger mt-3">Transferir vínculo local</button></form>';
   } else {
     const blockers = [];
-    if ((conflict.reasons || []).includes('multiple_references')) blockers.push('há múltiplas referências; use a conciliação com justificativa para preservá-las');
+    if ((conflict.reasons || []).includes('multiple_references')) blockers.push('há múltiplas referências; use a conciliação conjunta para preservá-las');
     if (Number(conflict.time_entries || 0) > 0) blockers.push('existem entradas de tempo vinculadas ao chamado atual');
     if (conflict.has_public_data) blockers.push('o vínculo atual contém fase ou acompanhamento público');
     if (blockers.length === 0) blockers.push('você não possui permissão ou alteração nos dois chamados envolvidos');
     transfer = '<div class="alert alert-secondary mt-3 mb-0"><strong>Transferência bloqueada.</strong> Para corrigir: ' + legacyEscape(blockers.join('; ')) + '.</div>';
   }
-  if (conflict.can_reconcile) transfer = '<div class="alert alert-info mt-3">Para manter os vínculos existentes e adicionar este, feche os detalhes, selecione a referência na listagem e informe a justificativa obrigatória.</div>' + transfer;
+  if (conflict.can_reconcile || row.state === 'ready') transfer = '<div class="alert alert-info mt-3">Selecione as referências corretas na listagem. A justificativa é exigida apenas para vínculos adicionais efetivamente conciliados; o primeiro vínculo não a exige.</div>' + transfer;
   const wpUrl = legacyConflictConfig.external_url + '/work_packages/' + Number(row.wp_id);
   const items = references.map(reference => '<li>' + reference + '</li>').join('') || '<li>Nenhuma referência adicional visível.</li>';
   legacyConflictContent.innerHTML = '<p><strong>WP indicada:</strong> <a href="' + legacyEscape(wpUrl) + '" target="_blank" rel="noopener">#' + Number(row.wp_id) + '</a></p><p><strong>Chamado em análise:</strong> <a href="/front/ticket.form.php?id=' + Number(row.ticket_id) + '" target="_blank" rel="noopener">#' + Number(row.ticket_id) + ' — ' + legacyEscape(row.ticket_name) + '</a></p><h3 class="h5">Motivos</h3><ul>' + reasons.map(reason => '<li>' + legacyEscape(reason) + '</li>').join('') + '</ul><h3 class="h5">Referências encontradas</h3><ul>' + items + '</ul><h3 class="h5">Vínculo local atual</h3><p>' + existing + '</p>' + transfer;

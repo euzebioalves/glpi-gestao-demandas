@@ -1,7 +1,14 @@
 (() => {
     'use strict';
 
+    // Shared only within this page; reloads/profile changes recheck the session.
+    let permissionsRequest;
+    const permissions = () => permissionsRequest ??= fetch('/plugins/demandas/front/ui-permissions.php', {
+        credentials: 'same-origin', cache: 'no-store', headers: {'Accept': 'application/json'},
+    }).then(response => response.ok ? response.json() : {}).catch(() => ({}));
+
     const ticketId = () => {
+        if (!/\/front\/ticket\.form\.php$/.test(window.location.pathname)) return 0;
         const match = window.location.search.match(/[?&]id=(\d+)/);
         return match ? Number(match[1]) : 0;
     };
@@ -119,6 +126,7 @@
     };
 
     const loadPhase = async () => {
+        if (!ticketId() || (await permissions()).view_public !== true) return;
         let phase = sourcePhase();
         let configuredLabel = sourceLabel();
         let source = document.getElementById('demandas-public-phase-source');
@@ -167,6 +175,7 @@
     const bootWorkPackageAlerts = async () => {
         const search = document.querySelector('input[placeholder*="Pesquisar"], #global-search');
         if (!search || document.getElementById('demandas-wp-alerts')) return;
+        if ((await permissions()).view_technical !== true) return;
         let data;
         try {
             const response = await fetch('/plugins/demandas/front/work-package-notification-feed.php', {

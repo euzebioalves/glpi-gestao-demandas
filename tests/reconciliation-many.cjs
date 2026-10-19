@@ -32,10 +32,10 @@ const base='http://127.0.0.1:8386', pagePath='/plugins/demandas/front/legacy-rec
    await post(tickets.second+':'+wp,'');assert.deepEqual(snapshot(),before);
    await page.reload();
    await page.locator('.legacy-conflict-details').click();await page.locator('#legacyConflictDetails.show').waitFor();
-   assert.match(await page.locator('#legacy-conflict-content').innerText(),/manter os vínculos existentes/);
+   assert.match(await page.locator('#legacy-conflict-content').innerText(),/vínculos adicionais efetivamente conciliados/);
    await page.locator('#legacyConflictDetails .btn-close').click();
    await page.locator('input[name="pairs[]"]').check();
-   await page.locator('textarea').fill('Mesma entrega atende dois chamados. Justificativa QA <b>texto</b>.');
+   await page.locator('textarea[name^="reasons"]').fill('Mesma entrega atende dois chamados. Justificativa QA <b>texto</b>.');
    await page.locator('input[name=confirm]').check();
    await Promise.all([page.waitForURL('**/front/ticket.form.php?**'),page.getByRole('button',{name:'Validar e conciliar selecionadas'}).click()]);
    assert.equal(new URL(page.url()).searchParams.get('id'),String(tickets.second));
