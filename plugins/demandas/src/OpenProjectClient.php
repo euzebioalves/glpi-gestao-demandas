@@ -15,6 +15,7 @@ final class OpenProjectClient
     /** @var array<string, array> */
     private array $creationOptions = [];
     private ?array $customFieldsCache = null;
+    private array $backlogSchemas = [];
     private bool $allowsWorkPackageCreation;
 
     private function __construct(string $token, bool $allowsWorkPackageCreation)
@@ -450,6 +451,13 @@ final class OpenProjectClient
         ]);
     }
 
+    public function getBacklogPeople(): array
+    {
+        $people = $this->backlogCollection('principals', []);
+        return array_values(array_map(static fn($p) => ['id' => (int) $p['id'], 'name' => (string) ($p['name'] ?? '')],
+            array_filter($people, static fn($p) => ($p['_type'] ?? '') === 'User')));
+    }
+
     /** Sum only this token owner's entries, never the WP's shared spentTime. */
     public function getBacklogMinutes(int $userId, array $workPackageIds): array
     {
@@ -580,7 +588,7 @@ final class OpenProjectClient
         return $payload;
     }
 
-    public function summarizeWorkPackage(array $workPackage): array
+    public function summarizeWorkPackage(array $workPackage, bool $readOnlySchema = false): array
     {
         $details = [
             'id' => (int) ($workPackage['id'] ?? 0),
@@ -610,7 +618,24 @@ final class OpenProjectClient
             $typeId = $this->linkedResourceId($workPackage, 'type');
             if ($projectId > 0 && $typeId > 0) {
                 try {
-                    $customer = $this->getCreationOptions($projectId, $typeId)['customer'] ?? null;
+                    if ($readOnlySchema) {
+                        $pair = $projectId . '-' . $typeId;
+                        if (!array_key_exists($pair, $this->backlogSchemas)) {
+                            // Cache failures too: missing schemas must not cause one request per card.
+                            $this->backlogSchemas[$pair] = [];
+                            $this->backlogSchemas[$pair] = $this->request('GET', 'work_packages/schemas/' . $pair);
+                        }
+                        $customer = null;
+                        foreach ($this->backlogSchemas[$pair] as $field => $definition) {
+                            if (preg_match('/^customField\d+$/', (string) $field) && is_array($definition)
+                                && mb_strtolower(trim((string) ($definition['name'] ?? ''))) === 'cliente') {
+                                $customer = ['schema_key' => $field];
+                                break;
+                            }
+                        }
+                    } else {
+                        $customer = $this->getCreationOptions($projectId, $typeId)['customer'] ?? null;
+                    }
                     $key = is_array($customer) ? (string) ($customer['schema_key'] ?? '') : '';
                     if ($key !== '') {
                         $details['customer'] = $this->customFieldLabel($workPackage, $key);

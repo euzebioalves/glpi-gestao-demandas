@@ -276,6 +276,14 @@ Somente entradas de tempo são sincronizadas com o OpenProject. Marcações de p
 
 ## 13. Checklist de operação
 
+### Backlog
+
+Em **Gerência > Backlog**, pesquise por número da WP, título, cliente, projeto, responsável ou chamado. A busca considera os status selecionados em **Escolher colunas**; cada coluna possui sua própria rolagem. Os cards ficam disponíveis antes das horas, que são preenchidas progressivamente.
+
+Os links de chamados conciliados abrem em nova aba e respeitam as entidades e permissões de leitura do GLPI. Clique no card para ver a descrição formatada e as imagens dos anexos. Referências ainda existentes apenas no Fields precisam ser conciliadas.
+
+Para consultar colegas, o perfil deve possuir **Consultar Backlog de colegas com o próprio token**, além dos direitos de Backlog e dados técnicos. Clique **Consultar colegas** e escolha o responsável. Seu token limita as WPs visíveis, suas colunas permanecem iguais e o relógio continua somando suas próprias horas. Nenhuma preferência do colega é alterada.
+
 - configuração automática testada e webhook assinado;
 - mapeamento de status e mensagens públicas revisados;
 - classificação e templates preenchidos;
