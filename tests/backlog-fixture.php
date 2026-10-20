@@ -19,7 +19,10 @@ foreach (['admin','internal','readonly','client'] as $role) {
     DP::setRight($pid,DP::VIEW_TECHNICAL,$role!=='client');
     DP::setRight($pid,DP::VIEW_BACKLOG,true);
     DP::setRight($pid,DP::CONFIGURE_BACKLOG,in_array($role,['admin','internal'],true));
+    DP::setRight($pid,DP::VIEW_COLLEAGUE_BACKLOG,$role==='admin');
     DP::setRight($pid,DP::MANAGE_CONFIG,$role==='admin');
+    global $DB;
+    $DB->updateOrInsert('glpi_profilerights',['rights'=>Ticket::READALL | READ],['profiles_id'=>$pid,'name'=>'ticket']);
     $login='backlog-qa-'.$role.'-'.bin2hex(random_bytes(4));
     $user=new User();
     $uid=(int)$user->add(['name'=>$login,'password'=>$input['password'],'password2'=>$input['password'],'is_active'=>1,'authtype'=>Auth::DB_GLPI,'profiles_id'=>$pid,'entities_id'=>0]);
@@ -30,4 +33,11 @@ foreach (['admin','internal','readonly','client'] as $role) {
     $users[$role]=['id'=>$uid,'login'=>$login];
 }
 Config::setConfigurationValues(DC::CONTEXT,['openproject_internal_url'=>'http://127.0.0.1:8396/api/v3','openproject_external_url'=>'https://openproject.example.invalid','request_timeout'=>2]);
-echo json_encode(['users'=>$users]);
+$tickets=[];
+foreach ([0,99999] as $entity) {
+    $DB->insert('glpi_tickets',['entities_id'=>$entity,'name'=>'Backlog QA chamado '.bin2hex(random_bytes(4)),'status'=>1,'content'=>'Fictício','date'=>'2026-10-20 09:00:00','date_mod'=>'2026-10-20 09:00:00']);
+    $id=(int)$DB->insertId();
+    \GlpiPlugin\Demandas\TicketDemand::saveLink($id,111,1,'Projeto QA','qa',1,'Tarefa','Novo');
+    $tickets[$entity]=$id;
+}
+echo json_encode(['users'=>$users,'tickets'=>$tickets]);

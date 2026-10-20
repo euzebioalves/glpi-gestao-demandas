@@ -2,6 +2,17 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.30.0
+
+- Backlog com busca por WP, título, cliente, projeto, responsável e chamado, sem nova consulta à API;
+- rolagem vertical independente em cada coluna, com cabeçalho fixo e rolagem horizontal do quadro;
+- cards liberados antes das horas, que são consultadas em lotes; descoberta de Cliente usa schema de leitura em vez do formulário de criação;
+- descrição carregada ao abrir o painel, com Markdown/HTML saneado e imagens de anexos por proxy autenticado;
+- todos os chamados com vínculo confirmado e leitura permitida aparecem como links no card e no detalhe;
+- consulta de colegas com o token do usuário logado, protegida por **Consultar Backlog de colegas com o próprio token**; não altera preferências dos colegas e o relógio continua pessoal.
+
+Veja [RELEASE_0.30.0.md](../../docs/RELEASE_0.30.0.md). Atualize sem desinstalar e conceda a nova permissão somente aos perfis autorizados.
+
 ## Versão 0.29.1
 
 - consulta as permissões da sessão antes de carregar automaticamente notificações e fase pública;

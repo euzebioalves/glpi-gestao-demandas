@@ -6,6 +6,10 @@ Os testes práticos e as capturas sanitizadas do manual usam Playwright. O coman
 
 Para uma base isolada exclusivamente para Playwright, sem usar a homologação compartilhada, execute `./start-e2e.ps1`. Ela sobe GLPI 11.0.9 em `http://localhost:8190`; os comandos de teste ficam descritos em [tests/e2e/README.md](tests/e2e/README.md).
 
+## Plugin 0.30.0
+
+Backlog com busca, rolagem por coluna, horas carregadas após os cards, descrição formatada com imagens autenticadas e links dos chamados. A consulta de colegas usa token próprio e permissão específica. Veja [docs/RELEASE_0.30.0.md](docs/RELEASE_0.30.0.md).
+
 ## Plugin 0.29.1
 
 Corrige consultas automáticas sem permissão ao feed de notificações e à fase pública, preservando os direitos atuais e os bloqueios no servidor. Veja [docs/RELEASE_0.29.1.md](docs/RELEASE_0.29.1.md).

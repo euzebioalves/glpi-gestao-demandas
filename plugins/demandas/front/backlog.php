@@ -22,6 +22,15 @@ $escape = static fn(string $value): string => htmlspecialchars($value, ENT_QUOTE
       <button class="btn btn-primary" id="backlog-refresh">Atualizar quadro</button>
     </div>
   </header>
+  <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
+    <div class="flex-grow-1"><label class="form-label" for="backlog-search">Buscar no quadro</label>
+      <input class="form-control" type="search" id="backlog-search" placeholder="WP, assunto, cliente, projeto ou chamado"></div>
+    <?php if (Profile::has(Profile::VIEW_COLLEAGUE_BACKLOG)): ?>
+    <div><label class="form-label" for="backlog-person">Responsável pelo backlog</label>
+      <select class="form-select" id="backlog-person"><option value="0">Meu backlog</option></select></div>
+    <button class="btn btn-outline-secondary" id="backlog-people">Consultar colegas</button>
+    <?php endif; ?>
+  </div>
   <?php if (!Config::hasPersonalToken((int) Session::getLoginUserID())): ?>
   <div class="alert alert-info">Configure seu token pessoal em <a href="/front/preference.php?forcetab=GlpiPlugin%5CDemandas%5COpenProjectPersonalToken%241">Minhas configurações &gt; OpenProject</a>.</div>
   <?php endif; ?>

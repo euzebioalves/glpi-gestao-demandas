@@ -1,5 +1,11 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.30.0 — Backlog
+
+O carregamento de cards não espera `time_entries`; `action=times` consulta lotes de até 25 IDs, sempre usando a identidade do próprio token. O frontend descarta respostas de quadros anteriores e não confunde horas pendentes/indisponíveis com zero. GETs liberam o bloqueio da sessão antes das consultas remotas. `summarizeWorkPackage(..., true)` usa schema GET por projeto/tipo com cache de falhas durante a requisição, sem expandir usuários/valores de formulários de criação.
+
+`VIEW_COLLEAGUE_BACKLOG` controla listagem de pessoas e consultas a outro responsável, inclusive detalhe/imagem. Usa `principals` visíveis ao token, não `users` (que exige administrar usuários no OpenProject 17). As preferências continuam pertencendo ao usuário GLPI logado. `BacklogDetails` confirma WP e responsável pela API, saneia HTML ou converte Markdown com bibliotecas do GLPI e limita imagens aos anexos da própria WP. O proxy revalida acesso e pertencimento, aceita raster até 15 MB e não segue redirects. Links de chamados vêm somente de vínculos confirmados, com entidade ativa, não excluído e READ nativo. Nunca usar a descoberta de chamados por varredura irrestrita de acompanhamentos para preencher esse quadro. Consulte `RELEASE_0.30.0.md`.
+
 ## Atualização 0.29.1 — consultas automáticas e permissões
 
 `front/ui-permissions.php` exige sessão autenticada e retorna somente dois booleanos dos direitos efetivos do perfil ativo (`VIEW_PUBLIC` e `VIEW_TECHNICAL`), com `private, no-store`. `demandas.js` compartilha essa consulta durante a página, sem armazenamento persistente. A fase é consultada somente em `front/ticket.form.php` com ID e direito público; o feed exige direito técnico. Falhas fecham o acesso na interface. Os endpoints de dados mantêm integralmente a autorização existente, inclusive leitura nativa do chamado. Não conceder direitos para silenciar logs; acessos diretos indevidos continuam sendo registrados. Veja `RELEASE_0.29.1.md` e `tests/ui-permissions.cjs`.
