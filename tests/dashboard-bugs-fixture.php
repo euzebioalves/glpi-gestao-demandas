@@ -33,7 +33,7 @@ if ($input['mode'] === 'seed') {
         'completa'=>[1,1,['Entregue','Entregue']], 'parcial'=>[2,2,['Entregue','Novo']],
         'desconhecida'=>[1,4,['Entregue','']], 'pendente'=>[2,3,['Desenvolvido','Em testes']],
         'sem-wp'=>[1,1,[]], 'suporte'=>[3,1,['Entregue']], 'sugestao'=>[4,1,['Entregue']],
-        'fechado'=>[1,6,['Entregue']], 'solucionado'=>[2,5,['Entregue']],
+        'fechado'=>[1,6,['Novo']], 'solucionado'=>[2,5,['Entregue']],
         'outra-entidade'=>[1,1,['Entregue']], 'escape'=>[1,1,['<script>alert(1)</script>']],
     ];
     $tickets=[]; $wp=94000;
@@ -46,11 +46,18 @@ if ($input['mode'] === 'seed') {
         $tickets[$name]=$tid;
         foreach ($statuses as $opStatus) {
             $wp++;
-            $DB->updateOrInsert('glpi_plugin_demandas_links', ['tickets_id'=>$tid,'openproject_project_id'=>1,'openproject_project_name'=>'Projeto fictício','openproject_type_name'=>'User Story','openproject_status'=>$opStatus,'last_synced_at'=>$name==='completa'?'2026-01-01 12:00:00':date('Y-m-d H:i:s')], ['openproject_work_package_id'=>$wp]);
+            $DB->updateOrInsert('glpi_plugin_demandas_links', ['tickets_id'=>$tid,'openproject_project_id'=>1,'openproject_project_name'=>'Projeto fictício','openproject_type_name'=>'User Story','openproject_status'=>$opStatus,'last_synced_at'=>$name==='completa'?'2026-01-01 12:00:00':date('Y-m-d H:i:s'),
+                'work_package_details_json'=>json_encode(['responsible'=>$name==='parcial'?'Ana QA':'','assignee'=>'Técnico QA'])], ['openproject_work_package_id'=>$wp]);
+            if ($name==='parcial' && $opStatus==='Novo') foreach ([20,2] as $days) {
+                $DB->updateOrInsert('glpi_plugin_demandas_events', ['previous_status'=>'Novo','new_status'=>'Novo','is_success'=>1,'date_creation'=>date('Y-m-d H:i:s',time()-86400*$days)],
+                    ['tickets_id'=>$tid,'openproject_work_package_id'=>$wp,'event_type'=>'work_package_synchronized','source'=>'qa031-'.$days]);
+            }
         }
     }
+    $owner=$DB->request(['FROM'=>'glpi_users','WHERE'=>['name'=>'reconciliation-admin']])->current();
+    $DB->updateOrInsert('glpi_tickets_users',['type'=>CommonITILActor::ASSIGN],['tickets_id'=>$tickets['parcial'],'users_id'=>(int)$owner['id'],'type'=>CommonITILActor::ASSIGN]);
     if (DeliveryReview::delivered('Desenvolvido') || DeliveryReview::delivered('Não Entregue') || !DeliveryReview::delivered(' Entregue ')) throw new RuntimeException('Status incorreto.');
-    echo json_encode(['tickets'=>$tickets]);
+    echo json_encode(['tickets'=>$tickets,'owner'=>(int)$owner['id']]);
 } elseif ($input['mode'] === 'revoke') {
     $profile=$DB->request(['FROM'=>'glpi_profiles','WHERE'=>['name'=>'Reconciliation QA admin']])->current();
     DP::setRight((int)$profile['id'], DP::VIEW_TECHNICAL, false);

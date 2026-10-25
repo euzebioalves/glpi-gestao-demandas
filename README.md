@@ -6,9 +6,21 @@ Os testes práticos e as capturas sanitizadas do manual usam Playwright. O coman
 
 Para uma base isolada exclusivamente para Playwright, sem usar a homologação compartilhada, execute `./start-e2e.ps1`. Ela sobe GLPI 11.0.9 em `http://localhost:8190`; os comandos de teste ficam descritos em [tests/e2e/README.md](tests/e2e/README.md).
 
+## Plugin 0.31.0
+
+Nova visão operacional na aba **Bugs e Melhorias**, preservando a **Visão geral**. Prioriza **Precisam de ação**, conferência de entregas e envelhecimento observado por etapa, com filtros de responsáveis GLPI/OpenProject, alertas por chamado e escolha pessoal da visão padrão. Todos exigem direitos específicos de perfil, sem concessão automática. Implementação em homologação: veja os testes executados e as limitações em [docs/RELEASE_0.31.0.md](docs/RELEASE_0.31.0.md).
+
+## Plugin 0.30.0
+
+Backlog com busca, rolagem por coluna, horas carregadas após os cards, descrição formatada com imagens autenticadas e links dos chamados. A consulta de colegas usa token próprio e permissão específica. Veja [docs/RELEASE_0.30.0.md](docs/RELEASE_0.30.0.md).
+
+## Plugin 0.29.1
+
+Corrige consultas automáticas sem permissão ao feed de notificações e à fase pública, preservando os direitos atuais e os bloqueios no servidor. Veja [docs/RELEASE_0.29.1.md](docs/RELEASE_0.29.1.md).
+
 ## Plugin 0.29.0
 
-Nova aba **Bugs e Melhorias**, conferência de entregas com chamado aberto, alertas técnicos por chamado e escolha pessoal da visão padrão. Todos exigem direitos específicos de perfil, sem concessão automática. Consulte [docs/RELEASE_0.29.0.md](docs/RELEASE_0.29.0.md).
+Adiciona documentação de WPs na criação e edição, com código, imagens e anexos, e relações opcionais com WPs anteriores. A conciliação bloqueia cliques repetidos e exige justificativa somente nos vínculos adicionais efetivos. Veja [docs/RELEASE_0.29.0.md](docs/RELEASE_0.29.0.md).
 
 ## Plugin 0.28.0
 

@@ -40,12 +40,14 @@ final class BacklogService
         if (!$ok) throw new \RuntimeException('Não foi possível salvar as colunas.');
     }
 
-    public function load(): array
+    public function load(int $responsibleId = 0): array
     {
         BacklogHub::checkAccess();
         $client = OpenProjectClient::forCurrentUser();
         $userId = (int) ($client->getCurrentUser()['id'] ?? 0);
         if ($userId <= 0) throw new \RuntimeException('Identidade pessoal inválida.');
+        if ($responsibleId > 0 && $responsibleId !== $userId) Profile::checkRight(Profile::VIEW_COLLEAGUE_BACKLOG);
+        $ownerId = $responsibleId > 0 ? $responsibleId : $userId;
         $statuses = $client->getStatuses();
         $priority = ['novo', 'em especificação', 'em dúvida'];
         usort($statuses, static function ($a, $b) use ($priority): int {
@@ -61,23 +63,54 @@ final class BacklogService
         }
         $known = array_map('intval', array_column($statuses, 'id'));
         $rows = [];
-        foreach ($client->getBacklogWorkPackages($userId, array_values(array_intersect($selected, $known))) as $wp) {
+        foreach ($client->getBacklogWorkPackages($ownerId, array_values(array_intersect($selected, $known))) as $wp) {
             $responsible = (string) ($wp['_links']['responsible']['href'] ?? $wp['_links']['accountable']['href'] ?? '');
-            if (!preg_match('~/users/' . $userId . '$~', $responsible)) continue;
+            if (!preg_match('~/users/' . $ownerId . '$~', $responsible)) continue;
             $statusId = (int) basename((string) ($wp['_links']['status']['href'] ?? ''));
             if (!in_array($statusId, $selected, true)) continue;
-            $row = $client->summarizeWorkPackage($wp);
+            $row = $client->summarizeWorkPackage($wp, true);
             $row['status_id'] = $statusId;
-            $row['description'] = (string) ($wp['description']['raw'] ?? '');
             $row['start_date'] = (string) ($wp['startDate'] ?? '');
             $row['due_date'] = (string) ($wp['dueDate'] ?? '');
             $rows[] = $row;
         }
-        $timeAvailable = true;
-        try { $minutes = $client->getBacklogMinutes($userId, array_column($rows, 'id')); }
-        catch (\Throwable) { $minutes = []; $timeAvailable = false; }
-        foreach ($rows as &$row) $row['minutes'] = $minutes[$row['id']] ?? null;
+        $tickets = $this->tickets(array_column($rows, 'id'));
+        foreach ($rows as &$row) {
+            $row['minutes'] = null;
+            $row['ticket_ids'] = $tickets[$row['id']] ?? [];
+        }
         unset($row);
-        return compact('statuses', 'selected', 'rows', 'timeAvailable');
+        return compact('statuses', 'selected', 'rows', 'ownerId', 'userId');
+    }
+
+    /** Only confirmed local links; each ticket retains native and entity authorization. */
+    public function tickets(array $wpIds): array
+    {
+        BacklogHub::checkAccess();
+        if (!$wpIds) return [];
+        global $DB;
+        $map = []; $allowed = [];
+        foreach ($DB->request(['FROM' => 'glpi_plugin_demandas_links', 'WHERE' => ['openproject_work_package_id' => $wpIds]]) as $link) {
+            $id = (int) $link['tickets_id'];
+            if (!array_key_exists($id, $allowed)) {
+                $ticket = new \Ticket();
+                $allowed[$id] = $ticket->getFromDB($id) && empty($ticket->fields['is_deleted'])
+                    && in_array((int) $ticket->fields['entities_id'], array_map('intval', \Session::getActiveEntities()), true)
+                    && $ticket->can($id, READ);
+            }
+            if ($allowed[$id]) $map[(int) $link['openproject_work_package_id']][] = $id;
+        }
+        return $map;
+    }
+
+    public function times(array $ids): array
+    {
+        BacklogHub::checkAccess();
+        if (count($ids) > 25) throw new \InvalidArgumentException('Consulte até 25 WPs por vez.');
+        foreach ($ids as $id) if (!is_scalar($id) || !ctype_digit((string) $id) || (int) $id <= 0) throw new \InvalidArgumentException('WP inválida.');
+        $client = OpenProjectClient::forCurrentUser();
+        $user = (int) ($client->getCurrentUser()['id'] ?? 0);
+        if (!$user) throw new \RuntimeException('Identidade pessoal inválida.');
+        return $client->getBacklogMinutes($user, array_values(array_unique(array_map('intval', $ids))));
     }
 }

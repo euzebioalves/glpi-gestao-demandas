@@ -244,7 +244,7 @@ final class TicketDemand extends CommonDBTM
                 echo "<div class='alert alert-warning mt-3 mb-0'>Configure seu token pessoal do OpenProject para criar ou sincronizar Work Packages manualmente. <a href='/front/preference.php?forcetab=GlpiPlugin%5CDemandas%5COpenProjectPersonalToken%241'>Configurar meu acesso</a>.</div>";
             }
             echo "<hr><h4>Work Packages vinculadas</h4><div class='table-responsive'><table class='table table-sm table-vcenter'>";
-            echo '<thead><tr><th>WP</th><th>Status</th><th>Atribuído para</th><th>Responsável</th><th>Data de abertura</th><th>Projeto</th><th>Prioridade</th><th>Cliente</th><th>Vinculado por</th><th>Publicações SGE</th><th>Detalhes</th><th>Tempo</th></tr></thead><tbody>';
+            echo '<thead><tr><th>WP</th><th>Status</th><th>Atribuído para</th><th>Responsável</th><th>Data de abertura</th><th>Projeto</th><th>Prioridade</th><th>Cliente</th><th>Vinculado por</th><th>Publicações SGE</th><th>Detalhes</th><th>Documentação</th><th>Tempo</th></tr></thead><tbody>';
             foreach ($links as $linked) {
                 $wpId = (int) ($linked['openproject_work_package_id'] ?? 0);
                 $details = json_decode((string) ($linked['work_package_details_json'] ?? ''), true);
@@ -271,6 +271,9 @@ final class TicketDemand extends CommonDBTM
                 $report = json_decode((string) ($linked['release_details_json'] ?? ''), true);
                 echo '<td data-publications-summary="' . $wpId . '">' . self::publicationSummary(is_array($report) ? $report : []) . '</td>';
                 echo '<td><button type="button" class="btn btn-sm btn-outline-primary demandas-publications-open" data-bs-toggle="modal" data-bs-target="#demandas-publications-modal" data-ticket="' . $ticket->getID() . '" data-wp="' . $wpId . '">TASKs e versões</button></td>';
+                if (Profile::has(Profile::CREATE_WORK_PACKAGE) && $ticket->can($ticket->getID(), UPDATE)) {
+                    echo '<td><a class="btn btn-sm btn-outline-primary" href="/plugins/demandas/front/work-package-documentation.php?ticket=' . $ticket->getID() . '&amp;wp=' . $wpId . '">Documentar</a></td>';
+                } else echo '<td>—</td>';
                 if (AccessPolicy::has(Profile::LOG_OWN_TIME)) {
                     $entryUrl = '/plugins/demandas/front/time-entry.php?link=' . $ticket->getID() . ':' . $wpId . '&date=' . date('Y-m-d');
                     echo "<td><a class='btn btn-sm btn-outline-primary text-nowrap' href='" . htmlspecialchars($entryUrl, ENT_QUOTES) . "'><i class='ti ti-clock-plus me-1'></i>Lançar</a></td>";
@@ -328,7 +331,7 @@ final class TicketDemand extends CommonDBTM
         echo '<thead><tr><th>Data e hora</th><th>WP</th><th>Origem</th><th>Usuário GLPI</th><th>Status da WP</th><th>Publicações SGE</th><th>' . htmlspecialchars(Config::label('public_phase')) . '</th><th class="text-center">Resultado</th><th>Detalhes</th></tr></thead><tbody>';
         foreach ($events as $event) {
             $success = (int) $event['is_success'] === 1;
-            $sourceLabels = ['webhook' => 'Webhook', 'manual' => 'Manual', 'creation' => 'Criação', 'legacy_reconciliation' => 'Conciliação de Atividade DevOps', 'publications' => 'Consulta de TASKs e versões'];
+            $sourceLabels = ['webhook' => 'Webhook', 'manual' => 'Manual', 'creation' => 'Criação', 'legacy_reconciliation' => 'Conciliação de Atividade DevOps', 'publications' => 'Consulta de TASKs e versões', 'documentation' => 'Documentação'];
             $source = (string) ($event['source'] ?? '');
             $details = json_decode((string) ($event['details_json'] ?? ''), true);
             if (!is_array($details)) $details = [];
@@ -457,7 +460,7 @@ final class TicketDemand extends CommonDBTM
             return;
         }
 
-        if (!Profile::has(Profile::CREATE_WORK_PACKAGE) || !$ticket->can($ticket->getID(), UPDATE)) {
+        if (!Profile::has(Profile::VIEW_TECHNICAL) || !Profile::has(Profile::CREATE_WORK_PACKAGE) || !$ticket->can($ticket->getID(), UPDATE)) {
             echo "<div class='alert alert-info'>Nenhuma Work Package está vinculada a este ticket.</div>";
             return;
         }
@@ -476,7 +479,7 @@ final class TicketDemand extends CommonDBTM
         if ((string) (ClassificationPolicy::source()['mode'] ?? 'none') !== 'none') {
             echo "<p class='text-muted'>Classificação: <strong>" . htmlspecialchars((string) $classification['label']) . "</strong>. Somente os tipos autorizados para esta classificação serão listados.</p>";
         }
-        echo "<form id='demandas-create-wp-form' method='post' action='/plugins/demandas/front/workpackage.form.php' class='row g-3 align-items-end'>";
+        echo "<form id='demandas-create-wp-form' method='post' action='/plugins/demandas/front/work-package-documentation.php' class='row g-3 align-items-end demandas-documentation-form'>";
         echo "<input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
         echo "<input type='hidden' name='tickets_id' value='" . $ticket->getID() . "'>";
         if ($hasLinkedWorkPackages) {
@@ -494,6 +497,17 @@ final class TicketDemand extends CommonDBTM
         echo "</select></div>";
         echo "<div class='col-md-6'><label class='form-label'>Tipo da Work Package</label><select class='form-select' id='demandas-type-id' name='type_id' required disabled><option value=''>Selecione primeiro o projeto</option></select></div>";
         echo "<div class='col-12'><div class='row g-3' id='demandas-creation-fields'></div></div>";
+        if ($hasLinkedWorkPackages) {
+            echo '<div class="col-md-6"><label class="form-label">Relacionar a nova WP com uma WP anterior (opcional)</label><select class="form-select" name="relation_target"><option value="">Não relacionar</option>';
+            foreach (self::findAllByTicket($ticket->getID()) as $linked) {
+                $id = (int) $linked['openproject_work_package_id'];
+                echo '<option value="' . $id . '">#' . $id . ' — ' . htmlspecialchars((string) $linked['openproject_status']) . '</option>';
+            }
+            echo '</select></div><div class="col-md-6"><label class="form-label">A nova WP… (em relação à anterior)</label><select class="form-select" name="relation_type">';
+            foreach (WorkPackageDocumentation::RELATIONS as $type => $label) echo '<option value="' . $type . '">' . $label . '</option>';
+            echo '</select></div><label class="form-check col-12"><input type="checkbox" class="form-check-input" name="confirm_relation" value="1"><span class="form-check-label">Confirmo a criação dessa relação no OpenProject, preservando ambas as WPs.</span></label>';
+        }
+        WorkPackageDocumentationForm::render($ticket->getID());
         echo "<div class='col-12 text-end'><button class='btn btn-primary' id='demandas-create-button' type='submit' name='create' value='1' disabled><i class='ti ti-brand-openproject me-1'></i>Criar Work Package</button></div></form>";
         echo <<<'HTML'
 <script>
@@ -569,6 +583,7 @@ final class TicketDemand extends CommonDBTM
                 fields.appendChild(warning);
             }
             createButton.disabled = false;
+            document.getElementById('demandas-create-wp-form').dispatchEvent(new Event('demandas:creation-options'));
         } catch (error) {
             resetDetails(error.message);
         }

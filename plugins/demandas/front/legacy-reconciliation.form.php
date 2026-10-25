@@ -33,6 +33,7 @@ if (($_POST['action'] ?? '') === 'transfer') {
         if (!preg_match('/^([1-9][0-9]*):([1-9][0-9]*)$/', $pair, $m)) continue;
         try {
             $reason = is_array($_POST['reasons'] ?? null) && is_string($_POST['reasons'][$pair] ?? null) ? $_POST['reasons'][$pair] : '';
+            if (trim($reason) === '' && is_string($_POST['batch_reason'] ?? null)) $reason = $_POST['batch_reason'];
             $result = $service->reconcile((int) $m[1], (int) $m[2], $reason);
             Session::addMessageAfterRedirect($result === 'linked' ? "Chamado #{$m[1]} vinculado à WP #{$m[2]}. Nenhuma WP criada." : 'Vínculo já existente, preservado sem duplicação.', true, INFO);
         } catch (Glpi\Exception\Http\AccessDeniedHttpException $e) {

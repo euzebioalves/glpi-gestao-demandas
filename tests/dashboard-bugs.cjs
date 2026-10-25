@@ -5,8 +5,9 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs');
-const base = 'http://127.0.0.1:8192';
-const container = 'demandas-dashboard029-glpi';
+const base = process.env.DASHBOARD_TEST_URL || 'http://127.0.0.1:8192';
+const container = process.env.DASHBOARD_TEST_CONTAINER || 'demandas-dashboard029-glpi';
+if (!/^http:\/\/127\.0\.0\.1:819[23]$/.test(base) || !/^demandas-dashboard(029|031)-glpi$/.test(container)) throw new Error('Somente instância descartável do dashboard.');
 function fixture(input, legacy = false) {
     const r = spawnSync('docker', ['exec','-i',container,'php','/tmp/' + (legacy ? 'legacy-reconciliation' : 'dashboard-bugs') + '-fixture.php'], {input:JSON.stringify(input),encoding:'utf8'});
     if (r.status !== 0) throw new Error(r.stderr || r.stdout);
@@ -50,7 +51,22 @@ function fixture(input, legacy = false) {
         await p.goto(endpoint+'?view=bugs&statuses_set=1');
         assert.match(await p.locator('.demandas-table-card').innerText(),/Nenhum chamado/);
         await p.goto(endpoint+'?view=bugs&q=QA029&ticket_scope=all');
-        assert.equal(await p.locator('.demandas-table-card tbody tr').count(),6);
+        assert.equal(await p.locator('.demandas-table-card tbody tr').count(),8);
+        await p.goto(endpoint+'?view=bugs&q=QA029&ticket_scope=all&attention=closed_pending');
+        assert.equal(await p.locator('.demandas-table-card tbody tr').count(),1);
+        assert.match(await p.locator('.demandas-table-card').innerText(),/QA029 fechado/);
+        for (const filter of ['attention=aging','op_owner=Ana%20QA','glpi_owner='+seed.owner]) {
+            await p.goto(endpoint+'?view=bugs&q=QA029&'+filter);
+            assert.equal(await p.locator('.demandas-table-card tbody tr').count(),1,filter);
+            assert.match(await p.locator('.demandas-table-card').innerText(),/QA029 parcial/);
+            assert.match(await p.locator('.demandas-table-card').innerText(),/20 dias observados/);
+        }
+        await p.goto(endpoint+'?view=bugs&q=QA029&attention=aging&attention_days=21');
+        assert.match(await p.locator('.demandas-table-card').innerText(),/Nenhum chamado/);
+        await p.goto(endpoint+'?view=bugs&q=QA029');
+        await p.getByRole('link',{name:/Sem WP vinculada/}).first().click();
+        assert.match(await p.locator('.demandas-table-card').innerText(),/QA029 sem-wp/);
+        await p.goto(endpoint+'?view=bugs&q=QA029');
         for (const width of [1440,390]) {
             await p.setViewportSize({width,height:width===390?844:1100});
             for (const dark of [false,true]) {
@@ -85,6 +101,7 @@ function fixture(input, legacy = false) {
                 assert.deepEqual(cells.slice(1).map(row=>Number(row[0])).sort(),[seed.tickets.parcial,seed.tickets.desconhecida].sort());
                 assert(cells.slice(1).some(row=>row[9].includes('Entregue')&&row[9].includes('Novo')));
                 assert(cells.slice(1).every(row=>row[13].includes('Entrega parcial')));
+                assert(cells.slice(1).some(row=>row[15].includes('Ana QA')&&row[17].includes('20 dias')));
             }
         }
         await p.goto(base+'/front/ticket.form.php?id='+seed.tickets.parcial);
@@ -100,6 +117,10 @@ function fixture(input, legacy = false) {
             assert.equal((await page.goto(endpoint+'?view=bugs')).status(),allowed?200:403,role);
             assert.equal((await other.request.get(endpoint+'?view=bugs&delivery=any')).status(),403,role+' review');
             assert.equal((await other.request.get(exportUrl+'?view=bugs&delivery=any&format=xlsx')).status(),403);
+            for (const reason of ['partial','all_delivered','closed_pending']) {
+                assert.equal((await other.request.get(endpoint+'?view=bugs&attention='+reason)).status(),403);
+                assert.equal((await other.request.get(exportUrl+'?view=bugs&attention='+reason+'&format=xlsx')).status(),403);
+            }
             if (allowed) {
                 assert.equal(await page.locator('[name="default_view"]').count(),0);
                 assert.equal(await page.locator('[aria-label="Entregas com chamado aberto"]').count(),0);

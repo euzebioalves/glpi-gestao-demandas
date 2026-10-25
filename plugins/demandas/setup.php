@@ -15,7 +15,7 @@ use GlpiPlugin\Demandas\OpenProjectPersonalToken;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
 use GlpiPlugin\Demandas\OperationalHealthHub;
 
-define('PLUGIN_DEMANDAS_VERSION', '0.29.0');
+define('PLUGIN_DEMANDAS_VERSION', '0.31.0');
 define('PLUGIN_DEMANDAS_MIN_GLPI', '11.0.0');
 define('PLUGIN_DEMANDAS_MAX_GLPI', '11.0.99');
 
@@ -54,7 +54,7 @@ function plugin_init_demandas(): void
     ]);
 
     // GLPI resolves plugin assets against the plugin's /public directory.
-    $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['demandas'] = ['js/demandas.js', 'js/publications.js'];
+    $PLUGIN_HOOKS[Hooks::ADD_JAVASCRIPT]['demandas'] = ['js/demandas.js', 'js/publications.js', 'js/documentation.js'];
     $PLUGIN_HOOKS[Hooks::POST_ITIL_INFO_SECTION]['demandas'] = 'plugin_demandas_post_itil_info_section';
     $PLUGIN_HOOKS[Hooks::MENU_TOADD]['demandas'] = [
         'management' => [ManagementDashboard::class, WorkforceHub::class, TimeEntryHub::class, WorkPackageMonitoringHub::class, \GlpiPlugin\Demandas\BacklogHub::class, OperationalHealthHub::class],

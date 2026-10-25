@@ -1,12 +1,28 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
-## Atualização 0.29.0 — Bugs e Melhorias e conferência de entregas
+## Atualização 0.31.0 — Bugs e Melhorias e conferência de entregas
 
 `DashboardView` autoriza a aba focada com VIEW_DASHBOARD + VIEW_TECHNICAL + VIEW_BUGS_DASHBOARD. Conferência exige adicionalmente VIEW_DELIVERY_REVIEW. Preferência exige CONFIGURE_DASHBOARD, POST/CSRF e usa exclusivamente o usuário autenticado. `glpi_plugin_demandas_dashboard_preferences` tem unicidade por usuário; a preferência não concede direitos e retorna à visão geral quando o perfil ativo deixa de permitir a aba. Não há concessão automática de novos direitos.
 
-`ManagementDashboardService` reutiliza a classificação existente (bugs e melhorias, excluindo sugestões/coletores), força chamados abertos e aplica os status selecionados. Filtros de WP selecionam chamados; em seguida todos os vínculos desses chamados são restaurados. A grade focada e os totais de conferência deduplicam por chamado. Indicadores consideram o escopo dos filtros; drill-down e conferência detalham esse escopo na grade e exportação. A visão geral mantém seu comportamento anterior.
+`ManagementDashboardService` reutiliza a classificação existente (bugs e melhorias, excluindo sugestões/coletores), começa com chamados abertos e aplica os status selecionados. O escopo Todos permite conferir solucionados/fechados. Filtros de WP selecionam chamados; em seguida todos os vínculos desses chamados são restaurados. A grade focada e os totais deduplicam por chamado. Indicadores consideram o escopo dos filtros; drill-down e conferência detalham esse escopo na grade e exportação. A visão geral não consulta o novo histórico nem carrega o JSON técnico adicional.
 
-`DeliveryReview` reconhece somente o nome Entregue (ignorando caixa/espaços externos), nunca IDs fixos ou isClosed. Status desconhecidos não contam como entrega; com outra WP entregue, o caso é parcial. Não encerrar chamados. O hook `post_itil_info_section` apresenta o alerta apenas com VIEW_TICKET_WP_ALERT + VIEW_TECHNICAL + leitura nativa/entidade. Somente dados locais; mostrar última sincronização e alerta após sete dias/sem data. Não alterar fase pública nem enviar acompanhamentos. `tests/dashboard-bugs.cjs`/fixture usam Docker descartável 8192 com dados fictícios. Veja release/manual para homologação.
+`ActionDashboard` enriquece exclusivamente chamados já autorizados, buscando técnicos GLPI e eventos bem-sucedidos por lotes de 300 chamados. Mantém somente um estado de observação por vínculo em memória. Eventos de sincronização/conciliação formam a sequência local da mesma etapa; troca de status dentro do grupo não reinicia o tempo, saída/retorno reinicia. Status não reconhecidos usam sequência própria, embora apareçam no grupo Outras situações. O status final deve coincidir com o snapshot. O limite superior é a última sincronização, nunca o horário atual; data futura/inválida ou histórico insuficiente não produz duração. Não usar updatedAt, comentário, vínculo ou build como data de entrada na etapa. Mudanças não observadas entre consultas continuam desconhecidas.
+
+`ActionDashboardPanel` apresenta motivos com drill-down, fila de até dez chamados, envelhecimento e responsáveis. Técnicos GLPI não são confundidos com responsável/atribuído OpenProject. Sem nome no snapshot significa não informado, não ausência comprovada. Prazos: atenção ajustável por filtro (1–365, padrão 14 dias), frescor sete dias. Os motivos partial/all_delivered/closed_pending, filtros diretos e exportações exigem VIEW_DELIVERY_REVIEW. Não há novos acessos concedidos. A aba Bugs inclui filtros expandidos e indicadores secundários recolhidos; a Visão geral e preferências existentes são preservadas.
+
+Homologação desta alteração: suíte isolada `php tests/action-dashboard-unit.php` e lint disponíveis; Playwright, SQL/ACL nativos, atualização/instalação e imagens atuais ainda pendentes, pois o Docker Desktop falhou ao iniciar seu Inference manager. Os testes anteriores não comprovam a nova versão. Não publicar nem aplicar em produção antes dessa etapa. A branch integra a main 0.30.0 preservando documentação de WP, relações, Backlog de colegas e correções de permissões.
+
+`DeliveryReview` reconhece somente o nome Entregue (ignorando caixa/espaços externos), nunca IDs fixos ou isClosed. Status desconhecidos não contam como entrega; com outra WP entregue, o caso é parcial. Não encerrar chamados. O hook `post_itil_info_section` apresenta o alerta apenas com VIEW_TICKET_WP_ALERT + VIEW_TECHNICAL + leitura nativa/entidade. Somente dados locais; mostrar última sincronização e alerta após sete dias/sem data. Não alterar fase pública nem enviar acompanhamentos. `tests/dashboard-bugs.cjs`/fixture usam Docker descartável 8192 ou 8193 com dados fictícios. Veja release/manual para homologação.
+
+## Atualização 0.30.0 — Backlog
+
+O carregamento de cards não espera `time_entries`; `action=times` consulta lotes de até 25 IDs, sempre usando a identidade do próprio token. O frontend descarta respostas de quadros anteriores e não confunde horas pendentes/indisponíveis com zero. GETs liberam o bloqueio da sessão antes das consultas remotas. `summarizeWorkPackage(..., true)` usa schema GET por projeto/tipo com cache de falhas durante a requisição, sem expandir usuários/valores de formulários de criação.
+
+`VIEW_COLLEAGUE_BACKLOG` controla listagem de pessoas e consultas a outro responsável, inclusive detalhe/imagem. Usa `principals` visíveis ao token, não `users` (que exige administrar usuários no OpenProject 17). As preferências continuam pertencendo ao usuário GLPI logado. `BacklogDetails` confirma WP e responsável pela API, saneia HTML ou converte Markdown com bibliotecas do GLPI e limita imagens aos anexos da própria WP. O proxy revalida acesso e pertencimento, aceita raster até 15 MB e não segue redirects. Links de chamados vêm somente de vínculos confirmados, com entidade ativa, não excluído e READ nativo. Nunca usar a descoberta de chamados por varredura irrestrita de acompanhamentos para preencher esse quadro. Consulte `RELEASE_0.30.0.md`.
+
+## Atualização 0.29.1 — consultas automáticas e permissões
+
+`front/ui-permissions.php` exige sessão autenticada e retorna somente dois booleanos dos direitos efetivos do perfil ativo (`VIEW_PUBLIC` e `VIEW_TECHNICAL`), com `private, no-store`. `demandas.js` compartilha essa consulta durante a página, sem armazenamento persistente. A fase é consultada somente em `front/ticket.form.php` com ID e direito público; o feed exige direito técnico. Falhas fecham o acesso na interface. Os endpoints de dados mantêm integralmente a autorização existente, inclusive leitura nativa do chamado. Não conceder direitos para silenciar logs; acessos diretos indevidos continuam sendo registrados. Veja `RELEASE_0.29.1.md` e `tests/ui-permissions.cjs`.
 
 ## Atualização 0.28.0 — autores e publicações SGE
 
@@ -56,7 +72,7 @@ Entradas de tempo também admitem `tickets_id=0`, sem criar vínculo. `front/tim
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.29.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.31.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -65,7 +81,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.29.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.29.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.31.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 
@@ -199,6 +215,12 @@ Depois que os serviços estiverem saudáveis, siga as instruções do `README.md
 Nunca confirme `APAGAR` no script de reset sem entender que os volumes e dados de homologação serão removidos.
 
 ## 7. Estratégia de versionamento
+
+### Documentação e relações — 0.29.0
+
+`WorkPackageDocumentation` e `front/work-package-documentation.php` controlam edição e criação com token pessoal, autorização técnica/nativa, CSRF e sessões temporárias vinculadas à identidade. O editor usa bibliotecas já distribuídas no GLPI. Anexos sem contêiner são associados ao salvar; descrições existentes usam `lockVersion`. Nunca repita a criação de uma WP ao tratar falha posterior de relação: a sessão guarda o ID confirmado e retoma somente as etapas pendentes. Resultado desconhecido exige conferência humana. Consulte `RELEASE_0.29.0.md` para limites e testes.
+
+A conciliação exige justificativa apenas quando existe outro vínculo local do chamado ou WP. Possibilidades no Fields continuam sendo mostradas em detalhes, mas não obrigam justificativa para a primeira associação. No lote, a validação no backend ocorre a cada vínculo e considera as associações gravadas anteriormente no mesmo envio.
 
 - versão declarada em `plugins/demandas/setup.php`;
 - histórico funcional em `plugins/demandas/README.md`;

@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.29.0** · Compatível com GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.31.0 (em homologação)** · Alvo: GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -96,9 +96,17 @@ O valor não é mostrado novamente. Deixá-lo vazio em uma edição mantém o to
 1. Abra o chamado e confirme que o perfil possui **Criar e vincular Work Packages**.
 2. Na área técnica da demanda, escolha o projeto e o tipo de WP permitido.
 3. Preencha os campos solicitados pelo OpenProject.
-4. Confirme a criação.
+4. Carregue o template do tipo escolhido e complete a documentação no editor visual ou Markdown.
+5. Se desejar relacionar a nova WP a uma anterior, selecione a WP, escolha o tipo de relação e marque a confirmação. A direção apresentada é da nova WP para a anterior.
+6. Confirme a criação. Se a relação falhar depois de criar, repita na mesma tela para tentar apenas o relacionamento, sem criar outra WP.
 
 O plugin registra o vínculo, a fase pública e o histórico técnico. Um chamado pode possuir mais de uma WP. Ao criar uma WP adicional, informe o motivo solicitado pelo formulário.
+
+#### Documentar uma WP existente
+
+Na grade de WPs vinculadas, clique em **Documentar**. A edição exige dados técnicos, criação/vinculação de WPs, leitura/alteração do chamado e token pessoal autorizado no OpenProject. O botão **Código** oferece seleção de linguagem e realce; cole imagens no editor ou use a ferramenta de imagens, ajustando as dimensões. Use **Adicionar anexos** para documentos. Salvar grava a descrição e associa os anexos no OpenProject.
+
+Limites: 20 arquivos de até 15 MB por edição, documentação de até 500 KB e sessão de duas horas; limites menores da instância também se aplicam. Arquivos são enviados imediatamente, ainda sem contêiner, e associados ao salvar. O plugin não apaga anexos anteriores nem mantém cópias locais. Uma alteração simultânea exige recarregar e comparar: copie seu rascunho antes. Para macros/construções específicas do OpenProject, use Markdown. Veja [limitações e homologação](RELEASE_0.29.0.md).
 
 ### 6.2 Consultar e sincronizar
 
@@ -111,7 +119,7 @@ Na **Visão Gerencial de Demandas**, use **Conciliar Work Packages existentes** 
 3. Selecione até cinco referências por operação, marque a confirmação e clique em **Validar e conciliar selecionadas**.
 4. Verifique o vínculo na **Evolução da Demanda** e a cobertura no painel. A conciliação não cria outra WP, não altera a WP externa e não publica fase ou acompanhamento. Depois, a sincronização normal e o webhook passam a reconhecer o vínculo.
 
-Referências de outra instância e WPs sem acesso não são importadas. O mesmo par chamado–WP não é duplicado. A mesma WP pode ser conciliada a vários chamados, e um chamado pode receber várias WPs; nos casos com múltiplos vínculos, é necessária a permissão **Resolver conflitos de conciliação de Work Packages** e uma justificativa de 10 a 2.000 caracteres por referência selecionada. Os vínculos anteriores são preservados, inclusive históricos, fases e entradas de tempo. A justificativa é registrada no histórico do novo vínculo. O campo original não é alterado. Solucionados e fechados podem ser incluídos escolhendo **Todos**. A cobertura contabiliza os vínculos confirmados, não apenas a presença de uma URL.
+Referências de outra instância e WPs sem acesso não são importadas. O mesmo par chamado–WP não é duplicado. A mesma WP pode ser conciliada a vários chamados, e um chamado pode receber várias WPs. O primeiro vínculo efetivo dispensa justificativa, mesmo quando há várias referências possíveis. Para vínculos adicionais do mesmo chamado ou WP, é necessária a permissão **Resolver conflitos de conciliação de Work Packages** e uma justificativa de 10 a 2.000 caracteres. Use **Selecionar possibilidades desta página** para conciliar juntas até cinco referências e, quando necessário, preencha a justificativa comum. A ordem da grade determina o primeiro vínculo do lote. O botão fica bloqueado durante o envio. Os vínculos anteriores são preservados, inclusive históricos, fases e entradas de tempo. A justificativa é registrada no histórico do novo vínculo. O campo original não é alterado. Solucionados e fechados podem ser incluídos escolhendo **Todos**. A cobertura contabiliza os vínculos confirmados, não apenas a presença de uma URL.
 
 Quando houver conflito, clique em **Detalhes**. O modal informa se a mesma WP aparece em outros chamados, se já existe vínculo local e quais referências são visíveis para o perfil ativo. O número da WP abre a tarefa correspondente no OpenProject em nova aba. A transferência automática aparece somente para um conflito de vínculo local simples, quando o operador possui o novo direito, pode alterar ambos os chamados e o vínculo não possui entradas de tempo, fase pública nem acompanhamento público. Após a confirmação, ela move exclusivamente o registro local e cria eventos de auditoria nos dois chamados; a WP, o campo Fields e o OpenProject não são alterados. Para manter um compartilhamento correto, selecione a referência na listagem e informe a justificativa, em vez de transferir ou remover o vínculo anterior. Quem inicia a conciliação na Evolução da Demanda retorna à mesma aba do chamado de origem após confirmar. O webhook passa a processar todos os vínculos da WP, aplicando a regra de fase e acompanhamento de forma independente em cada chamado.
 
@@ -241,17 +249,45 @@ Após atualizar, conceda os direitos necessários em **Administração > Perfis 
 1. Abra **Gerência > Visão Gerencial de Demandas > Bugs e Melhorias**.
 2. Os filtros aparecem expandidos. Marque os **Status GLPI incluídos** e aplique os filtros. Por padrão são todos os status nativos não solucionados/fechados; desmarcar todos produz zero resultados. O rótulo operacional “Para desenvolvimento” não é convertido arbitrariamente em um status GLPI.
 3. Combine cliente, classificação, datas, status WP e demais critérios. A classificação usa a mesma origem/regras do painel geral: bugs/erros técnicos e melhorias; sugestões, coletores e outras classificações ficam fora. Sem classificação válida, o chamado não entra nessa aba.
-4. Confira cobertura, demandas sem WP, idade, sincronização e demais indicadores sobre esse escopo. A grade conta cada chamado uma vez e apresenta **todas** as WPs vinculadas, mesmo se o filtro corresponder a apenas uma delas.
+4. Comece por **Precisam de ação**. Clique no motivo para filtrar a grade; a fila destaca até dez chamados do filtro atual e oferece acesso à lista completa. Um chamado pode ter vários motivos, mas é contado uma vez por motivo.
+5. Use **Técnico atribuído no GLPI** e **Responsável OpenProject** para organizar a conferência. São papéis distintos; o atribuído da WP também aparece junto dela. Nome ausente no snapshot é apresentado como não informado, sem concluir que a WP esteja sem dono no OpenProject.
+6. Confira o **Envelhecimento por etapa** e abra **Mais indicadores** para cobertura, volume e distribuições. A grade conta cada chamado uma vez e apresenta **todas** as WPs vinculadas, mesmo se o filtro corresponder a apenas uma delas.
+
+### Precisam de ação e envelhecimento observado
+
+Os motivos incluem dados de integração desatualizados ou sem status, bloqueios/dúvidas, ausência de WP ou de responsável conhecido, permanência acima do prazo e, para perfis autorizados, entregas e divergências de encerramento. A ordem da fila prioriza qualidade dos dados, divergências e impedimentos; em seguida tempo observado e idade do chamado. Não é uma priorização de negócio automática.
+
+O filtro **Atenção após (dias observados)** começa em 14 dias e aceita de 1 a 365. Ele vale para a consulta, não altera as configurações da Central de Pendências nem é salvo como preferência. O aviso de sincronização usa sete dias. Atualize dados pelo fluxo já existente antes de tomar decisões.
+
+| Etapa | Status reconhecidos |
+|---|---|
+| Aguardando especificação | Novo, Em especificação |
+| Prontos para desenvolvimento | A desenvolver, Planejado, A ser planejado |
+| Em desenvolvimento | Em desenvolvimento, Em andamento, Retrabalho |
+| Aguardando validação | Desenvolvido, Aguardando testes, Em testes, Testado, Pronto para entrega |
+| Bloqueados ou em dúvida | Bloqueado, Em dúvida |
+| Entregue | Entregue |
+| Outras situações | Nomes não reconhecidos, mantidos sem conversão |
+
+Esses grupos são operacionais e não alteram fases públicas. Cada chamado aberto conta uma vez em cada etapa em que possui WP. O maior tempo da etapa é o máximo observado entre as WPs, não uma soma. As cinco maiores permanências possuem link para conferência.
+
+O tempo é calculado entre a primeira e a última observação local da sequência atual da etapa, usando eventos bem-sucedidos de sincronização/conciliação. Mudar entre status da mesma etapa preserva a sequência; sair e retornar a reinicia. Status personalizados distintos não compartilham um relógio. Comentários, última atualização da WP e builds não são tratados como transições.
+
+**Histórico insuficiente** não significa zero dias. Uma única observação pode resultar em zero dias comprovados; sem histórico compatível não há duração. O tempo termina na última sincronização, mesmo se ela for antiga. Não é a data exata de entrada no OpenProject: mudanças ocorridas entre duas consultas podem não ter sido observadas. Essas limitações ficam explícitas na tela e nas exportações.
 
 ### 10.2 Conferir entregas com chamado aberto
 
 Use os cards **Com alguma entrega**, **Todas as WPs em Entregue** e **Entrega parcial** para detalhar os chamados. Somente **Entregue** representa entrega concluída. Desenvolvido, Em testes e demais status não equivalem a entrega. Uma WP sem status conhecido não confirma conclusão; se outra estiver Entregue, o chamado fica em entrega parcial.
 
+O link **Conferir solucionados/fechados com WPs não entregues** prepara o escopo histórico e os status correspondentes. Exige a mesma permissão de conferência. Para ajustar manualmente, selecione **Todos** no escopo e marque os status desejados. O plugin destaca divergências para avaliação; não reabre, soluciona nem fecha chamados.
+
 Os indicadores mostram o escopo dos filtros; clicar em um indicador ou selecionar a conferência restringe a grade e a exportação. Por isso o total detalhado pode ser menor que o total do escopo. Os números por status de WP podem se sobrepor: um mesmo chamado pode ter WPs em diferentes situações.
 
 Confira a última sincronização de cada WP e, se necessário, use o fluxo de sincronização existente antes de decidir. Sem data ou com mais de sete dias, aparece um aviso de desatualização. **Painel gerado** é o horário de montagem da página, não de atualização do OpenProject. Nenhuma página nova consulta a API, fecha chamados, altera WPs, fases públicas ou acompanhamentos. A decisão permanece com o analista.
 
-![Bugs e Melhorias — ambiente fictício](assets/manual/dashboard-bugs-1440-light.png)
+Captura abaixo da versão anterior da aba, com dados fictícios. A fila e o envelhecimento adicionados em 0.31.0 ainda aguardam captura após homologação no Docker; a imagem não comprova a validação desses recursos.
+
+![Bugs e Melhorias — captura anterior, ambiente fictício](assets/manual/dashboard-bugs-1440-light.png)
 
 ### 10.3 Alerta individual e visão padrão
 
@@ -304,6 +340,14 @@ O token deve pertencer ao mesmo OpenProject configurado na integração. No Dock
 Somente entradas de tempo são sincronizadas com o OpenProject. Marcações de ponto nunca são enviadas como tempo de WP.
 
 ## 13. Checklist de operação
+
+### Backlog
+
+Em **Gerência > Backlog**, pesquise por número da WP, título, cliente, projeto, responsável ou chamado. A busca considera os status selecionados em **Escolher colunas**; cada coluna possui sua própria rolagem. Os cards ficam disponíveis antes das horas, que são preenchidas progressivamente.
+
+Os links de chamados conciliados abrem em nova aba e respeitam as entidades e permissões de leitura do GLPI. Clique no card para ver a descrição formatada e as imagens dos anexos. Referências ainda existentes apenas no Fields precisam ser conciliadas.
+
+Para consultar colegas, o perfil deve possuir **Consultar Backlog de colegas com o próprio token**, além dos direitos de Backlog e dados técnicos. Clique **Consultar colegas** e escolha o responsável. Seu token limita as WPs visíveis, suas colunas permanecem iguais e o relógio continua somando suas próprias horas. Nenhuma preferência do colega é alterada.
 
 - configuração automática testada e webhook assinado;
 - mapeamento de status e mensagens públicas revisados;

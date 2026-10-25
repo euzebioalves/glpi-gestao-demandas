@@ -1,28 +1,37 @@
-# Gestão de Demandas 0.29.0
+# Gestão de Demandas 0.29.0 — documentação e relações entre WPs
 
-## Escopo
+## Operação
 
-Nova aba **Bugs e Melhorias**, conferência humana de entregas em chamados abertos, alerta técnico individual e escolha pessoal da visão inicial. Não há alteração de regras de ponto, tempo, fases públicas, vínculos ou sincronização.
+A conciliação considera os vínculos locais já confirmados para exigir justificativa. Referências no Fields, por si sós, não tornam o primeiro vínculo excepcional. Vínculos seguintes do mesmo chamado ou da mesma WP exigem **Resolver conflitos de conciliação de Work Packages** e justificativa de 10 a 2.000 caracteres. A seleção conjunta respeita a ordem da grade e o limite de cinco validações por envio; a justificativa comum cobre os vínculos adicionais, e justificativas individuais têm precedência. O botão fica bloqueado durante o envio. O retorno ao chamado e os vínculos anteriores são preservados.
 
-## Segurança e instalação
+Ao criar outra WP, escolha opcionalmente a WP anterior, o tipo de relação e confirme. Os rótulos expressam a perspectiva da **nova WP em relação à anterior**. O OpenProject valida permissões, ciclos e tipos suportados. A criação e a relação são operações distintas: se a relação falhar, a WP criada permanece vinculada e a mesma tela permite tentar novamente somente a relação. Não reabra a criação para resolver uma falha de relação. Após expirar a sessão, confira a WP criada e finalize a relação no OpenProject.
 
-Atualizar sem desinstalar, com backup prévio. A migração idempotente cria `glpi_plugin_demandas_dashboard_preferences`; não regrava vínculos nem concede direitos novos. Conceder explicitamente as quatro permissões na matriz de perfis. Aba focada exige também painel e leitura técnica; alerta exige leitura técnica/nativa e entidade ativa. Exportação e acesso direto usam as mesmas verificações. Preferência é POST com CSRF nativo e usuário autenticado, sem usuário-alvo fornecido pelo navegador.
+Na criação, carregue o template do tipo e revise a documentação. O relato bruto do chamado continua fora do template. Nas WPs vinculadas, **Documentar** consulta a descrição atual e permite editá-la. **Código** abre editor com linguagem e realce de sintaxe; as marcações de linguagem são enviadas em Markdown. Imagens podem ser coladas ou enviadas no editor e redimensionadas. Anexos são enviados ao OpenProject e associados ao salvar. O modo Markdown permite preservar construções específicas do OpenProject que não possuem representação no editor visual.
 
-## Regras e limitações
+## Segurança e limites
 
-- Somente bugs e melhorias conforme a classificação existente; sugestões/coletores não entram.
-- Seleção dos status nativos abertos do GLPI, sem conversão implícita de “Para desenvolvimento”. Solucionados/fechados nunca entram na aba focada.
-- Apenas **Entregue** confirma entrega; desconhecido permanece pendente. Todas as WPs vinculadas aparecem mesmo quando o filtro corresponde a uma delas.
-- Totais/grade focada por chamado único; distribuições por status WP podem se sobrepor.
-- Dados da última sincronização local; sem chamada externa ao abrir o painel/alerta. Data e aviso de desatualização explícitos. Decisão do analista, sem fechamento automático.
-- Preferência guarda somente a aba, não filtros. Mudança de perfil revalida o acesso.
+- Documentação exige cumulativamente **Visualizar dados técnicos do OpenProject**, **Criar e vincular Work Packages**, leitura/alteração nativas do chamado e entidade ativa. O token pessoal precisa das permissões correspondentes no OpenProject. Não há concessão automática de novos direitos nem exposição à visão pública.
+- Toda operação mutável usa POST e CSRF nativo. Sessões de editor são vinculadas ao usuário, token, instância e par chamado–WP, com duração de duas horas e limite de 20 sessões simultâneas.
+- Até 20 arquivos por edição, 15 MB por arquivo, respeitando também limites menores de PHP/OpenProject. Formatos permitidos: imagens PNG/JPEG/GIF/WebP, PDF, documentos Office/OpenDocument, texto, CSV, JSON, XML e ZIP. SVG/HTML/executáveis não são aceitos.
+- Uploads são enviados imediatamente, ainda sem contêiner, e associados ao salvar. Ao abandonar uma edição, a retenção de anexos não associados segue o OpenProject. O plugin não armazena cópias dos arquivos ou da descrição no banco/localStorage e não remove anexos existentes.
+- A descrição é limitada a 500 KB. A edição visual usa HTML saneado, Markdown GFM e HTML de tabelas/imagens. Macros e construções específicas devem ser editadas no modo Markdown; não se promete equivalência integral com CKEditor do OpenProject.
+- O salvamento compara `lockVersion`: uma alteração concorrente exige recarregar e comparar o texto, sem sobrescrever silenciosamente. Copie o rascunho antes de recarregar.
+- Se o resultado da criação ficar desconhecido por falha de comunicação, não há repetição automática. Confira a WP no OpenProject e concilie se ela foi criada.
+- Repetições confirmadas na mesma sessão não recriam WP, relação ou evento. A auditoria registra autor, WP e relação, sem copiar texto/anexos.
+- Imagens são consultadas por endpoint autenticado, com IDs autorizados pelo editor, limite de tamanho e MIME verificado. Redirecionamentos de arquivos não recebem o token. Instâncias que entregam arquivos exclusivamente por armazenamento externo redirecionado podem não fornecer prévia; confira o anexo no OpenProject.
 
-## Homologação
+## Atualização e homologação
 
-Usar base descartável GLPI 11.0.9, banco `glpi_e2e`, container `demandas-dashboard029-glpi`, porta 8192. `tests/dashboard-bugs.cjs` usa Playwright/Edge e as fixtures `dashboard-bugs-fixture.php` e `legacy-reconciliation-fixture.php` copiadas para `/tmp` do container. A suíte cria usuários e chamados fictícios; nunca apontar para banco real. Dependência Playwright pode ser indicada por `PLAYWRIGHT_MODULE`.
+Substitua a pasta `demandas`, atualize e ative no GLPI. Não desinstale. Esta versão não altera tabelas; mantenha backups e permissões existentes.
 
-Validar entrega total/parcial/sem status, exclusão de solucionados/fechados/outra entidade, filtro de uma WP preservando as demais, ausência de classificação, aba padrão e troca de perfil, acesso direto/CSRF, alertas por perfil, PDF/Excel, instalação/atualização repetida e temas claro/escuro em desktop/celular. Capturas ficam em `docs/assets/manual/dashboard-bugs-*.png`.
+Roteiro: primeiro vínculo sem justificativa, segundo com justificativa, seleção em lote e clique repetido; criação com/sem relação e recuperação de falha parcial; edição visual/Markdown; código literal com HTML/backticks; imagens e dimensões; anexos; alteração concorrente; token inválido, permissão negada e indisponibilidade; perfis administrativo/interno/cliente; temas claro/escuro e telas estreitas.
 
-## Validações realizadas
+Validação realizada em GLPI 11.0.9 isolado:
 
-Instalação limpa/ativação em GLPI 11.0.9 e MariaDB 11.4 descartáveis. Suíte Playwright aprovada para os cenários acima, com comparação de hashes confirmando que consultas não alteram chamados, links, eventos ou acompanhamentos. Preferência restrita ao usuário autenticado; CSRF ausente e gravações sem direito retornam 403. Revogar leitura técnica bloqueia a aba e o alerta e faz a preferência voltar à visão geral. Atualização repetida preserva as 18 tabelas existentes do plugin; webhook com assinatura inválida é rejeitado. Sintaxe PHP e JavaScript validada. Não houve teste com dados de produção nem migração em base compartilhada.
+- sintaxe de todos os arquivos PHP do plugin e JavaScript do editor; `git diff --check`;
+- instalação limpa em banco separado e duas atualizações consecutivas, com hash das 17 tabelas preservado;
+- `tests/documentation.cjs`: editor no navegador, código com linguagem/realce e caracteres literais, ida/volta visual–Markdown, imagem redimensionada, anexos, criação e repetição da relação após falha, edição, CSRF, perfis administrativo/interno/cliente/somente leitura, HTML saneado, 401/403/503, conflito de versão e conciliação com primeiro vínculo sem justificativa;
+- `tests/reconciliation-many.cjs`: múltiplos vínculos, retorno à aba, justificativa, histórico e tempo preservados, repetição, perfis, CSRF e webhook em todos os vínculos, sem duplicar acompanhamentos;
+- revisão visual do editor em 1366 e 390 pixels e nos temas claro/escuro.
+
+A API do OpenProject foi simulada em `tests/documentation-api.php`, com contratos conferidos no código instalado da versão 17.x e na [documentação de relações](https://www.openproject.org/docs/api/endpoints/relations/). Não houve escrita no OpenProject de produção. Ainda é necessária homologação com as permissões, limites de anexos e customizações da instância real. A pasta compartilhada foi instalada/ativada no GLPI local para essa validação; nenhuma release foi publicada nesta etapa.

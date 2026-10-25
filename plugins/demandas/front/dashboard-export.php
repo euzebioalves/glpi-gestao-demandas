@@ -8,6 +8,8 @@ use GlpiPlugin\Demandas\Config as DemandasConfig;
 use GlpiPlugin\Demandas\ManagementDashboard;
 use GlpiPlugin\Demandas\DashboardView;
 use GlpiPlugin\Demandas\DeliveryReview;
+use GlpiPlugin\Demandas\ActionDashboard;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -57,7 +59,20 @@ if ($bugsView && DashboardView::canReview()) {
     $headers[] = 'Conferência de entregas';
     foreach (['any' => 'Chamados abertos com alguma entrega', 'all_delivered' => 'Todas as WPs em Entregue', 'partial' => 'Entrega parcial'] as $key => $label) $summaryRows[] = [$label, $result['delivery_counts'][$key]];
 }
-$lastColumn = count($headers) === 14 ? 'N' : 'M';
+if ($bugsView) {
+    array_push($headers, 'Responsáveis GLPI', 'Responsáveis OpenProject', 'Motivos de atenção', 'Permanência observada por WP');
+    foreach ($rows as &$row) {
+        $row['action_values'] = [implode(', ', $row['glpi_owners']), implode(', ', $row['op_owners']), implode(' | ', $row['attention']),
+            implode(' | ', array_map(static fn($wp) => '#' . (int)$wp['openproject_work_package_id'] . ': ' . ($wp['stage_days'] === null ? 'Histórico insuficiente' : $wp['stage_days'] . ' dias observados de ' . $wp['observed_since'] . ' até ' . $wp['last_synced_at']), $row['work_packages']))];
+    }
+    unset($row);
+    $summaryRows[] = ['Envelhecimento', 'Sequência local da mesma etapa até a última sincronização; não é a data exata da transição no OpenProject'];
+    foreach (ActionDashboard::REASONS as $key => $label) {
+        if (in_array($key, ActionDashboard::REVIEW_REASONS, true) && !DashboardView::canReview()) continue;
+        $summaryRows[] = [$label, $result['actions']['counts'][$key]];
+    }
+}
+$lastColumn = Coordinate::stringFromColumnIndex(count($headers));
 foreach ($summary['top_clients'] as $position => $client) {
     $summaryRows[] = [($position + 1) . 'º cliente com mais melhorias ou bugs abertos — ' . $client['label'], $client['count']];
 }
@@ -95,6 +110,7 @@ if ($format === 'xlsx') {
             (string) $row['opened_at'], (string) ($row['last_synced_at'] ?? ''),
         ];
         if ($bugsView && DashboardView::canReview()) $values[] = DeliveryReview::LABELS[$row['delivery_state']];
+        if ($bugsView) array_push($values, ...$row['action_values']);
         foreach ($values as $columnIndex => $value) {
             $cell = [$columnIndex + 1, $rowIndex + 2];
             if (is_int($value)) $sheet->setCellValue($cell, $value);
@@ -130,6 +146,7 @@ foreach ($rows as $row) {
         $row['public_phase'] ?: '—', $row['opened_at'], $row['last_synced_at'] ?: '—',
     ];
     if ($bugsView && DashboardView::canReview()) $values[] = DeliveryReview::LABELS[$row['delivery_state']];
+    if ($bugsView) array_push($values, ...$row['action_values']);
     $html .= '<tr>';
     foreach ($values as $value) $html .= '<td>' . htmlspecialchars((string) $value) . '</td>';
     $html .= '</tr>';

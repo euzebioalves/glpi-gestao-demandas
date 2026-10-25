@@ -2,17 +2,51 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
-## Versão 0.29.0
+## Versão 0.31.0
 
-- adiciona a aba **Bugs e Melhorias** com seleção explícita dos status nativos abertos do GLPI;
+- adiciona a aba **Bugs e Melhorias** com seleção explícita dos status nativos do GLPI; o escopo inicial permanece aberto;
+- prioriza **Precisam de ação**: dados desatualizados/desconhecidos, bloqueios, ausência de WP/responsável, entregas totais/parciais, divergências de encerramento e etapa acima do prazo;
+- apresenta envelhecimento por etapa a partir de eventos locais bem-sucedidos, limitado à última sincronização, sem inventar tempo quando falta histórico;
+- permite filtrar os técnicos GLPI e responsáveis OpenProject separadamente; consultar encerrados com WPs não entregues exige a permissão de conferência;
 - conta chamados únicos e mostra todas as WPs vinculadas mesmo ao filtrar por status de uma WP;
 - distingue todas as WPs em **Entregue**, entrega parcial e ausência de entrega, sem fechar chamados;
 - mostra alertas técnicos individuais e a data da última sincronização, sem consultas externas;
 - permite salvar a aba padrão do próprio usuário e revalida o perfil ativo em cada acesso;
 - introduz quatro permissões independentes, desabilitadas por padrão; preserva o acesso e o comportamento da visão geral;
-- atualiza manual, tutorial e testes sintéticos com capturas Playwright.
+- atualiza manual, tutorial e testes sintéticos. Capturas Playwright da nova visão aguardam a recuperação do engine Docker; não considerar a versão homologada em GLPI ainda.
 
-Atualize sem desinstalar. A migração cria somente a tabela de preferências pessoais. Veja [RELEASE_0.29.0.md](../../docs/RELEASE_0.29.0.md).
+Atualize sem desinstalar. A migração cria somente a tabela de preferências pessoais. Veja [RELEASE_0.31.0.md](../../docs/RELEASE_0.31.0.md).
+
+## Versão 0.30.0
+
+- Backlog com busca por WP, título, cliente, projeto, responsável e chamado, sem nova consulta à API;
+- rolagem vertical independente em cada coluna, com cabeçalho fixo e rolagem horizontal do quadro;
+- cards liberados antes das horas, que são consultadas em lotes; descoberta de Cliente usa schema de leitura em vez do formulário de criação;
+- descrição carregada ao abrir o painel, com Markdown/HTML saneado e imagens de anexos por proxy autenticado;
+- todos os chamados com vínculo confirmado e leitura permitida aparecem como links no card e no detalhe;
+- consulta de colegas com o token do usuário logado, protegida por **Consultar Backlog de colegas com o próprio token**; não altera preferências dos colegas e o relógio continua pessoal.
+
+Veja [RELEASE_0.30.0.md](../../docs/RELEASE_0.30.0.md). Atualize sem desinstalar e conceda a nova permissão somente aos perfis autorizados.
+
+## Versão 0.29.1
+
+- consulta as permissões da sessão antes de carregar automaticamente notificações e fase pública;
+- limita a consulta de fase à tela de um chamado existente, evitando interpretar IDs de outras páginas como chamados;
+- mantém as permissões atuais e a autorização independente de cada endpoint; não altera dados ou configuração de perfis;
+- em falha na consulta de permissões, não dispara as consultas protegidas.
+
+Consulte [RELEASE_0.29.1.md](../../docs/RELEASE_0.29.1.md). Após atualizar, recarregue as páginas abertas com Ctrl+F5.
+
+## Versão 0.29.0
+
+- bloqueia o envio repetido da conciliação e oferece seleção conjunta de até cinco referências;
+- dispensa justificativa no primeiro vínculo efetivo; vínculos adicionais do chamado ou WP continuam exigindo direito de resolver conflitos e justificativa, inclusive em lote;
+- permite confirmar uma relação entre a nova WP e uma WP anterior do chamado, com tipo e direção explícitos;
+- acrescenta documentação na criação e o botão **Documentar** nas WPs vinculadas, com editor visual/Markdown, blocos de código por linguagem, imagens redimensionáveis e anexos;
+- reutiliza TinyMCE, Monaco e conversores do GLPI; grava no OpenProject com token pessoal e controla alterações simultâneas por `lockVersion`;
+- preserva a WP criada quando o relacionamento falha, permitindo repetir somente a relação na mesma sessão de edição.
+
+Veja [RELEASE_0.29.0.md](../../docs/RELEASE_0.29.0.md) para limites, permissões e homologação. Atualize sem desinstalar.
 
 ## Versão 0.28.0
 
