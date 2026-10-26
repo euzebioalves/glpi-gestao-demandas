@@ -16,6 +16,9 @@
         if (section.dataset.initialized) return;
         section.dataset.initialized = '1';
         const form = section.closest('form'), status = section.querySelector('.doc-status');
+        const workspace = section.querySelector('.doc-workspace');
+        const isExisting = Number(section.dataset.wp) > 0;
+        const ready = () => isExisting || form.dataset.creationReady === '1';
         const rich = section.querySelector('.doc-rich'), markdown = section.querySelector('.doc-markdown');
         const list = section.querySelector('.doc-attachments'), files = section.querySelector('.doc-files');
         let editor, raw = '', initialHtml = '', mode = 'visual', loaded = false, busy = false, dirty = false, queue = Promise.resolve();
@@ -76,6 +79,7 @@
             li.append(link); list.append(li);
         }
         async function upload(file) {
+            if (!loaded || !ready()) throw new Error('Carregue os dados e a documentação da WP antes de enviar arquivos.');
             if (file.size > 15 * 1024 * 1024) throw new Error('Cada arquivo pode ter até 15 MB.');
             report('Enviando ' + file.name + '…');
             const result = await api('upload', {file}); attachment(result); dirty = true; report('Arquivo enviado. Salve para associá-lo à WP.'); return result;
@@ -114,17 +118,30 @@
         function install(data) {
             raw = data.raw || ''; markdown.value = raw; editor.setContent(data.html || ''); initialHtml = editor.getContent();
             (data.attachments || []).forEach(attachment); loaded = true; dirty = false;
+            workspace.hidden = !ready();
         }
         async function loadTemplate() {
+            if (!ready() || busy) return;
             if (dirty && !window.confirm('Substituir o texto atual pelo template? Os arquivos enviados serão mantidos.')) return;
-            try { install(await api('template')); report('Template carregado. Revise e complemente antes de criar a WP.'); }
+            const project = form.elements.project_id.value, type = form.elements.type_id.value;
+            try {
+                const data = await api('template', {project_id: project, type_id: type});
+                if (!ready() || project !== form.elements.project_id.value || type !== form.elements.type_id.value) return;
+                install(data); report('Template carregado. Revise e complemente antes de criar a WP.');
+            }
             catch (error) { report(error.message, true); }
         }
+        form.addEventListener('demandas:creation-reset', () => {
+            workspace.hidden = true;
+            const template = section.querySelector('.doc-template');
+            if (template) template.hidden = true;
+            report('Selecione projeto e tipo e aguarde o carregamento dos campos. Seu texto já digitado será preservado.');
+        });
         // Prevent native submission even while the editor/library is still loading.
         form.addEventListener('submit', async event => {
             event.preventDefault();
             if (busy) return;
-            if (!loaded || !editor) { report('Carregue a documentação ou o template antes de salvar.', true); return; }
+            if (!ready() || !loaded || !editor) { report('Carregue os dados e a documentação ou o template antes de salvar.', true); return; }
             if (form.elements.relation_target?.value && !form.elements.confirm_relation.checked) { report('Confirme a relação entre as WPs ou selecione “Não relacionar”.', true); return; }
             busy = true;
             const buttons = [...form.querySelectorAll('button')]; const states = buttons.map(button => button.disabled);
@@ -161,10 +178,15 @@
                     instance.on('SetContent change', () => { highlight(); });
                 }
             });
-            if (Number(section.dataset.wp)) { install(await api('load')); report('Documentação carregada. Alterações simultâneas serão verificadas ao salvar.'); }
-            else { loaded = false; report('Selecione projeto e tipo e carregue o template para documentar a nova WP.'); }
+            if (isExisting) { install(await api('load')); report('Documentação carregada. Alterações simultâneas serão verificadas ao salvar.'); }
             section.querySelector('.doc-template')?.addEventListener('click', loadTemplate);
-            form.addEventListener('demandas:creation-options', () => { if (!loaded && !dirty) loadTemplate(); });
+            const prepare = () => {
+                if (!ready()) return;
+                section.querySelector('.doc-template').hidden = false;
+                if (!loaded && !dirty) loadTemplate();
+                else { workspace.hidden = false; report('Documentação preservada. Revise o texto para o projeto e tipo selecionados ou carregue outro template.'); }
+            };
+            if (!isExisting) { form.addEventListener('demandas:creation-options', prepare); prepare(); }
             files.addEventListener('change', async () => {
                 const selected = [...files.files]; files.disabled = true;
                 try { for (const file of selected) await upload(file); }
@@ -191,7 +213,8 @@
             });
         } catch (error) { report(error.message, true); }
     }
-    function scan() { document.querySelectorAll('.demandas-documentation').forEach(section => { const modal = section.closest('.modal'); if (!modal || modal.classList.contains('show')) initialize(section); }); }
+    function scan() { document.querySelectorAll('.demandas-documentation').forEach(section => { const modal = section.closest('.modal'); if ((!modal || modal.classList.contains('show')) && (Number(section.dataset.wp) || section.closest('form').dataset.creationReady === '1')) initialize(section); }); }
+    document.addEventListener('demandas:creation-options', scan);
     document.addEventListener('shown.bs.modal', scan);
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan); else scan();
     new MutationObserver(scan).observe(document.documentElement, {childList: true, subtree: true});

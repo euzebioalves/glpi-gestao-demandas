@@ -22,8 +22,7 @@ final class UserTimeProfile extends CommonDBTM
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string
     {
         if (!$item instanceof User || $item->getID() <= 0) return '';
-        $self = (int) $item->getID() === (int) Session::getLoginUserID();
-        return ($self || AccessPolicy::has(Profile::MANAGE_ATTENDANCE) || AccessPolicy::has(Profile::MANAGE_TIME_ACCESS))
+        return (TimeAccess::canSettings((int) $item->getID()) || TimeAccess::canManageRights((int) $item->getID()))
             ? self::createTabEntry(self::getTypeName())
             : '';
     }
@@ -36,9 +35,8 @@ final class UserTimeProfile extends CommonDBTM
 
     private static function showForUser(int $userId): void
     {
-        $self = $userId === (int) Session::getLoginUserID();
-        $canSettings = $self || AccessPolicy::has(Profile::MANAGE_ATTENDANCE);
-        $canRights = AccessPolicy::has(Profile::MANAGE_TIME_ACCESS);
+        $canSettings = TimeAccess::canSettings($userId);
+        $canRights = TimeAccess::canManageRights($userId);
         if (!$canSettings && !$canRights) throw new \Glpi\Exception\Http\AccessDeniedHttpException();
 
         $service = new TimeManagementService();
@@ -66,11 +64,7 @@ final class UserTimeProfile extends CommonDBTM
             echo "</div><button class='btn btn-primary mt-3'>Salvar configuração individual</button></form></div></div>";
         }
         if ($canRights) {
-            $rights = [
-                Profile::VIEW_TIME_PORTAL, Profile::LOG_OWN_TIME, Profile::LOG_OTHERS_TIME,
-                Profile::VIEW_OWN_ATTENDANCE, Profile::VIEW_TEAM_ATTENDANCE,
-                Profile::MANAGE_ATTENDANCE, Profile::MANAGE_HOLIDAYS, Profile::MANAGE_TIME_ACCESS,
-            ];
+            $rights = TimeAccess::exceptionRights();
             echo "<div class='card'><div class='card-header'><h3 class='card-title'>Exceções individuais de permissão</h3></div><div class='card-body'><p class='text-muted'>Cada opção pode herdar o perfil, permitir ou negar. Uma decisão individual prevalece sobre o perfil ativo.</p>";
             echo "<form method='post' action='/plugins/demandas/front/user-time-profile.form.php'><input type='hidden' name='_glpi_csrf_token' value='{$csrf}'><input type='hidden' name='users_id' value='{$userId}'><input type='hidden' name='save_rights' value='1'><div class='table-responsive'><table class='table table-vcenter'><thead><tr><th>Permissão</th><th style='width:220px'>Decisão para este usuário</th></tr></thead><tbody>";
             foreach ($rights as $right) {

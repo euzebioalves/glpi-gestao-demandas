@@ -1,6 +1,20 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.31.1** · Alvo: GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.32.1** · Alvo: GLPI 11 e OpenProject 17.x.
+
+## Segurança de acesso e pendências (0.32.1)
+
+As permissões atuais são preservadas. Em horas/ponto, os endpoints passam a exigir o acesso ao portal e o direito específico da operação, assim como as telas. Para consultar ou administrar colegas, o usuário-alvo precisa estar vinculado às entidades ativas (incluindo vínculos recursivos do GLPI). Usuários inexistentes ou excluídos são rejeitados.
+
+As duas telas de exceções individuais usam o mesmo catálogo de oito direitos de horas/ponto. **Herdar** volta à decisão do perfil; **Permitir** e **Negar** prevalecem sobre ela. Cada alteração efetiva registra autor, usuário-alvo, direito e valores anterior/novo na auditoria. A atualização não modifica as escolhas já cadastradas.
+
+Na Central de Pendências, a verificação só resolve ocorrências de chamados que conseguiu avaliar e que o operador pode consultar. Falha na avaliação não representa problema resolvido. Chamados inacessíveis, excluídos ou fora do escopo ficam preservados. Pendências resolvidas por versões anteriores não são reabertas automaticamente.
+
+## Permissões organizadas por módulo (0.32.0)
+
+Em **Administração > Perfis > Gestão de Demandas**, identifique a aba pelo escudo. Os direitos estão separados em Chamados e Work Packages, Visão gerencial, Backlog, Monitoramento e integração, Entradas de tempo, Ponto e ausências e Configuração do plugin. Os atalhos levam ao grupo sem descartar seleções. Abra **Ajuda** junto a cada direito para consultar **O que permite**, **Onde aparece** e **Condições e dependências**. Salve para aplicar as escolhas; a reorganização mantém as concessões anteriores. Somente quem pode alterar perfis no GLPI pode salvar.
+
+Na criação de WP em **Evolução da Demanda**, selecione projeto e tipo e aguarde os campos e o template: só então o editor e os anexos aparecem. Trocar a seleção recolhe a edição temporariamente e preserva o texto. Revise o conteúdo para o novo projeto/tipo ou use **Carregar template do tipo selecionado**. Para uma WP já vinculada, use **Documentar**.
 
 ## 1. Finalidade
 

@@ -1,5 +1,28 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.32.1 — segurança, etapa 1
+
+`TimeAccess` compartilha autorização entre telas, endpoints e serviços de horas/ponto. Preserva `AccessPolicy` e seus valores cadastrados; não transforma exceções em direitos de outros módulos. Alvos devem existir, não estar excluídos e compartilhar entidade ativa via `Profile_User::getUserEntities()` (incluindo associação recursiva), ou ser o próprio usuário autenticado. As permissões do módulo continuam delegando a ação; a navegação pelo cadastro de usuários também mantém o controle nativo do GLPI. Não acrescentar automaticamente direitos aos perfis.
+
+Exceções editáveis são as oito de horas/ponto já presentes em `UserTimeProfile`, inclusive `MANAGE_TIME_ACCESS`, agora compartilhadas com Administração do ponto. Somente -1/0/1 são aceitos (Herdar/Negar/Permitir). O lote inteiro é validado antes de escrever, com transação e auditoria anterior/novo por mudança efetiva. Registros legados fora desse catálogo não são apagados nem alterados automaticamente. Regras de saldo/jornada e comportamento de `AccessPolicy::has()` permanecem inalterados.
+
+`OperationalHealthService::candidates()` devolve ocorrências e IDs de todos os chamados efetivamente avaliados, inclusive sem ocorrências. `resolveMissing()` limita a resolução a esses IDs, entidades ativas e leitura nativa, preservando inacessíveis/excluídos. Falha de classificação não equivale a ausência de problema: interrompe a avaliação antes das gravações de ocorrências e resoluções. `run`/`act` repetem autorização no serviço e exigem ator da sessão. Não corrige retrospectivamente estados antigos sem revisão humana.
+
+Roteiro, evidências e limites em `docs/RELEASE_0.32.1.md`; regressões sintéticas em `tests/security-stage1.cjs` e fixture exclusiva do banco descartável. A versão 0.32.1 inclui as melhorias de interface da 0.32.0. Validação operacional local aprovada pelo usuário em 26/10/2026, com autorização para merge na main e publicação da release.
+
+## Atualização 0.32.0 — organização das permissões (26/10/2026)
+
+O usuário solicitou incluir na próxima melhoria a reorganização da tela **Administração > Perfis > Gestão de Demandas**. A lista única de permissões cresceu e está dificultando a administração.
+
+- Agrupar as permissões por módulo/grupo funcional, com seções claramente identificadas.
+- Disponibilizar ajuda para cada permissão, descrevendo exatamente quais ações e dados libera e em quais menus, páginas, abas ou componentes seu efeito aparece.
+- Explicar os pré-requisitos e as dependências entre permissões, quando houver, distinguindo acesso próprio e acesso a outros usuários.
+- Preservar os direitos já concedidos, os identificadores das permissões e as verificações no backend; a reorganização não deve conceder nem revogar acessos automaticamente.
+
+Implementado localmente na 0.32.0. `PermissionGuide` contém somente metadados de apresentação: sete grupos e ajuda para cada direito. `Profile::definitions()`, IDs e endpoint de gravação permanecem como fonte de autorização. A tela usa um único formulário, controles associados a labels e ajuda nativa `details/summary`, sem depender de JavaScript para consultar ou salvar direitos. Não conceder dependências automaticamente.
+
+`WorkPackageDocumentationForm` começa com a área de edição/anexos oculta. `TicketDemand` sinaliza `creationReady` apenas após carregar os campos de projeto/tipo, invalida respostas antigas por geração e emite eventos de reset/prontidão. `documentation.js` adia a inicialização até essa prontidão e revela o editor após carregar o template; mudanças de seleção preservam o texto e recolhem os controles até os novos campos estarem prontos. Para WPs existentes, revela após carregar a documentação. As verificações do backend permanecem obrigatórias e inalteradas.
+
 ## Atualização 0.31.1 — apresentação para tomada de decisão
 
 Revisão visual exclusiva de Bugs e Melhorias. `ActionDashboardPanel` traduz motivos em próximos passos, recolhe zeros e detalhes de WPs, resume a fila e mostra barras de quantidade por etapa com duração separada. `public/css/action-dashboard.css` é carregado somente nessa aba, com cores próprias para contraste em claro/escuro. Filtros e Opções do painel começam recolhidos. Nenhuma alteração em ActionDashboard, DeliveryReview, serviço, ACL, exportadores ou schema.

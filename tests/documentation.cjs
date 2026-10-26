@@ -63,11 +63,34 @@ const base = 'http://127.0.0.1:8386', endpoint = '/plugins/demandas/front/work-p
         await page.screenshot({path:path.join(os.tmpdir(),'documentation-ticket.png'),fullPage:true});
         await page.locator('[data-bs-target="#demandas-create-additional-wp"]').click();
         const modal=page.locator('#demandas-create-additional-wp');
+        assert.equal(await modal.locator('.doc-workspace').isVisible(),false,'No editor before project/type');
+        assert.equal(await modal.locator('.tox-tinymce').count(),0,'No TinyMCE initialized before options');
         await modal.locator('[name=additional_wp_reason]').fill('Correção anterior não resolveu completamente o bug.');
+        await modal.locator('[name=project_id]').selectOption('77');
+        assert.equal(await modal.locator('.doc-workspace').isVisible(),false,'Project alone does not show editor');
+        await modal.locator('[name=type_id] option[value="88"]').waitFor({state:'attached'});
+        let failTemplate = true;
+        await page.route('**/front/work-package-documentation.php', async route => {
+            if (failTemplate && /name="action"\r\n\r\ntemplate/.test(route.request().postData() || '')) {
+                failTemplate = false;
+                await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({error:'Template indisponível no teste'})});
+            } else await route.continue();
+        });
+        await modal.locator('[name=type_id]').selectOption('88');
+        await page.waitForFunction(()=>document.querySelector('#demandas-create-additional-wp .doc-status')?.textContent.includes('Template indisponível'));
+        assert.equal(await modal.locator('.doc-workspace').isVisible(),false,'Failed template must not expose editor/uploads');
+        await modal.locator('.doc-template').click();
+        await page.waitForFunction(()=>document.querySelector('#demandas-create-additional-wp .doc-status')?.textContent.includes('Template carregado'));
+        assert.equal(await modal.locator('.doc-workspace').isVisible(),true);
+        await page.evaluate(()=>tinymce.activeEditor.setContent('<p>Texto preservado ao trocar seleção</p>'));
+        await modal.locator('[name=project_id]').selectOption('');
+        assert.equal(await modal.locator('.doc-workspace').isVisible(),false);
+        assert.equal(await modal.locator('#demandas-create-button').isDisabled(),true);
         await modal.locator('[name=project_id]').selectOption('77');
         await modal.locator('[name=type_id] option[value="88"]').waitFor({state:'attached'});
         await modal.locator('[name=type_id]').selectOption('88');
-        await page.waitForFunction(()=>document.querySelector('#demandas-create-additional-wp .doc-status')?.textContent.includes('Template carregado'));
+        await modal.locator('.doc-workspace').waitFor({state:'visible'});
+        assert.match(await page.evaluate(()=>tinymce.activeEditor.getContent()),/Texto preservado/);
         await modal.locator('[name=relation_target]').selectOption(String(seed.wp)); await modal.locator('[name=confirm_relation]').check();
         fixture({mode:'failure',relation:true});const before=fixture({mode:'api-state'}).creates;
         await modal.locator('#demandas-create-button').click();
@@ -101,6 +124,10 @@ const base = 'http://127.0.0.1:8386', endpoint = '/plugins/demandas/front/work-p
         assert.equal(conflict.status,400);assert.match(conflict.data.error,/alterada no OpenProject/);assert.equal(fixture({mode:'api-state'}).updates,updates);
         // First actual link is free even with several source references; subsequent links require justification.
         const candidates=fixture({mode:'first-links'});
+        await page.goto(base+'/front/ticket.form.php?id='+candidates.tickets.first+'&forcetab=GlpiPlugin%5CDemandas%5CTicketDemand%241');
+        await page.locator('.demandas-documentation').waitFor();
+        assert.equal(await page.locator('.doc-workspace').isVisible(),false,'Unlinked ticket starts without editor');
+        assert.equal(await page.locator('.doc-files').isVisible(),false);
         const reconciliation='/plugins/demandas/front/legacy-reconciliation.php?ticket_scope=all&ticket=';
         const postReconciliation='/plugins/demandas/front/legacy-reconciliation.form.php';
         await page.goto(base+reconciliation+candidates.tickets.first);

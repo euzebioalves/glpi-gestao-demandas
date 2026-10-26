@@ -42,6 +42,7 @@ final class OperationalHealthService
     /** Runs all local rules within the active entity scope. */
     public function run(int $actorUserId): array
     {
+        $this->checkOperation($actorUserId);
         if ($actorUserId <= 0) {
             throw new RuntimeException('Usuário inválido para executar a verificação operacional.');
         }
@@ -58,14 +59,14 @@ final class OperationalHealthService
         $runId = (int) $this->db->insertId();
 
         try {
-            $candidates = $this->candidates($entities);
+            [$candidates, $evaluatedTickets] = $this->candidates($entities);
             $seen = [];
             foreach ($candidates as $candidate) {
                 $fingerprint = (string) $candidate['fingerprint'];
                 $seen[$fingerprint] = true;
                 $this->upsertFinding($candidate, $runId, $now);
             }
-            $this->resolveMissing($entities, array_keys($seen), $runId, $now);
+            $this->resolveMissing($entities, $evaluatedTickets, array_keys($seen), $runId, $now);
             $this->db->update(self::RUNS, [
                 'status' => 'success',
                 'findings_count' => count($candidates),
@@ -148,6 +149,7 @@ final class OperationalHealthService
 
     public function act(int $findingId, string $action, int $actorUserId): void
     {
+        $this->checkOperation($actorUserId);
         $finding = $this->findingForCurrentScope($findingId);
         if ($finding === null) {
             throw new RuntimeException('A pendência solicitada não está disponível no seu escopo atual.');
@@ -181,7 +183,7 @@ final class OperationalHealthService
     private function candidates(array $entities): array
     {
         if ($entities === []) {
-            return [];
+            return [[], []];
         }
         $entitySql = implode(',', array_map('intval', $entities));
         $sql = "SELECT t.id AS ticket_id, t.name AS ticket_name, t.status AS ticket_status, t.date AS ticket_date, t.entities_id,
@@ -240,7 +242,8 @@ final class OperationalHealthService
                 }
             }
         }
-        return $candidates;
+        // Include evaluated tickets without findings: only these can resolve old occurrences.
+        return [$candidates, array_keys($byTicket)];
     }
 
     private function candidate(string $rule, string $severity, array $ticket, int $wpId, array $evidence): array
@@ -288,12 +291,18 @@ final class OperationalHealthService
         $this->db->update(self::FINDINGS, $values, ['id' => (int) $existing['id']]);
     }
 
-    private function resolveMissing(array $entities, array $seen, int $runId, string $now): void
+    private function resolveMissing(array $entities, array $evaluatedTickets, array $seen, int $runId, string $now): void
     {
-        $entityMap = array_fill_keys($entities, true);
+        if ($entities === [] || $evaluatedTickets === []) {
+            return;
+        }
         $seenMap = array_fill_keys($seen, true);
-        foreach ($this->db->request(['FROM' => self::FINDINGS]) as $finding) {
-            if (!isset($entityMap[(int) ($finding['entities_id'] ?? -1)]) || isset($seenMap[(string) ($finding['fingerprint'] ?? '')])) {
+        foreach ($this->db->request(['FROM' => self::FINDINGS, 'WHERE' => [
+            'entities_id' => $entities,
+            'tickets_id' => $evaluatedTickets,
+            'state' => ['open', 'acknowledged', 'ignored'],
+        ]]) as $finding) {
+            if (isset($seenMap[(string) ($finding['fingerprint'] ?? '')]) || !$this->ticketReadable((int) $finding['tickets_id'])) {
                 continue;
             }
             if (in_array((string) ($finding['state'] ?? ''), ['open', 'acknowledged', 'ignored'], true)) {
@@ -332,15 +341,25 @@ final class OperationalHealthService
         }
         $ticket = new Ticket();
         if (!$ticket->getFromDB($ticketId)) {
-            return false;
+            throw new RuntimeException('Não foi possível concluir a avaliação dos chamados. Nenhuma pendência será resolvida por esta execução.');
         }
         try {
             $types = ClassificationPolicy::filterTypes($ticket, [
                 ['name' => 'User Story'], ['name' => 'Épico'], ['name' => 'Bug'],
             ]);
             return $types !== [];
-        } catch (\Throwable) {
-            return false;
+        } catch (\Throwable $exception) {
+            throw new RuntimeException('Não foi possível avaliar a classificação dos chamados. Revise a configuração antes de executar novamente.', 0, $exception);
+        }
+    }
+
+    private function checkOperation(int $actorUserId): void
+    {
+        Profile::checkRight(Profile::VIEW_TECHNICAL);
+        Profile::checkRight(Profile::VIEW_OPERATIONAL_HEALTH);
+        Profile::checkRight(Profile::MANAGE_OPERATIONAL_HEALTH);
+        if ($actorUserId <= 0 || $actorUserId !== (int) \Session::getLoginUserID()) {
+            throw new \Glpi\Exception\Http\AccessDeniedHttpException();
         }
     }
 

@@ -5,26 +5,26 @@ declare(strict_types=1);
 use GlpiPlugin\Demandas\AccessPolicy;
 use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\TimeManagementService;
+use GlpiPlugin\Demandas\TimeAccess;
 
 Session::checkLoginUser();
 AccessPolicy::check(DemandasProfile::VIEW_TIME_PORTAL);
 
 $canManageHolidays = AccessPolicy::has(DemandasProfile::MANAGE_HOLIDAYS);
 $canAccess = AccessPolicy::has(DemandasProfile::MANAGE_TIME_ACCESS);
-$timeRights = [DemandasProfile::VIEW_TIME_PORTAL, DemandasProfile::LOG_OWN_TIME, DemandasProfile::LOG_OTHERS_TIME, DemandasProfile::VIEW_OWN_ATTENDANCE, DemandasProfile::VIEW_TEAM_ATTENDANCE, DemandasProfile::MANAGE_ATTENDANCE, DemandasProfile::MANAGE_HOLIDAYS];
+$timeRights = TimeAccess::exceptionRights();
 if (!$canManageHolidays && !$canAccess) {
     throw new Glpi\Exception\Http\AccessDeniedHttpException();
 }
 
 $service = new TimeManagementService();
-$db = DBConnection::getReadConnection();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['save_holiday']) || isset($_POST['delete_holiday'])) {
         AccessPolicy::check(DemandasProfile::MANAGE_HOLIDAYS);
     }
     if (isset($_POST['save_access'])) {
-        AccessPolicy::check(DemandasProfile::MANAGE_TIME_ACCESS);
+        TimeAccess::checkManageRights((int) ($_POST['users_id'] ?? 0));
     }
     try {
         if (isset($_POST['save_holiday'])) {
@@ -34,22 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $service->deleteHoliday((int) ($_POST['id'] ?? 0));
             Session::addMessageAfterRedirect('Feriado ou dia não útil removido.', true, INFO);
         } elseif (isset($_POST['save_access'])) {
-            AccessPolicy::check(DemandasProfile::MANAGE_TIME_ACCESS);
             $userId = (int) ($_POST['users_id'] ?? 0);
             $right = (string) ($_POST['right_name'] ?? '');
-            if ($userId <= 0 || !in_array($right, $timeRights, true)) {
-                throw new RuntimeException('Usuário ou permissão inválidos.');
-            }
-            $existing = null;
-            foreach ($db->request(['FROM' => 'glpi_plugin_demandas_user_rights', 'WHERE' => ['users_id' => $userId, 'right_name' => $right], 'LIMIT' => 1]) as $row) {
-                $existing = $row;
-            }
-            $data = ['users_id' => $userId, 'right_name' => $right, 'decision' => (int) ($_POST['decision'] ?? 0), 'date_mod' => date('Y-m-d H:i:s')];
-            if ($existing !== null) {
-                $db->update('glpi_plugin_demandas_user_rights', $data, ['id' => (int) $existing['id']]);
-            } else {
-                $db->insert('glpi_plugin_demandas_user_rights', $data);
-            }
+            TimeAccess::saveExceptions($userId, [$right => $_POST['decision'] ?? null]);
             Session::addMessageAfterRedirect('Exceção individual salva.', true, INFO);
         }
     } catch (Throwable $exception) {
@@ -109,7 +96,7 @@ if ($canManageHolidays) {
 
 if ($canAccess) {
     echo "<div class='col-lg-6'><div class='card'><div class='card-header'><h2 class='card-title'>Exceções individuais de acesso</h2></div><div class='card-body'><p class='text-muted'>A decisão individual prevalece sobre a permissão herdada do perfil.</p><form method='post'><input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'><label class='form-label'>Usuário</label><select class='form-select mb-3' name='users_id'>";
-    foreach ($db->request(['SELECT' => ['id', 'name', 'realname', 'firstname'], 'FROM' => 'glpi_users', 'WHERE' => ['is_active' => 1], 'ORDER' => ['realname ASC']]) as $user) {
+    foreach (TimeAccess::selectableUsers() as $user) {
         $name = trim((string) $user['firstname'] . ' ' . (string) $user['realname']) ?: (string) $user['name'];
         echo "<option value='" . (int) $user['id'] . "'>" . timeAdminEsc($name) . "</option>";
     }

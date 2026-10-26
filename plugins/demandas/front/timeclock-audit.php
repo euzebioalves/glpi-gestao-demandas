@@ -12,15 +12,13 @@ AccessPolicy::check(DemandasProfile::VIEW_OWN_ATTENDANCE);
 
 $currentUserId = (int) Session::getLoginUserID();
 $targetUserId = (int) ($_GET['users_id'] ?? $currentUserId);
-if ($targetUserId !== $currentUserId && !AccessPolicy::has(DemandasProfile::VIEW_TEAM_ATTENDANCE)) {
-    throw new Glpi\Exception\Http\AccessDeniedHttpException();
-}
+GlpiPlugin\Demandas\TimeAccess::checkAttendance($targetUserId);
 $service = new TimeManagementService();
 $ledger = $service->bankLedger($targetUserId);
 $db = DBConnection::getReadConnection();
 $users = [];
 if (AccessPolicy::has(DemandasProfile::VIEW_TEAM_ATTENDANCE)) {
-    foreach ($db->request(['SELECT' => ['id', 'name', 'realname', 'firstname'], 'FROM' => 'glpi_users', 'WHERE' => ['is_active' => 1], 'ORDER' => ['realname ASC', 'firstname ASC']]) as $user) {
+    foreach (GlpiPlugin\Demandas\TimeAccess::selectableUsers() as $user) {
         $users[] = $user;
     }
 }

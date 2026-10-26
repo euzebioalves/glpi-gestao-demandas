@@ -25,6 +25,7 @@ final class TimeManagementService
 
     public function saveSettings(int $userId, array $input): void
     {
+        TimeAccess::checkSettings($userId);
         $start = $this->time((string)($input['work_start'] ?? '08:00'));
         $end = $this->time((string)($input['work_end'] ?? '17:00'));
         if ($end <= $start) throw new RuntimeException('A hora de saída deve ser posterior à entrada.');
@@ -62,6 +63,7 @@ final class TimeManagementService
 
     public function savePunches(int $userId, string $date, array $times, string $note=''): int
     {
+        TimeAccess::checkAttendance($userId, true);
         $this->date($date); $count=0;
         foreach (array_unique(array_filter(array_map('trim',$times))) as $time) {
             $time=$this->time($time); $at=$date.' '.$time.':00';
@@ -74,6 +76,7 @@ final class TimeManagementService
 
     public function saveDayPunches(int $userId, string $date, array $records): int
     {
+        TimeAccess::checkAttendance($userId, true);
         $this->date($date);
         $existing=[];
         foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_punches','WHERE'=>['users_id'=>$userId,['punch_at'=>['>=',$date.' 00:00:00']],['punch_at'=>['<=',$date.' 23:59:59']]]]) as $row) $existing[(int)$row['id']]=$row;
@@ -94,6 +97,7 @@ final class TimeManagementService
 
     public function syncDayAbsence(int $userId,string $date,string $action,array $input,array $files=[]):void
     {
+        TimeAccess::checkAttendance($userId, true);
         $this->date($date);if(!in_array($action,['keep','set','remove'],true))$action='keep';if($action==='keep')return;
         $existing=[];foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absences','WHERE'=>['users_id'=>$userId,'absence_date'=>$date],'ORDER'=>['id ASC']])as$row)$existing[]=$row;
         if($action==='remove'){
@@ -115,6 +119,7 @@ final class TimeManagementService
 
     public function saveAbsence(int $userId, array $input, ?array $file=null): void
     {
+        TimeAccess::checkAttendance($userId, true);
         $date=$this->date((string)($input['absence_date']??'')); $kind=(string)($input['kind']??'');
         if(!in_array($kind,['justified','unjustified'],true)) throw new RuntimeException('Tipo de ausência inválido.');
         $minutes=max(0,(int)($input['minutes']??0));
@@ -126,6 +131,7 @@ final class TimeManagementService
 
     public function month(int $userId, int $year, int $month): array
     {
+        TimeAccess::checkAttendance($userId);
         $first=sprintf('%04d-%02d-01',$year,$month); $last=(new DateTimeImmutable($first))->modify('last day of this month')->format('Y-m-d');
         $p=[]; foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_punches','WHERE'=>['users_id'=>$userId,['punch_at'=>['>=',$first.' 00:00:00']],['punch_at'=>['<=',$last.' 23:59:59']]],'ORDER'=>['punch_at ASC']]) as $r) $p[substr($r['punch_at'],0,10)][]=$r;
         $a=[]; foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absences','WHERE'=>['users_id'=>$userId,['absence_date'=>['>=',$first]],['absence_date'=>['<=',$last]]],'ORDER'=>['absence_date ASC']]) as $r) $a[$r['absence_date']][]=$r;
@@ -136,6 +142,7 @@ final class TimeManagementService
 
     public function balance(int $userId,bool $completeOnly=false): int
     {
+        TimeAccess::checkAttendance($userId);
         $s=$this->settings($userId); $start=(string)($s['bank_start_date']?:date('Y-01-01')); $cursor=new DateTimeImmutable($start); $today=new DateTimeImmutable('today'); $end=$today->format('Y-m-d'); $total=(int)($s['bank_initial_minutes']??0);
         $punches=[];
         foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_punches','WHERE'=>['users_id'=>$userId,['punch_at'=>['>=',$start.' 00:00:00']],['punch_at'=>['<=',$end.' 23:59:59']]],'ORDER'=>['punch_at ASC']]) as $row){
@@ -156,6 +163,7 @@ final class TimeManagementService
      */
     public function bankLedger(int $userId): array
     {
+        TimeAccess::checkAttendance($userId);
         $settings=$this->settings($userId);
         $start=(string)($settings['bank_start_date']?:date('Y-01-01'));
         $today=date('Y-m-d');
@@ -210,6 +218,7 @@ final class TimeManagementService
     /** @return array<int, array<string, mixed>> */
     public function absences(int $userId,string $filter='all'): array
     {
+        TimeAccess::checkAttendance($userId);
         $where=['users_id'=>$userId];
         if(in_array($filter,['justified','unjustified'],true))$where['kind']=$filter;
         $rows=array_values(iterator_to_array($this->db->request(['FROM'=>'glpi_plugin_demandas_absences','WHERE'=>$where,'ORDER'=>['absence_date DESC','id DESC']])));
@@ -224,6 +233,7 @@ final class TimeManagementService
     /** @return array<string, mixed> */
     public function absenceFile(int $fileId,int $userId): array
     {
+        TimeAccess::checkAttendance($userId);
         foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absence_files','WHERE'=>['id'=>$fileId,'users_id'=>$userId],'LIMIT'=>1])as$file)return $file;
         throw new RuntimeException('Anexo de ausência não encontrado.');
     }
@@ -329,7 +339,7 @@ final class TimeManagementService
     }
 
     private function timeEntry(int$id,int$userId):array{foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_time_entries','WHERE'=>['id'=>$id,'users_id'=>$userId],'LIMIT'=>1])as$row)return$row;throw new RuntimeException('Entrada de tempo não encontrada.');}
-    private function checkTimeEntryPermission(int$user):void{if($user===(int)Session::getLoginUserID())AccessPolicy::check(Profile::LOG_OWN_TIME);else AccessPolicy::check(Profile::LOG_OTHERS_TIME);}
+    private function checkTimeEntryPermission(int$user):void{TimeAccess::checkTimeEntry($user);}
     private function assertLinkedWorkPackage(int$ticket,int$wp):void{$item=new \Ticket();if(!$item->getFromDB($ticket)||!$item->can($ticket,READ))throw new \Glpi\Exception\Http\AccessDeniedHttpException();$linked=false;foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_links','WHERE'=>['tickets_id'=>$ticket,'openproject_work_package_id'=>$wp],'LIMIT'=>1])as$_)$linked=true;if(!$linked)throw new RuntimeException('A Work Package não está vinculada ao chamado informado.');}
     private function assertExternalWorkPackage(int$wp):void{if($wp<=0)throw new RuntimeException('Selecione uma Work Package válida.');$workPackage=OpenProjectClient::forCurrentUser()->getWorkPackage($wp);if((int)($workPackage['id']??0)!==$wp)throw new RuntimeException('O OpenProject não confirmou a Work Package selecionada.');}
     private function assertActivity(int$wp,string$href):void{if($wp<=0||$href===''||!str_starts_with($href,'/api/v3/time_entries/activities/'))throw new RuntimeException('Selecione uma atividade válida para a Work Package.');}
@@ -348,6 +358,7 @@ final class TimeManagementService
     }
     private function assertCanManageHolidays():void
     {
+        AccessPolicy::check(Profile::VIEW_TIME_PORTAL);
         if(!AccessPolicy::has(Profile::MANAGE_HOLIDAYS))throw new \Glpi\Exception\Http\AccessDeniedHttpException();
     }
     private function time(string $v):string{if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/',$v))throw new RuntimeException('Horário inválido.');return$v;}

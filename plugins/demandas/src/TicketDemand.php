@@ -517,13 +517,22 @@ final class TicketDemand extends CommonDBTM
     const fields = document.getElementById('demandas-creation-fields');
     const createButton = document.getElementById('demandas-create-button');
     if (!project || !type || !fields || !createButton) return;
+    const form = project.closest('form');
+    let generation = 0;
+    form.addEventListener('submit', event => {
+        if (form.dataset.creationReady !== '1') event.preventDefault();
+    });
     const ticketId = document.querySelector('#demandas-create-wp-form input[name="tickets_id"]')?.value || '';
     const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
     const resetDetails = message => {
+        form.dataset.creationReady = '0';
+        form.dispatchEvent(new Event('demandas:creation-reset'));
         fields.innerHTML = `<div class="col-12"><div class="alert alert-info mb-0">${escapeHtml(message)}</div></div>`;
         createButton.disabled = true;
     };
     project.addEventListener('change', async () => {
+        const request = ++generation;
+        resetDetails('Selecione o projeto e o tipo da Work Package.');
         type.disabled = true;
         type.innerHTML = '<option value="">Carregando tipos...</option>';
         if (!project.value) {
@@ -533,6 +542,7 @@ final class TicketDemand extends CommonDBTM
         try {
             const response = await fetch('/plugins/demandas/front/openproject-options.php?action=types&project_id=' + encodeURIComponent(project.value) + '&tickets_id=' + encodeURIComponent(ticketId), {credentials: 'same-origin'});
             const data = await response.json();
+            if (request !== generation) return;
             if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os tipos.');
             type.innerHTML = '<option value="">Selecione um tipo</option>';
             data.types.forEach(item => type.add(new Option(item.name, item.id)));
@@ -543,10 +553,12 @@ final class TicketDemand extends CommonDBTM
                 resetDetails('Selecione o tipo para carregar os demais campos exigidos pelo OpenProject.');
             }
         } catch (error) {
-            type.innerHTML = '<option value="">' + error.message + '</option>';
+            if (request !== generation) return;
+            type.replaceChildren(new Option(error.message, ''));
         }
     });
     type.addEventListener('change', async () => {
+        const request = ++generation;
         if (!project.value || !type.value) {
             resetDetails('Selecione o projeto e o tipo da Work Package.');
             return;
@@ -556,6 +568,7 @@ final class TicketDemand extends CommonDBTM
             const url = '/plugins/demandas/front/openproject-options.php?action=creation_options&project_id=' + encodeURIComponent(project.value) + '&type_id=' + encodeURIComponent(type.value) + '&tickets_id=' + encodeURIComponent(ticketId);
             const response = await fetch(url, {credentials: 'same-origin'});
             const data = await response.json();
+            if (request !== generation) return;
             if (!response.ok) throw new Error(data.error || 'Não foi possível carregar os campos.');
             fields.innerHTML = '';
             const definitions = [
@@ -583,8 +596,10 @@ final class TicketDemand extends CommonDBTM
                 fields.appendChild(warning);
             }
             createButton.disabled = false;
-            document.getElementById('demandas-create-wp-form').dispatchEvent(new Event('demandas:creation-options'));
+            form.dataset.creationReady = '1';
+            form.dispatchEvent(new Event('demandas:creation-options', {bubbles: true}));
         } catch (error) {
+            if (request !== generation) return;
             resetDetails(error.message);
         }
     });
