@@ -1,6 +1,16 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.32.1** · Alvo: GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.33.0** · Alvo: GLPI 11 e OpenProject 17.x.
+
+## Operações e recuperação (0.33.0)
+
+Ponto, ausência e anexos do dia são salvos em conjunto. Se houver erro, os registros anteriores ficam preservados: corrija os campos e salve novamente.
+
+Em **Entradas de Tempo**, o estado **Conferir envio** significa que o OpenProject pode ter recebido o lançamento, mas a resposta não foi confirmada. Abra a WP e confira as horas. Informe o ID da entrada existente para associá-la, ou confirme explicitamente sua ausência para liberar nova tentativa. O plugin valida os dados remotos e audita a decisão. Declarar ausência sem conferir pode gerar duplicação.
+
+Use **Sincronizar** para retomar **Atualização pendente** ou **Exclusão pendente** no mesmo ID remoto. Resolva problemas de token/permissão antes de repetir. Em acompanhamentos automáticos, uma falha fica pendente e é retomada na próxima sincronização do chamado, mesmo sem nova mudança de status.
+
+Consulte [o roteiro de homologação e os limites](RELEASE_0.33.0.md). As permissões e regras de saldo continuam as mesmas.
 
 ## Segurança de acesso e pendências (0.32.1)
 

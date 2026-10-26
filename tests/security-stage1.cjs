@@ -75,7 +75,7 @@ function fixture(input){const r=spawnSync('docker',['exec','-i','demandas-test-0
     assert.equal((await post(context,page,'time-settings.form.php',data)).status(),302);
     await page.reload();
     assert.equal((await post(context,page,'punch.form.php',{users_id:self,punch_date:'2026-10-20','records[0][time]':'08:00','records[1][time]':'17:00',absence_action:'keep'})).status(),302);
-    assert.equal(fixture({mode:'snapshot'}).punches.filter(p=>Number(p.users_id)===self).length,2);
+    assert.equal(fixture({mode:'snapshot'}).punches.filter(p=>Number(p.users_id)===self&&p.punch_at.startsWith('2026-10-20')).length,2);
    }
    await context.close();console.log('PASS: direct endpoints '+role);
   }

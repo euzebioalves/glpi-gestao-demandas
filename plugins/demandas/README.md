@@ -1,5 +1,16 @@
 # Gestão de Demandas
 
+## Versão 0.33.0 — operações recuperáveis
+
+- serializa operações concorrentes de horas e ponto por usuário e sincronização por vínculo;
+- grava ponto, ausência, metadados de anexos e auditoria do dia na mesma transação; arquivos antigos só são removidos após o commit;
+- impede novo POST de horas após timeout/resposta perdida; oferece **Conferir envio** para associar um ID remoto validado ou liberar tentativa após confirmação explícita de ausência;
+- preserva alterações/exclusões remotas pendentes e permite retomar a mesma operação pelo botão **Sincronizar**;
+- mantém acompanhamentos pendentes em fila persistente; nova sincronização tenta novamente mesmo sem mudança de status, sem duplicar a mensagem gravada no GLPI;
+- mantém permissões, cálculos de saldo, fases públicas e dados anteriores. Não envia marcações de ponto ao OpenProject.
+
+Roteiro e limites em `docs/RELEASE_0.33.0.md` no repositório. Validação local aprovada pelo usuário, com publicação autorizada.
+
 ## Versão 0.32.1 — segurança de acesso e resolução de pendências
 
 - Corrige a resolução indevida de pendências de chamados que o operador não consegue ler, não avaliados ou fora das entidades ativas.

@@ -571,10 +571,22 @@ final class OpenProjectClient
         return $this->request('PATCH','time_entries/'.$timeEntryId,$this->timeEntryPayload($workPackageId,$spentOn,$minutes,$activityHref,$comment,$userHref));
     }
 
+    public function getTimeEntry(int $id): array
+    {
+        if ($id <= 0) throw new RuntimeException('Identificador de entrada inválido.');
+        return $this->request('GET', 'time_entries/'.$id);
+    }
+
     public function deleteTimeEntry(int $timeEntryId):void
     {
         if($timeEntryId<=0)throw new RuntimeException('Entrada de tempo do OpenProject inválida.');
         $this->request('DELETE','time_entries/'.$timeEntryId);
+    }
+
+    public static function timeEntryComment(string $comment): string
+    {
+        $comment=trim($comment);
+        return $comment===''?'':mb_substr('- '.ltrim($comment,"-–— \t\n\r\0\x0B"),0,2000);
     }
 
     private function timeEntryPayload(int $workPackageId,string $spentOn,int $minutes,string $activityHref,string $comment,string $userHref=''):array
@@ -582,7 +594,7 @@ final class OpenProjectClient
         if($workPackageId<=0||$minutes<=0||!preg_match('/^\d{4}-\d{2}-\d{2}$/',$spentOn))throw new RuntimeException('Dados inválidos para a entrada de tempo.');
         if(!str_starts_with($activityHref,'/api/v3/time_entries/activities/'))throw new RuntimeException('Selecione uma atividade de tempo válida.');
         $hours=intdiv($minutes,60);$remaining=$minutes%60;$duration='PT'.($hours>0?$hours.'H':'').($remaining>0?$remaining.'M':'');
-        $comment=trim($comment);$comment=$comment===''?'':'- '.ltrim($comment,"-–— \t\n\r\0\x0B");
+        $comment=self::timeEntryComment($comment);
         $payload=['spentOn'=>$spentOn,'hours'=>$duration,'comment'=>['format'=>'plain','raw'=>mb_substr($comment,0,2000)],'_links'=>['entity'=>['href'=>'/api/v3/work_packages/'.$workPackageId],'activity'=>['href'=>$activityHref]]];
         if($userHref!==''){if(!preg_match('~^/api/v3/users/\d+$~',$userHref))throw new RuntimeException('O usuário vinculado ao OpenProject é inválido.');$payload['_links']['user']=['href'=>$userHref];}
         return $payload;

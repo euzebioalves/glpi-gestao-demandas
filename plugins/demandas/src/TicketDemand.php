@@ -133,7 +133,7 @@ final class TicketDemand extends CommonDBTM
         array $details = [],
         ?int $workPackageId = null
     ): void {
-        $db = \DBConnection::getReadConnection();
+        $db = $GLOBALS['DB'];
         $values = [
             'openproject_status' => $status,
             'public_phase' => $publicPhase,
@@ -149,7 +149,7 @@ final class TicketDemand extends CommonDBTM
         if ($workPackageId !== null && $workPackageId > 0) {
             $where['openproject_work_package_id'] = $workPackageId;
         }
-        $db->update('glpi_plugin_demandas_links', $values, $where);
+        OperationGuard::write($db->update('glpi_plugin_demandas_links', $values, $where));
     }
 
     public static function history(int $ticketId, int $limit = 10): array

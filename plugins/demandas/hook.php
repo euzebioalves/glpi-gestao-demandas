@@ -90,6 +90,15 @@ function plugin_demandas_install(): bool
     $db = $DB; // O instalador deve usar a conexão de escrita do GLPI.
     plugin_demandas_migrate_timestamps($db);
 
+    $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_followup_jobs` (
+        `id` int unsigned NOT NULL AUTO_INCREMENT,
+        `links_id` int unsigned NOT NULL, `tickets_id` int unsigned NOT NULL,
+        `payload_json` longtext NOT NULL, `state` varchar(20) NOT NULL DEFAULT 'pending',
+        `date_creation` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+        `date_mod` timestamp NULL DEFAULT NULL,
+        PRIMARY KEY (`id`), KEY `pending_link` (`links_id`,`state`,`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_dashboard_preferences` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `users_id` int unsigned NOT NULL,
         `default_view` varchar(20) NOT NULL DEFAULT 'general', `date_mod` timestamp NULL DEFAULT NULL,
@@ -255,7 +264,8 @@ function plugin_demandas_install(): bool
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `activity_href` varchar(255) DEFAULT NULL AFTER `minutes`');
     $db->doQuery("ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `sync_status` varchar(20) NOT NULL DEFAULT 'pending' AFTER `comment`");
     $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `date_mod` timestamp NULL DEFAULT NULL AFTER `date_creation`');
-    $db->doQuery("UPDATE `glpi_plugin_demandas_time_entries` SET `sync_status`='synced' WHERE `openproject_time_entry_id` IS NOT NULL AND `openproject_time_entry_id` > 0");
+    $db->doQuery('ALTER TABLE `glpi_plugin_demandas_time_entries` ADD COLUMN IF NOT EXISTS `pending_operation_json` longtext DEFAULT NULL');
+    $db->doQuery("UPDATE `glpi_plugin_demandas_time_entries` SET `sync_status`='synced' WHERE `openproject_time_entry_id` IS NOT NULL AND `openproject_time_entry_id` > 0 AND `sync_status` NOT IN ('update_pending','delete_pending')");
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_time_audit` (
         `id` int unsigned NOT NULL AUTO_INCREMENT, `action` varchar(80) NOT NULL, `actor_users_id` int unsigned NOT NULL,
         `target_users_id` int unsigned DEFAULT NULL, `details_json` longtext DEFAULT NULL, `date_creation` timestamp NULL DEFAULT NULL,
@@ -488,7 +498,7 @@ function plugin_demandas_uninstall(): bool
     $db = DBConnection::getReadConnection();
     $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_backlog_preferences`');
     $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_dashboard_preferences`');
-    foreach (['operational_actions','operational_findings','operational_runs','work_package_notifications','work_package_monitors','user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
+    foreach (['followup_jobs','operational_actions','operational_findings','operational_runs','work_package_notifications','work_package_monitors','user_tokens','time_audit','time_entries','user_rights','holidays','absence_files','absences','punches','user_time_settings'] as $table) {
         $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_' . $table . '`');
     }
     $db->doQuery('DROP TABLE IF EXISTS `glpi_plugin_demandas_events`');
