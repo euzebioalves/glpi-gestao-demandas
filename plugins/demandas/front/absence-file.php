@@ -12,9 +12,7 @@ AccessPolicy::check(DemandasProfile::VIEW_OWN_ATTENDANCE);
 
 $currentUserId = (int) Session::getLoginUserID();
 $targetUserId = (int) ($_GET['users_id'] ?? $currentUserId);
-if ($targetUserId !== $currentUserId && !AccessPolicy::has(DemandasProfile::VIEW_TEAM_ATTENDANCE)) {
-    throw new Glpi\Exception\Http\AccessDeniedHttpException();
-}
+GlpiPlugin\Demandas\TimeAccess::checkAttendance($targetUserId);
 
 $file = (new TimeManagementService())->absenceFile((int) ($_GET['id'] ?? 0), $targetUserId);
 $path = GLPI_DOC_DIR . '/_plugins/demandas/absences/' . basename((string) $file['stored_name']);

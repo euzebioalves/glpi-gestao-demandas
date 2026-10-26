@@ -1,5 +1,11 @@
 # Testes práticos com Playwright
 
+## Permissões e documentação (0.32.0)
+
+`node tests/permission-guide.cjs` usa exclusivamente `demandas-test-021-glpi` na porta 8386. Copie `permission-guide-fixture.php` e `legacy-reconciliation-fixture.php` para `/tmp` nesse container descartável. Confere grupos, ajudas, persistência, perfis, CSRF e responsividade. `PLAYWRIGHT_MODULE` permite reutilizar Playwright já instalado. Capturas sintéticas ficam na pasta temporária do sistema.
+
+`node tests/documentation.cjs` usa o mesmo ambiente e API simulada `documentation-api.php` na porta interna 8397. Inclui editor oculto antes da seleção, falha/recuperação do template e preservação de texto ao trocar projeto/tipo. Não executar contra a homologação compartilhada ou produção.
+
 Esta suíte valida o plugin por meio da interface do GLPI, em vez de chamar diretamente classes PHP. Ela existe para detectar regressões de rota, autorização, renderização e ações comuns depois de cada atualização do plugin.
 
 ## Segurança obrigatória
@@ -77,3 +83,9 @@ As capturas claro/escuro, desktop/celular atualizam `docs/assets/manual/dashboar
 ### Publicações SGE (0.28.0)
 
 A suíte complementar `node tests/publications.cjs` usa exclusivamente `demandas-sge028-glpi` em `http://127.0.0.1:8191`, com banco descartável `glpi_e2e` no host `db`. Copie as fixtures `legacy-reconciliation-fixture.php`, `publications-fixture.php` e `publications-api.php` para `/tmp` do container e inicie `php -S 127.0.0.1:8395 /tmp/publications-api.php`. O script cria usuários fictícios, valida leitura/atualização por perfil e testa builds, paginação, CSRF, falhas e layout. As capturas vão para `docs/assets/manual/sge-publications-*.png` e devem ser inspecionadas antes de publicar. Não execute no GLPI compartilhado da porta 8180.
+
+## Segurança — etapa 1 (0.32.1)
+
+`tests/security-stage1.cjs` usa somente `demandas-test-021-glpi`, porta 8386, e a fixture `security-stage1-fixture.php` copiada para `/tmp` desse container. Execute com `node tests/security-stage1.cjs`; `PLAYWRIGHT_MODULE` permite reutilizar Playwright já instalado. A opção `--baseline` reproduz as falhas exclusivamente com o código anterior à correção; `--ui` confere as duas telas de exceções e o salvamento sem mudanças.
+
+Testa administrador, operador com leitura parcial de chamados, consulta de equipe, cliente e usuário sem portal; acesso direto, entidade, CSRF, exceções válidas/inválidas, auditoria e preservação de pendências em avaliação incompleta. Os dados são sintéticos e a fixture rejeita outros bancos. `security-preservation.php` é somente leitura e retorna hashes, sem expor registros ou tokens, para comparar a homologação antes/depois da atualização.

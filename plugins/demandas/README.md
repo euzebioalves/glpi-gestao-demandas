@@ -1,5 +1,22 @@
 # Gestão de Demandas
 
+## Versão 0.32.1 — segurança de acesso e resolução de pendências
+
+- Corrige a resolução indevida de pendências de chamados que o operador não consegue ler, não avaliados ou fora das entidades ativas.
+- Uma falha de leitura/classificação interrompe a avaliação sem resolver pendências por ausência de resultados.
+- Centraliza autorização de jornada, ponto, ausências, comprovantes e entradas de tempo; acesso direto exige as permissões do recurso e usuário-alvo no escopo.
+- Preserva as oito exceções de horas/ponto já oferecidas no cadastro do usuário, valida o lote inteiro e audita alterações com autor e valores anterior/novo.
+- Nenhuma migração de permissões, vínculos, saldos ou históricos. Atualize sem desinstalar; veja [RELEASE_0.32.1.md](../../docs/RELEASE_0.32.1.md).
+
+## Versão 0.32.0 — permissões por módulo e editor contextual
+
+- Aba de permissões por perfil com ícone de escudo, sete grupos funcionais e atalhos de navegação.
+- Ajuda clicável em cada um dos 28 direitos: efeito, local de exibição e condições/dependências. Identificadores, valores salvos e autorização no backend preservados.
+- Na criação de WP, o editor e os anexos aparecem somente após carregar projeto, tipo, campos e template. A troca de seleção recolhe o editor e preserva o texto já digitado; respostas antigas de seleção são descartadas.
+- Edição de uma WP existente continua disponível pelo botão Documentar, após carregar sua documentação.
+
+Atualize sem desinstalar. Consulte [RELEASE_0.32.0.md](../../docs/RELEASE_0.32.0.md).
+
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
 ## Versão 0.31.1 — dashboard para tomada de decisão

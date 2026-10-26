@@ -1,5 +1,13 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.32.1 — segurança de acesso e pendências
+
+Verificações de acesso compartilhadas entre telas, endpoints e serviços de horas/ponto; escopo de usuários pelas entidades ativas; exceções individuais validadas e auditadas. A Central de Pendências resolve somente ocorrências de chamados avaliados com sucesso e acessíveis. Dados e permissões cadastrados preservados. Veja [docs/RELEASE_0.32.1.md](docs/RELEASE_0.32.1.md).
+
+## Plugin 0.32.0
+
+Permissões por perfil organizadas em módulos, com ícone de aba e ajuda por direito. Editor de documentação da nova WP exibido após carregar projeto, tipo e template. Direitos existentes preservados. Veja [docs/RELEASE_0.32.0.md](docs/RELEASE_0.32.0.md).
+
 O guia operacional consolidado está em [docs/MANUAL_DO_PLUGIN.md](docs/MANUAL_DO_PLUGIN.md).
 
 Os testes práticos e as capturas sanitizadas do manual usam Playwright. O comando único é `./run-e2e-tests.ps1`; veja [tests/e2e/README.md](tests/e2e/README.md).

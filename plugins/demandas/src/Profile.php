@@ -51,7 +51,7 @@ final class Profile extends CommonDBTM
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string
     {
         return $item instanceof GlpiProfile && $item->getID() > 0
-            ? self::createTabEntry(self::getTypeName())
+            ? self::createTabEntry(self::getTypeName(), icon: 'ti ti-shield-lock')
             : '';
     }
 
@@ -218,20 +218,36 @@ final class Profile extends CommonDBTM
         $values = self::valuesForProfile($profileId);
         $canEdit = Session::haveRight('profile', UPDATE);
 
-        echo "<div class='card m-3'><div class='card-header'><h3 class='card-title'>Permissões — Gestão de Demandas</h3></div><div class='card-body'>";
+        echo "<div class='card m-3 demandas-profile-permissions'><div class='card-header'><h3 class='card-title'><i class='ti ti-shield-lock me-2' aria-hidden='true'></i>Permissões — Gestão de Demandas</h3></div><div class='card-body'>";
         echo "<p class='text-muted'>Estas permissões são validadas também no servidor e nos endpoints do plugin. Somente os direitos marcados neste perfil ativo concedem acesso: visualizar a evolução pública não libera identificadores, links ou dados técnicos de Work Packages. Ao conceder a visualização pública, o plugin garante também a permissão nativa mínima para ler acompanhamentos públicos.</p>";
         echo "<form method='post' action='/plugins/demandas/front/profile.form.php'>";
         echo "<input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
         echo "<input type='hidden' name='profiles_id' value='{$profileId}'>";
-        echo "<div class='table-responsive'><table class='table table-sm align-middle'><thead><tr><th>Permissão</th><th class='text-center'>Concedida</th></tr></thead><tbody>";
-        foreach (self::definitions() as $right => $label) {
-            $checked = (($values[$right] ?? 0) & READ) === READ ? ' checked' : '';
-            $disabled = $canEdit ? '' : ' disabled';
-            echo '<tr><td>' . htmlspecialchars($label) . "</td><td class='text-center'><input class='form-check-input' type='checkbox' name='rights[]' value='" . htmlspecialchars($right, ENT_QUOTES) . "'{$checked}{$disabled}></td></tr>";
+        echo '<p class="text-muted">Organizadas por módulo. Abra a ajuda ao lado de cada permissão para conferir seu efeito, localização e dependências. Alterações só são aplicadas ao salvar.</p>';
+        $labels = self::definitions();
+        $help = PermissionGuide::help();
+        echo '<nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Módulos de permissões">';
+        foreach (PermissionGuide::groups() as $id => [$title, $icon, $rights]) {
+            echo '<a class="btn btn-outline-secondary btn-sm" href="#demandas-rights-'.$id.'"><i class="ti '.$icon.' me-1" aria-hidden="true"></i>'.htmlspecialchars($title).'</a>';
         }
-        echo '</tbody></table></div>';
+        echo '</nav>';
+        foreach (PermissionGuide::groups() as $id => [$title, $icon, $rights]) {
+            echo '<section class="card mb-3" id="demandas-rights-'.$id.'" aria-labelledby="demandas-heading-'.$id.'"><div class="card-header"><h4 class="card-title" id="demandas-heading-'.$id.'"><i class="ti '.$icon.' me-2" aria-hidden="true"></i>'.htmlspecialchars($title).'</h4></div><div class="card-body"><div class="row g-3">';
+            foreach ($rights as $right) {
+                $label = $labels[$right];
+                $checked = (($values[$right] ?? 0) & READ) === READ ? ' checked' : '';
+                $disabled = $canEdit ? '' : ' disabled';
+                echo '<div class="col-12 col-xl-6"><div class="border rounded p-3 h-100"><div class="form-check form-switch mb-2"><input id="'.$right.'" class="form-check-input" type="checkbox" role="switch" name="rights[]" value="'.$right.'"'.$checked.$disabled.'><label class="form-check-label" for="'.$right.'">'.htmlspecialchars($label).'</label></div>';
+                echo '<details class="demandas-permission-help"><summary class="text-body" aria-label="Ajuda: '.htmlspecialchars($label, ENT_QUOTES).'"><i class="ti ti-info-circle me-1" aria-hidden="true"></i>Ajuda</summary><dl class="mt-2 mb-0">';
+                foreach (array_combine(['O que permite', 'Onde aparece', 'Condições e dependências'], $help[$right]) as $heading => $text) {
+                    echo '<dt>'.htmlspecialchars($heading).'</dt><dd>'.htmlspecialchars($text).'</dd>';
+                }
+                echo '</dl></details></div></div>';
+            }
+            echo '</div></div></section>';
+        }
         if ($canEdit) {
-            echo "<button class='btn btn-primary' type='submit' name='update' value='1'>Salvar permissões</button>";
+            echo "<button class='btn btn-primary' type='submit' name='update' value='1'><i class='ti ti-device-floppy me-1' aria-hidden='true'></i>Salvar permissões</button>";
         }
         echo '</form></div></div>';
     }

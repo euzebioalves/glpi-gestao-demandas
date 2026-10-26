@@ -2,37 +2,24 @@
 
 declare(strict_types=1);
 
-use GlpiPlugin\Demandas\AccessPolicy;
-use GlpiPlugin\Demandas\Profile as DemandasProfile;
 use GlpiPlugin\Demandas\TimeManagementService;
+use GlpiPlugin\Demandas\TimeAccess;
 
 Session::checkLoginUser();
-$db = DBConnection::getReadConnection();
-$current = (int) Session::getLoginUserID();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new Glpi\Exception\Http\BadRequestHttpException();
 $userId = (int) ($_POST['users_id'] ?? 0);
-if ($userId <= 0) throw new Glpi\Exception\Http\NotFoundHttpException();
+if (isset($_POST['save_settings']) === isset($_POST['save_rights'])) throw new Glpi\Exception\Http\BadRequestHttpException();
+if (isset($_POST['save_settings'])) TimeAccess::checkSettings($userId);
+else TimeAccess::checkManageRights($userId);
 
 try {
     if (isset($_POST['save_settings'])) {
-        if ($userId !== $current) AccessPolicy::check(DemandasProfile::MANAGE_ATTENDANCE);
         $input = $_POST;
         $input['openproject_user_name'] = '';
         (new TimeManagementService())->saveSettings($userId, $input);
         Session::addMessageAfterRedirect('Configuração individual atualizada.', true, INFO);
     } elseif (isset($_POST['save_rights'])) {
-        AccessPolicy::check(DemandasProfile::MANAGE_TIME_ACCESS);
-        foreach ((array) ($_POST['rights'] ?? []) as $right => $decision) {
-            if (!array_key_exists((string)$right, DemandasProfile::definitions())) continue;
-            $found = null;
-            foreach ($db->request(['FROM'=>'glpi_plugin_demandas_user_rights','WHERE'=>['users_id'=>$userId,'right_name'=>(string)$right],'LIMIT'=>1]) as $row) $found = $row;
-            if ((string)$decision === '-1') {
-                if ($found !== null) $db->delete('glpi_plugin_demandas_user_rights', ['id'=>(int)$found['id']]);
-                continue;
-            }
-            $data = ['users_id'=>$userId,'right_name'=>(string)$right,'decision'=>(int)$decision,'date_mod'=>date('Y-m-d H:i:s')];
-            if ($found !== null) $db->update('glpi_plugin_demandas_user_rights',$data,['id'=>(int)$found['id']]);
-            else $db->insert('glpi_plugin_demandas_user_rights',$data);
-        }
+        TimeAccess::saveExceptions($userId, (array) ($_POST['rights'] ?? []));
         Session::addMessageAfterRedirect('Permissões individuais atualizadas.', true, INFO);
     }
 } catch (Throwable $exception) {
