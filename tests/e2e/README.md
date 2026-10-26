@@ -66,6 +66,14 @@ O relatório HTML fica em `playwright-report/`. Trace, vídeo e screenshot de fa
 
 Ao adicionar um recurso, inclua neste arquivo o cenário, uma conta/perfil necessário e uma captura se ele mudar o processo de configuração ou utilização.
 
+### Visão operacional — Bugs e Melhorias (0.31.0)
+
+Execute primeiro `php tests/action-dashboard-unit.php` para as regras isoladas, sem banco nem API. Para validar o GLPI real, a suíte complementar `node tests/dashboard-bugs.cjs` usa somente a instância descartável `demandas-dashboard029-glpi` em `http://127.0.0.1:8192`, com o código atual instalado. Alternativamente, uma nova instância `demandas-dashboard031-glpi` na porta 8193 pode ser indicada por `DASHBOARD_TEST_CONTAINER` e `DASHBOARD_TEST_URL`; outros destinos são rejeitados. O banco precisa ser `glpi_e2e` no host `db`. Não use a homologação compartilhada da porta 8180.
+
+Copie `tests/dashboard-bugs-fixture.php` e `tests/legacy-reconciliation-fixture.php` para `/tmp` do contêiner. A suíte cria dados fictícios: entrega total/parcial, ausência de WP/status/histórico, encerrado com WP não entregue, observações de etapa e responsáveis. Verifica filtros combinados, preservação de todas as WPs, perfis, acesso direto, entidade, CSRF, preferências, exportação, hashes de leitura e atualização repetida. `PLAYWRIGHT_MODULE` permite reutilizar uma instalação local da dependência.
+
+As capturas claro/escuro, desktop/celular atualizam `docs/assets/manual/dashboard-bugs-*.png`; revise antes de publicar. A validação desta versão está pendente porque o engine Docker não iniciou. Veja [release 0.31.0](../../docs/RELEASE_0.31.0.md); não usar o sucesso de versões anteriores como evidência desta implementação.
+
 ### Publicações SGE (0.28.0)
 
 A suíte complementar `node tests/publications.cjs` usa exclusivamente `demandas-sge028-glpi` em `http://127.0.0.1:8191`, com banco descartável `glpi_e2e` no host `db`. Copie as fixtures `legacy-reconciliation-fixture.php`, `publications-fixture.php` e `publications-api.php` para `/tmp` do container e inicie `php -S 127.0.0.1:8395 /tmp/publications-api.php`. O script cria usuários fictícios, valida leitura/atualização por perfil e testa builds, paginação, CSRF, falhas e layout. As capturas vão para `docs/assets/manual/sge-publications-*.png` e devem ser inspecionadas antes de publicar. Não execute no GLPI compartilhado da porta 8180.

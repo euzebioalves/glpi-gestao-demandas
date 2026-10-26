@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.29.0** · Compatível com GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.31.1** · Alvo: GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -233,6 +233,79 @@ O escopo inicial é **Abertos**, excluindo chamados solucionados e fechados. Par
 - Os indicadores levam ao detalhamento correspondente.
 - Clique nos títulos das colunas para ordenar a grade mantendo os filtros aplicados.
 - PDF e Excel exigem a permissão de exportação e preservam os filtros e a ordenação atual.
+
+### 10.1 Aba Bugs e Melhorias
+
+Após atualizar, conceda os direitos necessários em **Administração > Perfis > Gestão de Demandas**. Nenhum direito novo é habilitado automaticamente, nem para perfis administrativos. Saia e entre novamente após alterar o perfil.
+
+| Recurso | Direitos necessários |
+|---|---|
+| Aba Bugs e Melhorias | Acessar a visão gerencial + Visualizar dados técnicos do OpenProject + Acessar a aba Bugs e Melhorias |
+| Cards e filtro de conferência | Os anteriores + Conferir entregas com chamado aberto |
+| Alerta no próprio chamado | Visualizar dados técnicos do OpenProject + Visualizar alerta de WPs no chamado + leitura nativa do chamado na entidade ativa |
+| Salvar aba padrão pessoal | Acessar a visão gerencial + Definir minha visão gerencial padrão; a aba escolhida também precisa estar autorizada |
+| PDF/Excel | Direitos de acesso à visão/conferência escolhida + Exportar a visão gerencial |
+
+1. Abra **Gerência > Visão Gerencial de Demandas > Bugs e Melhorias**.
+2. Os filtros começam recolhidos. Abra **Filtros estratégicos**, marque os **Status GLPI incluídos** e aplique os filtros. Por padrão são todos os status nativos não solucionados/fechados; desmarcar todos produz zero resultados. O rótulo operacional “Para desenvolvimento” não é convertido arbitrariamente em um status GLPI.
+3. Combine cliente, classificação, datas, status WP e demais critérios. A classificação usa a mesma origem/regras do painel geral: bugs/erros técnicos e melhorias; sugestões, coletores e outras classificações ficam fora. Sem classificação válida, o chamado não entra nessa aba.
+4. Comece por **Precisam de ação**. Os cartões mostram uma próxima ação, como **Atualizar dados**, **Vincular WP** ou **Conferir encerramento**. Clique para filtrar a grade. Indicadores zerados ficam em **Sem ocorrências**. **Por onde começar** destaca até dez chamados prioritários do filtro atual; cada linha resume os motivos e os status. Um chamado pode ter vários motivos, mas é contado uma vez por motivo: não some os cartões.
+5. Use **Técnico atribuído no GLPI** e **Responsável OpenProject** para organizar a conferência. São papéis distintos; o atribuído da WP também aparece junto dela. Nome ausente no snapshot é apresentado como não informado, sem concluir que a WP esteja sem dono no OpenProject.
+6. Em **Onde as demandas estão paradas**, compare as barras de quantidade de chamados por etapa e a coluna separada de maior tempo observado. Abra o histórico para ver os chamados mais antigos. Use **Mais indicadores** para cobertura, volume e distribuições. A grade conta cada chamado uma vez; clique em **Ver detalhes** na coluna **Work Packages** para consultar **todas** as WPs vinculadas, responsáveis e datas, mesmo se o filtro corresponder a apenas uma delas. Em telas estreitas, role as tabelas horizontalmente para acessar as demais colunas.
+
+### Precisam de ação e envelhecimento observado
+
+Os motivos incluem dados de integração desatualizados ou sem status, bloqueios/dúvidas, ausência de WP ou de responsável conhecido, permanência acima do prazo e, para perfis autorizados, entregas e divergências de encerramento. A ordem da fila prioriza qualidade dos dados, divergências e impedimentos; em seguida tempo observado e idade do chamado. Não é uma priorização de negócio automática.
+
+O filtro **Atenção após (dias observados)** começa em 14 dias e aceita de 1 a 365. Ele vale para a consulta, não altera as configurações da Central de Pendências nem é salvo como preferência. O aviso de sincronização usa sete dias. Atualize dados pelo fluxo já existente antes de tomar decisões.
+
+| Etapa | Status reconhecidos |
+|---|---|
+| Aguardando especificação | Novo, Em especificação |
+| Prontos para desenvolvimento | A desenvolver, Planejado, A ser planejado |
+| Em desenvolvimento | Em desenvolvimento, Em andamento, Retrabalho |
+| Aguardando validação | Desenvolvido, Aguardando testes, Em testes, Testado, Pronto para entrega |
+| Bloqueados ou em dúvida | Bloqueado, Em dúvida |
+| Entregue | Entregue |
+| Outras situações | Nomes não reconhecidos, mantidos sem conversão |
+
+Esses grupos são operacionais e não alteram fases públicas. Cada chamado aberto conta uma vez em cada etapa em que possui WP. O maior tempo da etapa é o máximo observado entre as WPs, não uma soma. As cinco maiores permanências possuem link para conferência.
+
+O tempo é calculado entre a primeira e a última observação local da sequência atual da etapa, usando eventos bem-sucedidos de sincronização/conciliação. Mudar entre status da mesma etapa preserva a sequência; sair e retornar a reinicia. Status personalizados distintos não compartilham um relógio. Comentários, última atualização da WP e builds não são tratados como transições.
+
+**Histórico insuficiente** não significa zero dias. Uma única observação pode resultar em zero dias comprovados; sem histórico compatível não há duração. O tempo termina na última sincronização, mesmo se ela for antiga. Não é a data exata de entrada no OpenProject: mudanças ocorridas entre duas consultas podem não ter sido observadas. Essas limitações ficam explícitas na tela e nas exportações.
+
+### 10.2 Conferir entregas com chamado aberto
+
+Use os cards **Com alguma entrega**, **Todas as WPs em Entregue** e **Entrega parcial** para detalhar os chamados. Somente **Entregue** representa entrega concluída. Desenvolvido, Em testes e demais status não equivalem a entrega. Uma WP sem status conhecido não confirma conclusão; se outra estiver Entregue, o chamado fica em entrega parcial.
+
+O link **Conferir solucionados/fechados com WPs não entregues** prepara o escopo histórico e os status correspondentes. Exige a mesma permissão de conferência. Para ajustar manualmente, selecione **Todos** no escopo e marque os status desejados. O plugin destaca divergências para avaliação; não reabre, soluciona nem fecha chamados.
+
+Os indicadores mostram o escopo dos filtros; clicar em um indicador ou selecionar a conferência restringe a grade e a exportação. Por isso o total detalhado pode ser menor que o total do escopo. Os números por status de WP podem se sobrepor: um mesmo chamado pode ter WPs em diferentes situações.
+
+Confira a última sincronização de cada WP e, se necessário, use o fluxo de sincronização existente antes de decidir. Sem data ou com mais de sete dias, aparece um aviso de desatualização. **Painel gerado** é o horário de montagem da página, não de atualização do OpenProject. Nenhuma página nova consulta a API, fecha chamados, altera WPs, fases públicas ou acompanhamentos. A decisão permanece com o analista.
+
+Capturas da revisão 0.31.1 geradas pelo Playwright no GLPI 11.0.9 descartável, com dados fictícios. Os textos e controles novos foram verificados com contraste mínimo de 4,5:1 nos dois temas. As cores acompanham rótulos explícitos; não são a única indicação de situação.
+
+![Prioridades e ações — tema claro, dados fictícios](assets/manual/dashboard-actions-light.png)
+
+![Prioridades e ações — tema escuro, dados fictícios](assets/manual/dashboard-actions-dark.png)
+
+Veja também a [página completa](assets/manual/dashboard-bugs-1440-light.png) e a [visão em celular](assets/manual/dashboard-bugs-390-light.png). As capturas não representam validação de dados de produção.
+
+![Fila compacta com próximos passos e detalhes expansíveis — dados fictícios](assets/manual/dashboard-action-queue.png)
+
+![Quantidade e maior tempo observado em cada etapa — dados fictícios](assets/manual/dashboard-action-stages.png)
+
+### 10.3 Alerta individual e visão padrão
+
+No próprio chamado, o bloco **Status das WPs vinculadas** aparece na área de informações do atendimento para perfis autorizados, mostrando IDs com links, status e sincronização. Chamados sem vínculo não exibem o bloco. Perfis de clientes sem os direitos técnicos não recebem esse conteúdo.
+
+![Alerta individual no chamado — dados fictícios](assets/manual/dashboard-ticket-alert.png)
+
+Na aba Bugs e Melhorias, abra **Opções do painel > Preferência de visão inicial**, selecione **Minha visão padrão** e clique em **Salvar visão padrão**. Na Visão geral, o formulário continua no topo. A escolha vale apenas para seu usuário e só define qual aba abrir quando não houver uma aba explícita na URL. Links de drill-down continuam abrindo a aba indicada. A preferência não é compartilhada com outros usuários e não guarda os filtros. Se mudar para um perfil sem acesso à aba escolhida, o painel abre a visão geral; sem acesso gerencial, o acesso é negado. As opções também contêm os critérios dos indicadores e o acesso à conciliação para perfis autorizados.
+
+Capturas do manual são geradas com dados sintéticos por `tests/dashboard-bugs.cjs`, incluindo desktop, celular e temas claro/escuro. Não gere capturas com dados de produção.
 
 ## 11. Horas, ponto e ausências
 

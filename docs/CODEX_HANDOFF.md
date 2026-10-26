@@ -1,5 +1,25 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.31.1 — apresentação para tomada de decisão
+
+Revisão visual exclusiva de Bugs e Melhorias. `ActionDashboardPanel` traduz motivos em próximos passos, recolhe zeros e detalhes de WPs, resume a fila e mostra barras de quantidade por etapa com duração separada. `public/css/action-dashboard.css` é carregado somente nessa aba, com cores próprias para contraste em claro/escuro. Filtros e Opções do painel começam recolhidos. Nenhuma alteração em ActionDashboard, DeliveryReview, serviço, ACL, exportadores ou schema.
+
+Docker recuperado. Suíte prática executada no GLPI descartável 11.0.9 da porta 8192, com dados sintéticos: ACL, entidades, CSRF, preferências, filtros, PDF/XLSX, preservação de registros, upgrade repetido e webhook inválido. Contraste dos novos textos/controles >= 4,5:1; capturas desktop/celular nos dois temas incorporadas ao manual. Recarregar após mudar o viewport nos testes, pois o layout nativo do GLPI adapta a barra lateral na navegação. Homologação humana concluída; merge na main e publicação da release 0.31.1 autorizados pelo usuário.
+
+## Atualização 0.31.0 — Bugs e Melhorias e conferência de entregas
+
+`DashboardView` autoriza a aba focada com VIEW_DASHBOARD + VIEW_TECHNICAL + VIEW_BUGS_DASHBOARD. Conferência exige adicionalmente VIEW_DELIVERY_REVIEW. Preferência exige CONFIGURE_DASHBOARD, POST/CSRF e usa exclusivamente o usuário autenticado. `glpi_plugin_demandas_dashboard_preferences` tem unicidade por usuário; a preferência não concede direitos e retorna à visão geral quando o perfil ativo deixa de permitir a aba. Não há concessão automática de novos direitos.
+
+`ManagementDashboardService` reutiliza a classificação existente (bugs e melhorias, excluindo sugestões/coletores), começa com chamados abertos e aplica os status selecionados. O escopo Todos permite conferir solucionados/fechados. Filtros de WP selecionam chamados; em seguida todos os vínculos desses chamados são restaurados. A grade focada e os totais deduplicam por chamado. Indicadores consideram o escopo dos filtros; drill-down e conferência detalham esse escopo na grade e exportação. A visão geral não consulta o novo histórico nem carrega o JSON técnico adicional.
+
+`ActionDashboard` enriquece exclusivamente chamados já autorizados, buscando técnicos GLPI e eventos bem-sucedidos por lotes de 300 chamados. Mantém somente um estado de observação por vínculo em memória. Eventos de sincronização/conciliação formam a sequência local da mesma etapa; troca de status dentro do grupo não reinicia o tempo, saída/retorno reinicia. Status não reconhecidos usam sequência própria, embora apareçam no grupo Outras situações. O status final deve coincidir com o snapshot. O limite superior é a última sincronização, nunca o horário atual; data futura/inválida ou histórico insuficiente não produz duração. Não usar updatedAt, comentário, vínculo ou build como data de entrada na etapa. Mudanças não observadas entre consultas continuam desconhecidas.
+
+`ActionDashboardPanel` apresenta motivos com drill-down, fila de até dez chamados, envelhecimento e responsáveis. Técnicos GLPI não são confundidos com responsável/atribuído OpenProject. Sem nome no snapshot significa não informado, não ausência comprovada. Prazos: atenção ajustável por filtro (1–365, padrão 14 dias), frescor sete dias. Os motivos partial/all_delivered/closed_pending, filtros diretos e exportações exigem VIEW_DELIVERY_REVIEW. Não há novos acessos concedidos. A revisão 0.31.1 recolhe também os filtros; a Visão geral e preferências existentes são preservadas.
+
+O bloqueio inicial do Docker foi resolvido; testes práticos e capturas atuais estão registrados acima, na revisão 0.31.1. A branch integra a main 0.30.0 preservando documentação de WP, relações, Backlog de colegas e correções de permissões. A aprovação humana foi recebida para publicar o conjunto na versão 0.31.1.
+
+`DeliveryReview` reconhece somente o nome Entregue (ignorando caixa/espaços externos), nunca IDs fixos ou isClosed. Status desconhecidos não contam como entrega; com outra WP entregue, o caso é parcial. Não encerrar chamados. O hook `post_itil_info_section` apresenta o alerta apenas com VIEW_TICKET_WP_ALERT + VIEW_TECHNICAL + leitura nativa/entidade. Somente dados locais; mostrar última sincronização e alerta após sete dias/sem data. Não alterar fase pública nem enviar acompanhamentos. `tests/dashboard-bugs.cjs`/fixture usam Docker descartável 8192 ou 8193 com dados fictícios. Veja release/manual para homologação.
+
 ## Atualização 0.30.0 — Backlog
 
 O carregamento de cards não espera `time_entries`; `action=times` consulta lotes de até 25 IDs, sempre usando a identidade do próprio token. O frontend descarta respostas de quadros anteriores e não confunde horas pendentes/indisponíveis com zero. GETs liberam o bloqueio da sessão antes das consultas remotas. `summarizeWorkPackage(..., true)` usa schema GET por projeto/tipo com cache de falhas durante a requisição, sem expandir usuários/valores de formulários de criação.
@@ -58,7 +78,7 @@ Entradas de tempo também admitem `tickets_id=0`, sem criar vínculo. `front/tim
 
 O plugin **Gestão de Demandas** complementa o GLPI com recursos para acompanhar demandas recebidas como chamados e tratadas tecnicamente no OpenProject. O GLPI continua sendo a interface de atendimento e visibilidade do cliente; o OpenProject concentra a gestão interna das Work Packages.
 
-Este documento apresenta o estado funcional e técnico da versão `0.28.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
+Este documento apresenta o estado funcional e técnico da versão `0.31.0` e deve ser usado como contexto inicial por qualquer agente Codex que continue o desenvolvimento.
 
 ## 2. Ambiente de referência
 
@@ -67,7 +87,7 @@ Este documento apresenta o estado funcional e técnico da versão `0.28.0` e dev
 | GLPI | 11.0.9 | `http://localhost:8180` |
 | OpenProject | 17.7.2 | `http://localhost:8280` |
 | MariaDB | 11.4 | rede Docker interna |
-| Plugin Gestão de Demandas | 0.28.0 | `plugins/demandas` |
+| Plugin Gestão de Demandas | 0.31.0 | `plugins/demandas` |
 
 O ambiente é voltado exclusivamente à homologação local. Não deve ser publicado sem HTTPS, gestão externa de segredos, backup, monitoramento e revisão de segurança.
 

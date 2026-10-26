@@ -2,6 +2,29 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.31.1 — dashboard para tomada de decisão
+
+- Cartões com quantidade, próxima ação e cores de contraste para pendências, divergências e conferência de entregas.
+- Fila compacta com chamado, próximo passo, técnico GLPI e resumo dos status das WPs; detalhes expansíveis preservam todos os vínculos, responsáveis e datas.
+- Filtros, opções, indicadores zerados e critérios recolhidos; envelhecimento em barras de quantidade, com maior tempo observado separado.
+- Temas claro/escuro e celular verificados por Playwright; capturas sintéticas atualizadas no manual.
+- Sem mudança de cálculos, direitos, integrações ou schema. Veja [RELEASE_0.31.1.md](../../docs/RELEASE_0.31.1.md).
+
+## Versão 0.31.0
+
+- adiciona a aba **Bugs e Melhorias** com seleção explícita dos status nativos do GLPI; o escopo inicial permanece aberto;
+- prioriza **Precisam de ação**: dados desatualizados/desconhecidos, bloqueios, ausência de WP/responsável, entregas totais/parciais, divergências de encerramento e etapa acima do prazo;
+- apresenta envelhecimento por etapa a partir de eventos locais bem-sucedidos, limitado à última sincronização, sem inventar tempo quando falta histórico;
+- permite filtrar os técnicos GLPI e responsáveis OpenProject separadamente; consultar encerrados com WPs não entregues exige a permissão de conferência;
+- conta chamados únicos e mostra todas as WPs vinculadas mesmo ao filtrar por status de uma WP;
+- distingue todas as WPs em **Entregue**, entrega parcial e ausência de entrega, sem fechar chamados;
+- mostra alertas técnicos individuais e a data da última sincronização, sem consultas externas;
+- permite salvar a aba padrão do próprio usuário e revalida o perfil ativo em cada acesso;
+- introduz quatro permissões independentes, desabilitadas por padrão; preserva o acesso e o comportamento da visão geral;
+- atualiza manual, tutorial e testes sintéticos. A execução prática após recuperação do Docker está registrada na revisão 0.31.1.
+
+Atualize sem desinstalar. A migração cria somente a tabela de preferências pessoais. Veja [RELEASE_0.31.0.md](../../docs/RELEASE_0.31.0.md).
+
 ## Versão 0.30.0
 
 - Backlog com busca por WP, título, cliente, projeto, responsável e chamado, sem nova consulta à API;
