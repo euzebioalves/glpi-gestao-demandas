@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.33.0 — operações recuperáveis
+
+Etapa 2: proteção contra operações simultâneas, gravação atômica de ponto/ausência/anexos, conferência de envios de tempo com resultado incerto e fila persistente de acompanhamentos automáticos. Dados e permissões existentes preservados. Consulte [docs/RELEASE_0.33.0.md](docs/RELEASE_0.33.0.md).
+
 ## Plugin 0.32.1 — segurança de acesso e pendências
 
 Verificações de acesso compartilhadas entre telas, endpoints e serviços de horas/ponto; escopo de usuários pelas entidades ativas; exceções individuais validadas e auditadas. A Central de Pendências resolve somente ocorrências de chamados avaliados com sucesso e acessíveis. Dados e permissões cadastrados preservados. Veja [docs/RELEASE_0.32.1.md](docs/RELEASE_0.32.1.md).

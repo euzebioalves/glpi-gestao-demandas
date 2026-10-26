@@ -1,5 +1,17 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.33.0 — segurança, etapa 2
+
+`OperationGuard` usa locks de conexão no banco primário para serializar entradas de tempo/ponto por usuário e sincronizações por vínculo, além de transações nativas do GLPI. O ambiente-base é MariaDB 11.4; a verificação de transação externa usa `@@session.in_transaction` (não transportar sem revisão para outro SGBD). Locks liberam ao encerrar a conexão; o estado de envio incerto persiste antes do POST remoto.
+
+`TimeManagementService::saveDay` substitui as duas gravações independentes de `punch.form.php`: ponto, ausência, metadados e auditoria são atômicos. Uploads novos são removidos em rollback; arquivos antigos só são removidos após commit. Uma interrupção abrupta do processo pode deixar arquivo órfão sem referência, mas não apagar um anexo ainda registrado. Não alterar as regras de saldo/jornada nesta camada.
+
+Entradas de tempo usam `uncertain` antes de POST; somente rejeições HTTP definitivas permitem nova tentativa automática. A conferência humana usa o token pessoal e valida ID, usuário, WP, atividade, data, duração e comentário. A opção de declarar ausência é explícita e auditada: uma declaração incorreta ainda pode causar duplicidade. `update_pending`/`delete_pending` preservam a operação no mesmo ID remoto; a nova coluna `pending_operation_json` guarda a intenção de edição. Não limpar esses estados em migrações. As autorizações da etapa 1 permanecem intactas.
+
+`SynchronizationService` relê o vínculo após obter o lock, persiste transição e job no mesmo commit e publica cada acompanhamento junto com a conclusão do job em outra transação. `glpi_plugin_demandas_followup_jobs` guarda o snapshot da regra/privacidade da transição. Falhas são reprocessadas pela sincronização seguinte (manual ou webhook); não existe worker periódico novo. Não reenfileira eventos históricos anteriores à atualização. Uma saída e retorno ao status gera nova transição legítima.
+
+Roteiro, testes e limites: `docs/RELEASE_0.33.0.md`, `tests/operations.py`, `tests/operations-http.cjs`. Os testes de falhas usam exclusivamente o Docker descartável, sem POSTs ao OpenProject real. Validação operacional local aprovada pelo usuário em 26/10/2026, com autorização para merge na main e publicação da release.
+
 ## Atualização 0.32.1 — segurança, etapa 1
 
 `TimeAccess` compartilha autorização entre telas, endpoints e serviços de horas/ponto. Preserva `AccessPolicy` e seus valores cadastrados; não transforma exceções em direitos de outros módulos. Alvos devem existir, não estar excluídos e compartilhar entidade ativa via `Profile_User::getUserEntities()` (incluindo associação recursiva), ou ser o próprio usuário autenticado. As permissões do módulo continuam delegando a ação; a navegação pelo cadastro de usuários também mantém o controle nativo do GLPI. Não acrescentar automaticamente direitos aos perfis.

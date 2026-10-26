@@ -14,7 +14,63 @@ final class TimeManagementService
     private $db;
     private array $settingsCache = [];
     private ?array $holidayRows = null;
-    public function __construct() { $this->db = DBConnection::getReadConnection(); }
+    public function __construct() { global $DB; $this->db = $DB; }
+    private array $newFiles = [];
+    private array $removedFiles = [];
+
+    public function savePunches(int $userId, string $date, array $times, string $note=''):int
+    {
+        return $this->attendanceOperation($userId, fn() => $this->savePunchesUnlocked($userId, $date, $times, $note));
+    }
+
+    public function saveDayPunches(int $userId, string $date, array $records):int
+    {
+        return $this->attendanceOperation($userId, fn() => $this->saveDayPunchesUnlocked($userId, $date, $records));
+    }
+
+    public function syncDayAbsence(int $userId,string $date,string $action,array $input,array $files=[]):void
+    {
+        $this->attendanceOperation($userId, fn() => $this->syncDayAbsenceUnlocked($userId,$date,$action,$input,$files));
+    }
+
+    public function saveAbsence(int $userId, array $input, ?array $file=null):void
+    {
+        $this->attendanceOperation($userId, fn() => $this->saveAbsenceUnlocked($userId,$input,$file));
+    }
+
+    /** Punches, absence, attachment metadata and audit form a single local unit. */
+    public function saveDay(int $userId, string $date, array $records, string $action, array $input, array $files=[]): int
+    {
+        return $this->attendanceOperation($userId, function () use ($userId,$date,$records,$action,$input,$files) {
+            $count = $this->saveDayPunchesUnlocked($userId,$date,$records);
+            $this->syncDayAbsenceUnlocked($userId,$date,$action,$input,$files);
+            return $count;
+        });
+    }
+
+    private function attendanceOperation(int $userId, callable $operation): mixed
+    {
+        TimeAccess::checkAttendance($userId, true);
+        return OperationGuard::run('attendance:'.$userId, function () use ($operation) {
+            // File cleanup must follow the outermost database commit.
+            if (OperationGuard::inTransaction()) throw new RuntimeException('A gravação do ponto deve ser iniciada fora de outra transação.');
+            $this->newFiles = $this->removedFiles = [];
+            try { $result = OperationGuard::transaction($operation); }
+            catch (\Throwable $e) {
+                foreach ($this->newFiles as $path) if (is_file($path)) @unlink($path);
+                throw $e;
+            }
+            foreach ($this->removedFiles as $path) if (is_file($path)) @unlink($path);
+            $this->newFiles = $this->removedFiles = [];
+            return $result;
+        });
+    }
+
+    private function write(string $method, mixed ...$args): void
+    {
+        try { OperationGuard::write($this->db->$method(...$args)); }
+        catch(\Throwable $e) { throw new RuntimeException('Não foi possível gravar os dados. Atualize a página e confira a operação antes de repetir.',0,$e); }
+    }
 
     public function settings(int $userId): array
     {
@@ -55,13 +111,13 @@ final class TimeManagementService
             'date_mod'=>date('Y-m-d H:i:s'),
         ];
         $existing = $current;
-        if (!empty($existing['id'])) $this->db->update('glpi_plugin_demandas_user_time_settings',$data,['id'=>(int)$existing['id']]);
-        else { $data['date_creation']=date('Y-m-d H:i:s'); $this->db->insert('glpi_plugin_demandas_user_time_settings',$data); }
+        if (!empty($existing['id'])) $this->write('update','glpi_plugin_demandas_user_time_settings',$data,['id'=>(int)$existing['id']]);
+        else { $data['date_creation']=date('Y-m-d H:i:s'); $this->write('insert','glpi_plugin_demandas_user_time_settings',$data); }
         unset($this->settingsCache[$userId]);
         $this->audit('settings.update',$userId,['settings'=>$data]);
     }
 
-    public function savePunches(int $userId, string $date, array $times, string $note=''): int
+    private function savePunchesUnlocked(int $userId, string $date, array $times, string $note=''): int
     {
         TimeAccess::checkAttendance($userId, true);
         $this->date($date); $count=0;
@@ -69,12 +125,12 @@ final class TimeManagementService
             $time=$this->time($time); $at=$date.' '.$time.':00';
             $exists=false; foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_punches','WHERE'=>['users_id'=>$userId,'punch_at'=>$at],'LIMIT'=>1]) as $_) {$exists=true;}
             if ($exists) continue;
-            $this->db->insert('glpi_plugin_demandas_punches',['users_id'=>$userId,'punch_at'=>$at,'source'=>'manual','note'=>mb_substr($note,0,500),'created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')]); $count++;
+            $this->write('insert','glpi_plugin_demandas_punches',['users_id'=>$userId,'punch_at'=>$at,'source'=>'manual','note'=>mb_substr($note,0,500),'created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')]); $count++;
         }
         $this->audit('punches.create',$userId,['date'=>$date,'count'=>$count]); return $count;
     }
 
-    public function saveDayPunches(int $userId, string $date, array $records): int
+    private function saveDayPunchesUnlocked(int $userId, string $date, array $records): int
     {
         TimeAccess::checkAttendance($userId, true);
         $this->date($date);
@@ -86,16 +142,17 @@ final class TimeManagementService
             $time=trim((string)($record['time']??''));if($time==='')continue;$time=$this->time($time);
             if(isset($seenTimes[$time]))throw new RuntimeException('Existem duas marcações no mesmo horário.');$seenTimes[$time]=true;
             $id=(int)($record['id']??0);$at=$date.' '.$time.':00';
+            if($id<=0 || !isset($existing[$id]))foreach($existing as$existingId=>$existingRow)if($existingRow['punch_at']===$at){$id=$existingId;break;}
             $data=['punch_at'=>$at,'punch_type'=>$this->punchType((string)($record['type']??'')),'nsr'=>mb_substr(trim((string)($record['nsr']??'')),0,50),'note'=>mb_substr(trim((string)($record['note']??'')),0,500)];
-            if($id>0&&isset($existing[$id])){$this->db->update('glpi_plugin_demandas_punches',$data,['id'=>$id,'users_id'=>$userId]);$kept[$id]=true;}
-            else{$data+=['users_id'=>$userId,'source'=>'manual','created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')];$this->db->insert('glpi_plugin_demandas_punches',$data);}
+            if($id>0&&isset($existing[$id])){$this->write('update','glpi_plugin_demandas_punches',$data,['id'=>$id,'users_id'=>$userId]);$kept[$id]=true;}
+            else{$data+=['users_id'=>$userId,'source'=>'manual','created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')];$this->write('insert','glpi_plugin_demandas_punches',$data);}
             $saved++;
         }
-        foreach($existing as $id=>$row)if(!isset($kept[$id]))$this->db->delete('glpi_plugin_demandas_punches',['id'=>$id,'users_id'=>$userId]);
+        foreach($existing as $id=>$row)if(!isset($kept[$id]))$this->write('delete','glpi_plugin_demandas_punches',['id'=>$id,'users_id'=>$userId]);
         $this->audit('punches.sync',$userId,['date'=>$date,'count'=>$saved]);return $saved;
     }
 
-    public function syncDayAbsence(int $userId,string $date,string $action,array $input,array $files=[]):void
+    private function syncDayAbsenceUnlocked(int $userId,string $date,string $action,array $input,array $files=[]):void
     {
         TimeAccess::checkAttendance($userId, true);
         $this->date($date);if(!in_array($action,['keep','set','remove'],true))$action='keep';if($action==='keep')return;
@@ -111,19 +168,19 @@ final class TimeManagementService
         $minutes=$this->minutesBetween($start,$end)-($whole?(int)$settings['lunch_minutes']:0);
         if($minutes<=0)throw new RuntimeException('O fim da falta deve ser posterior ao início.');
         $data=['users_id'=>$userId,'absence_date'=>$date,'kind'=>$kind,'minutes'=>$minutes,'starts_at'=>$start.':00','ends_at'=>$end.':00','is_full_day'=>$whole?1:0,'reason'=>mb_substr(trim((string)($input['absence_reason']??'')),0,2000),'created_by'=>(int)Session::getLoginUserID()];
-        if($existing){$absenceId=(int)$existing[0]['id'];$this->db->update('glpi_plugin_demandas_absences',$data,['id'=>$absenceId]);foreach(array_slice($existing,1)as$row)$this->deleteAbsence((int)$row['id']);}
-        else{$data['date_creation']=date('Y-m-d H:i:s');$this->db->insert('glpi_plugin_demandas_absences',$data);$absenceId=(int)$this->db->insertId();}
+        if($existing){$absenceId=(int)$existing[0]['id'];$this->write('update','glpi_plugin_demandas_absences',$data,['id'=>$absenceId]);foreach(array_slice($existing,1)as$row)$this->deleteAbsence((int)$row['id']);}
+        else{$data['date_creation']=date('Y-m-d H:i:s');$this->write('insert','glpi_plugin_demandas_absences',$data);$absenceId=(int)$this->db->insertId();}
         if($kind==='justified'){foreach($files as$file)if(is_array($file)&&($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE)$this->storeAttachment($absenceId,$userId,$file);}else{$this->deleteAbsenceFiles($absenceId);}
         $this->audit('absence.sync',$userId,['absence_id'=>$absenceId,'date'=>$date,'kind'=>$kind,'full_day'=>$whole,'minutes'=>$minutes]);
     }
 
-    public function saveAbsence(int $userId, array $input, ?array $file=null): void
+    private function saveAbsenceUnlocked(int $userId, array $input, ?array $file=null): void
     {
         TimeAccess::checkAttendance($userId, true);
         $date=$this->date((string)($input['absence_date']??'')); $kind=(string)($input['kind']??'');
         if(!in_array($kind,['justified','unjustified'],true)) throw new RuntimeException('Tipo de ausência inválido.');
         $minutes=max(0,(int)($input['minutes']??0));
-        $this->db->insert('glpi_plugin_demandas_absences',['users_id'=>$userId,'absence_date'=>$date,'kind'=>$kind,'minutes'=>$minutes ?: null,'reason'=>mb_substr(trim((string)($input['reason']??'')),0,2000),'created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')]);
+        $this->write('insert','glpi_plugin_demandas_absences',['users_id'=>$userId,'absence_date'=>$date,'kind'=>$kind,'minutes'=>$minutes ?: null,'reason'=>mb_substr(trim((string)($input['reason']??'')),0,2000),'created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')]);
         $id=(int)$this->db->insertId();
         if($file && ($file['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE) $this->storeAttachment($id,$userId,$file);
         $this->audit('absence.create',$userId,['absence_id'=>$id,'date'=>$date,'kind'=>$kind]);
@@ -262,10 +319,10 @@ final class TimeManagementService
         $data=['name'=>$name,'holiday_date'=>$date,'scope'=>$scope,'state_code'=>$state,'municipality'=>$municipality,'is_working_day'=>0,'substitute_date'=>$substitute?:null,'notes'=>mb_substr(trim((string)($input['notes']??'')),0,2000)];
         $id=(int)($input['id']??0);
         if($id>0){
-            $this->db->update('glpi_plugin_demandas_holidays',$data,['id'=>$id]);
+            $this->write('update','glpi_plugin_demandas_holidays',$data,['id'=>$id]);
         }else{
             $data+=['created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')];
-            $this->db->insert('glpi_plugin_demandas_holidays',$data);
+            $this->write('insert','glpi_plugin_demandas_holidays',$data);
             $id=(int)$this->db->insertId();
         }
         $this->holidayRows=null;
@@ -277,7 +334,7 @@ final class TimeManagementService
     {
         $this->assertCanManageHolidays();
         if($holidayId<=0)throw new RuntimeException('Feriado inválido.');
-        $this->db->delete('glpi_plugin_demandas_holidays',['id'=>$holidayId]);
+        $this->write('delete','glpi_plugin_demandas_holidays',['id'=>$holidayId]);
         $this->holidayRows=null;
         $this->audit('holiday.delete',0,['holiday_id'=>$holidayId]);
     }
@@ -306,6 +363,30 @@ final class TimeManagementService
 
     public function saveLocalTimeEntry(array $input,int $entryId=0):int
     {
+        TimeAccess::checkTimeEntry((int)($input['users_id']??Session::getLoginUserID()));
+        return OperationGuard::run('time-user:'.(int)($input['users_id']??Session::getLoginUserID()), fn() => $this->saveLocalTimeEntryUnlocked($input,$entryId));
+    }
+
+    public function syncTimeEntry(int $entryId,int $userId):void
+    {
+        TimeAccess::checkTimeEntry($userId);
+        OperationGuard::run('time-user:'.$userId, fn() => $this->syncTimeEntryUnlocked($entryId,$userId));
+    }
+
+    public function finishTimeEntry(int $entryId,string $endedAt,int $userId):void
+    {
+        TimeAccess::checkTimeEntry($userId);
+        OperationGuard::run('time-user:'.$userId, fn() => OperationGuard::transaction(fn() => $this->finishTimeEntryUnlocked($entryId,$endedAt,$userId)));
+    }
+
+    public function deleteTimeEntry(int $entryId,int $userId):void
+    {
+        TimeAccess::checkTimeEntry($userId);
+        OperationGuard::run('time-user:'.$userId, fn() => $this->deleteTimeEntryUnlocked($entryId,$userId));
+    }
+
+    private function saveLocalTimeEntryUnlocked(array $input,int $entryId=0):int
+    {
         $user=(int)($input['users_id']??Session::getLoginUserID());$this->checkTimeEntryPermission($user);
         $wp=(int)($input['work_package_id']??0);$ticket=(int)($input['tickets_id']??0);
         if($ticket>0)$this->assertLinkedWorkPackage($ticket,$wp);else $this->assertExternalWorkPackage($wp);
@@ -313,29 +394,160 @@ final class TimeManagementService
         $minutes=$ended===''?0:$this->minutesBetween($started,$ended);if($ended!==''&&$minutes<=0)throw new RuntimeException('O horário final deve ser posterior ao horário inicial.');
         $activityHref=(string)($input['activity_href']??'');$activityName=(string)($input['activity_name']??'');$this->assertActivity($wp,$activityHref);
         $data=['users_id'=>$user,'tickets_id'=>$ticket,'openproject_work_package_id'=>$wp,'spent_on'=>$spent,'started_at'=>$started.':00','ended_at'=>$ended===''?null:$ended.':00','minutes'=>$minutes,'activity_href'=>$activityHref,'activity_name'=>mb_substr($activityName,0,255),'comment'=>mb_substr(trim((string)($input['comment']??'')),0,2000),'date_mod'=>date('Y-m-d H:i:s')];
-        if($entryId<=0){$data+=['sync_status'=>'pending','is_success'=>0,'error_message'=>null,'created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')];$this->db->insert('glpi_plugin_demandas_time_entries',$data);$entryId=(int)$this->db->insertId();$this->audit('time_entry.local_create',$user,['entry_id'=>$entryId,'wp'=>$wp]);return$entryId;}
-        $entry=$this->timeEntry($entryId,$user);$opId=(int)($entry['openproject_time_entry_id']??0);
-        if($opId>0){if($minutes<=0)throw new RuntimeException('Informe o horário final antes de atualizar uma entrada sincronizada.');$settings=$this->settings($user);OpenProjectClient::forCurrentUser()->updateTimeEntry($opId,$wp,$spent,$minutes,$activityHref,(string)$data['comment'],(string)($settings['openproject_user_href']??''));$data+=['sync_status'=>'synced','is_success'=>1,'error_message'=>null];}
-        else{$data+=['sync_status'=>'pending','is_success'=>0,'error_message'=>null];}
-        $this->db->update('glpi_plugin_demandas_time_entries',$data,['id'=>$entryId,'users_id'=>$user]);$this->audit('time_entry.update',$user,['entry_id'=>$entryId,'synced'=>$opId>0]);return$entryId;
+        if($entryId<=0)return OperationGuard::transaction(function()use($data,$user,$wp){
+            $data+=['sync_status'=>'pending','is_success'=>0,'error_message'=>null,'created_by'=>(int)Session::getLoginUserID(),'date_creation'=>date('Y-m-d H:i:s')];
+            $this->write('insert','glpi_plugin_demandas_time_entries',$data);$id=(int)$this->db->insertId();
+            $this->audit('time_entry.local_create',$user,['entry_id'=>$id,'wp'=>$wp]);return $id;
+        });
+        $entry=$this->timeEntry($entryId,$user);$this->assertCertainTimeEntry($entry);$opId=(int)($entry['openproject_time_entry_id']??0);
+        if($opId>0){
+            if($minutes<=0)throw new RuntimeException('Informe o horário final antes de atualizar uma entrada sincronizada.');
+            $settings=$this->settings($user);
+            if(OperationGuard::inTransaction())throw new RuntimeException('A atualização deve ser iniciada fora de outra transação.');
+            $intent=['data'=>$data,'user_href'=>(string)($settings['openproject_user_href']??'')];
+            $this->write('update','glpi_plugin_demandas_time_entries',['sync_status'=>'update_pending','pending_operation_json'=>json_encode($intent,JSON_THROW_ON_ERROR),'error_message'=>'Atualização aguardando confirmação. Use Sincronizar para concluir a mesma operação.'],['id'=>$entryId]);
+            $this->resumeTimeMutation($this->timeEntry($entryId,$user),$user,true);
+        } else {
+            OperationGuard::transaction(function()use($data,$entryId,$user){
+                $this->write('update','glpi_plugin_demandas_time_entries',$data+['sync_status'=>'pending','is_success'=>0,'error_message'=>null],['id'=>$entryId,'users_id'=>$user]);
+                $this->audit('time_entry.update',$user,['entry_id'=>$entryId,'synced'=>false]);
+            });
+        }
+        return $entryId;
     }
 
-    public function syncTimeEntry(int $entryId,int $userId):void
+    private function syncTimeEntryUnlocked(int $entryId,int $userId):void
     {
-        $this->checkTimeEntryPermission($userId);$entry=$this->timeEntry($entryId,$userId);if((int)($entry['openproject_time_entry_id']??0)>0)return;if((int)$entry['minutes']<=0||empty($entry['ended_at']))throw new RuntimeException('Finalize a entrada informando o horário de término antes de sincronizar.');
+        $this->checkTimeEntryPermission($userId);
+        $entry=$this->timeEntry($entryId,$userId);
+        if(in_array($entry['sync_status'],['update_pending','delete_pending'],true)){$this->resumeTimeMutation($entry,$userId);return;}
+        $this->assertCertainTimeEntry($entry);
+        if((int)($entry['openproject_time_entry_id']??0)>0)return;
+        if((int)$entry['minutes']<=0||empty($entry['ended_at']))throw new RuntimeException('Finalize a entrada informando o horário de término antes de sincronizar.');
         $settings=$this->settings($userId);
-        try{$created=OpenProjectClient::forCurrentUser()->createTimeEntry((int)$entry['openproject_work_package_id'],(string)$entry['spent_on'],(int)$entry['minutes'],(string)$entry['activity_href'],(string)$entry['comment'],(string)($settings['openproject_user_href']??''));$opId=(int)($created['id']??0);if($opId<=0)throw new RuntimeException('O OpenProject não retornou o identificador da entrada de tempo.');$this->db->update('glpi_plugin_demandas_time_entries',['openproject_time_entry_id'=>$opId,'sync_status'=>'synced','is_success'=>1,'error_message'=>null,'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);$this->audit('time_entry.sync',$userId,['entry_id'=>$entryId,'openproject_id'=>$opId]);}
-        catch(\Throwable$e){$this->db->update('glpi_plugin_demandas_time_entries',['sync_status'=>'error','is_success'=>0,'error_message'=>$e->getMessage(),'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);throw$e;}
+        $client=OpenProjectClient::forCurrentUser();
+        $this->assertActivity((int)$entry['openproject_work_package_id'],(string)$entry['activity_href']);
+        $userHref=(string)($settings['openproject_user_href']??'');
+        if($userHref!==''&&!preg_match('~^/api/v3/users/\d+$~',$userHref))throw new RuntimeException('O usuário vinculado ao OpenProject é inválido.');
+        // Commit the uncertain state BEFORE contacting the remote server. A killed
+        // worker or lost HTTP response must never silently authorize a second POST.
+        if(OperationGuard::inTransaction())throw new RuntimeException('A sincronização deve ser iniciada fora de outra transação.');
+        $this->write('update','glpi_plugin_demandas_time_entries',['sync_status'=>'uncertain','is_success'=>0,'error_message'=>self::uncertainMessage(),'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);
+        try {
+            $created=$client->createTimeEntry((int)$entry['openproject_work_package_id'],(string)$entry['spent_on'],(int)$entry['minutes'],(string)$entry['activity_href'],(string)$entry['comment'],(string)($settings['openproject_user_href']??''));
+            $opId=(int)($created['id']??0);
+            if($opId<=0)throw new RuntimeException(self::uncertainMessage());
+        } catch (\Throwable $e) {
+            if(self::definiteRejection($e)) {
+                $message='O OpenProject recusou o envio. Verifique a permissão, a atividade e o conteúdo antes de tentar novamente.';
+                $this->write('update','glpi_plugin_demandas_time_entries',['sync_status'=>'error','error_message'=>$message],['id'=>$entryId]);
+                throw new RuntimeException($message,0,$e);
+            }
+            throw new RuntimeException(self::uncertainMessage(),0,$e);
+        }
+        // Keep a returned remote ID even if writing the audit subsequently fails.
+        $this->write('update','glpi_plugin_demandas_time_entries',['openproject_time_entry_id'=>$opId,'sync_status'=>'synced','is_success'=>1,'error_message'=>null,'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);
+        $this->audit('time_entry.sync',$userId,['entry_id'=>$entryId,'openproject_id'=>$opId]);
     }
 
-    public function finishTimeEntry(int $entryId,string $endedAt,int $userId):void
+    public static function uncertainMessage(): string
     {
-        $this->checkTimeEntryPermission($userId);$entry=$this->timeEntry($entryId,$userId);if((int)($entry['openproject_time_entry_id']??0)>0)throw new RuntimeException('A entrada já foi sincronizada. Utilize a edição para alterar seu horário.');if(!empty($entry['ended_at']))throw new RuntimeException('A entrada já possui horário final.');$ended=$this->time($endedAt);$started=substr((string)$entry['started_at'],0,5);$minutes=$this->minutesBetween($started,$ended);if($minutes<=0)throw new RuntimeException('O horário final deve ser posterior ao horário inicial.');$this->db->update('glpi_plugin_demandas_time_entries',['ended_at'=>$ended.':00','minutes'=>$minutes,'sync_status'=>'pending','is_success'=>0,'error_message'=>null,'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId,'users_id'=>$userId]);$this->audit('time_entry.finish',$userId,['entry_id'=>$entryId,'minutes'=>$minutes]);
+        return 'Resultado do envio não confirmado. Confira as horas no OpenProject e use Conferir envio antes de editar, excluir ou reenviar esta entrada.';
     }
 
-    public function deleteTimeEntry(int $entryId,int $userId):void
+    private function assertCertainTimeEntry(array $entry): void
     {
-        $this->checkTimeEntryPermission($userId);$entry=$this->timeEntry($entryId,$userId);$opId=(int)($entry['openproject_time_entry_id']??0);if($opId>0)OpenProjectClient::forCurrentUser()->deleteTimeEntry($opId);$this->db->delete('glpi_plugin_demandas_time_entries',['id'=>$entryId,'users_id'=>$userId]);$this->audit('time_entry.delete',$userId,['entry_id'=>$entryId,'openproject_id'=>$opId]);
+        if(($entry['sync_status']??'')==='uncertain')throw new RuntimeException(self::uncertainMessage());
+        if(in_array($entry['sync_status']??'', ['update_pending','delete_pending'],true))throw new RuntimeException('Há uma alteração remota pendente. Use Sincronizar para concluir a mesma operação antes de editar ou excluir.');
+    }
+
+    private static function definiteRejection(\Throwable $e): bool
+    {
+        do {
+            if($e instanceof \GuzzleHttp\Exception\RequestException && $e->hasResponse())
+                return in_array($e->getResponse()->getStatusCode(),[400,401,403,404,405,413,415,422],true);
+            $e=$e->getPrevious();
+        } while($e);
+        return false;
+    }
+
+    /** Recovery is explicit; no fuzzy lookup may associate another person's hours. */
+    public function recoverTimeEntry(int $entryId,int $userId,int $remoteId,bool $confirmedAbsent):void
+    {
+        $this->checkTimeEntryPermission($userId);
+        OperationGuard::run('time-user:'.$userId,fn() => OperationGuard::run('time-recovery',function()use($entryId,$userId,$remoteId,$confirmedAbsent){
+            $entry=$this->timeEntry($entryId,$userId);
+            if(($entry['sync_status']??'')!=='uncertain')throw new RuntimeException('Esta entrada não possui envio incerto. Atualize a página.');
+            if($remoteId>0){
+                $client=OpenProjectClient::forCurrentUser();
+                $remote=$client->getTimeEntry($remoteId);
+                $settings=$this->settings($userId);
+                $userHref=trim((string)($settings['openproject_user_href']??''));
+                if($userHref==='')$userHref='/api/v3/users/'.(int)($client->getCurrentUser()['id']??0);
+                $remote['_links']['entity']??=$remote['_links']['workPackage']??[];
+                $expected=['entity'=>'/api/v3/work_packages/'.(int)$entry['openproject_work_package_id'],'user'=>$userHref,'activity'=>(string)$entry['activity_href']];
+                foreach($expected as$key=>$href)if(($remote['_links'][$key]['href']??'')!==$href)throw new RuntimeException('A entrada informada não corresponde à WP, ao usuário ou à atividade deste registro.');
+                if(!preg_match('/^PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?$/',(string)($remote['hours']??''),$duration))throw new RuntimeException('Duração remota não reconhecida.');
+                $seconds=(float)($duration[1]??0)*3600+(float)($duration[2]??0)*60+(float)($duration[3]??0);
+                if((int)($remote['id']??0)!==$remoteId || ($remote['spentOn']??'')!==$entry['spent_on'] || abs($seconds-(int)$entry['minutes']*60)>0.01 || trim((string)($remote['comment']['raw']??''))!==OpenProjectClient::timeEntryComment((string)$entry['comment']))throw new RuntimeException('Data, duração ou comentário não correspondem ao registro local. Confira o identificador informado.');
+                foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_time_entries','WHERE'=>['openproject_time_entry_id'=>$remoteId]])as$other)if((int)$other['id']!==$entryId)throw new RuntimeException('Esta entrada do OpenProject já está vinculada a outro registro local.');
+            }elseif(!$confirmedAbsent)throw new RuntimeException('Informe o identificador remoto ou confirme que conferiu a ausência do lançamento no OpenProject.');
+            OperationGuard::transaction(function()use($entryId,$userId,$remoteId){
+                $this->write('update','glpi_plugin_demandas_time_entries',['openproject_time_entry_id'=>$remoteId?:null,'sync_status'=>$remoteId>0?'synced':'pending','is_success'=>$remoteId>0?1:0,'error_message'=>null,'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId]);
+                $this->audit('time_entry.recovery',$userId,['entry_id'=>$entryId,'openproject_id'=>$remoteId,'decision'=>$remoteId>0?'confirmed_remote':'confirmed_absent']);
+            });
+        }));
+    }
+
+    private function finishTimeEntryUnlocked(int $entryId,string $endedAt,int $userId):void
+    {
+        $this->checkTimeEntryPermission($userId);$entry=$this->timeEntry($entryId,$userId);$this->assertCertainTimeEntry($entry);if((int)($entry['openproject_time_entry_id']??0)>0)throw new RuntimeException('A entrada já foi sincronizada. Utilize a edição para alterar seu horário.');if(!empty($entry['ended_at']))throw new RuntimeException('A entrada já possui horário final.');$ended=$this->time($endedAt);$started=substr((string)$entry['started_at'],0,5);$minutes=$this->minutesBetween($started,$ended);if($minutes<=0)throw new RuntimeException('O horário final deve ser posterior ao horário inicial.');$this->write('update','glpi_plugin_demandas_time_entries',['ended_at'=>$ended.':00','minutes'=>$minutes,'sync_status'=>'pending','is_success'=>0,'error_message'=>null,'date_mod'=>date('Y-m-d H:i:s')],['id'=>$entryId,'users_id'=>$userId]);$this->audit('time_entry.finish',$userId,['entry_id'=>$entryId,'minutes'=>$minutes]);
+    }
+
+    private function deleteTimeEntryUnlocked(int $entryId,int $userId):void
+    {
+        $this->checkTimeEntryPermission($userId);
+        $entry=$this->timeEntry($entryId,$userId);$this->assertCertainTimeEntry($entry);
+        if((int)($entry['openproject_time_entry_id']??0)>0){
+            if(OperationGuard::inTransaction())throw new RuntimeException('A exclusão deve ser iniciada fora de outra transação.');
+            $this->write('update','glpi_plugin_demandas_time_entries',['sync_status'=>'delete_pending','error_message'=>'Exclusão aguardando confirmação. Use Sincronizar para concluir a mesma operação.'],['id'=>$entryId]);
+            $this->resumeTimeMutation($this->timeEntry($entryId,$userId),$userId,true);
+        }else{
+            OperationGuard::transaction(function()use($entryId,$userId){
+                $this->write('delete','glpi_plugin_demandas_time_entries',['id'=>$entryId,'users_id'=>$userId]);
+                $this->audit('time_entry.delete',$userId,['entry_id'=>$entryId,'openproject_id'=>0]);
+            });
+        }
+    }
+
+    private function resumeTimeMutation(array $entry,int $userId,bool $firstAttempt=false):void
+    {
+        $id=(int)$entry['id'];$opId=(int)$entry['openproject_time_entry_id'];
+        $client=OpenProjectClient::forCurrentUser();
+        $delete=$entry['sync_status']==='delete_pending';$data=[];
+        try {
+            if($delete){
+                try{$client->deleteTimeEntry($opId);}
+                catch(\Throwable $e){
+                    $cause=$e->getPrevious();
+                    if(!$cause instanceof \GuzzleHttp\Exception\RequestException || !$cause->hasResponse() || $cause->getResponse()->getStatusCode()!==404)throw $e;
+                }
+            }else{
+                $intent=json_decode((string)$entry['pending_operation_json'],true,512,JSON_THROW_ON_ERROR);
+                $data=$intent['data'];
+                $client->updateTimeEntry($opId,(int)$data['openproject_work_package_id'],$data['spent_on'],(int)$data['minutes'],$data['activity_href'],$data['comment'],$intent['user_href']);
+            }
+        }catch(\Throwable $e){
+            if($firstAttempt && self::definiteRejection($e)){
+                $this->write('update','glpi_plugin_demandas_time_entries',['sync_status'=>'synced','pending_operation_json'=>null,'error_message'=>null],['id'=>$id]);
+                throw new RuntimeException('O OpenProject recusou a alteração. Os valores anteriores foram preservados. Revise os dados e as permissões.',0,$e);
+            }
+            throw new RuntimeException('Alteração não confirmada no OpenProject. A operação foi preservada; use Sincronizar para tentar concluí-la.',0,$e);}
+        OperationGuard::transaction(function()use($id,$opId,$userId,$delete,$data){
+            if($delete)$this->write('delete','glpi_plugin_demandas_time_entries',['id'=>$id,'users_id'=>$userId]);
+            else $this->write('update','glpi_plugin_demandas_time_entries',$data+['sync_status'=>'synced','is_success'=>1,'pending_operation_json'=>null,'error_message'=>null],['id'=>$id,'users_id'=>$userId]);
+            $this->audit($delete?'time_entry.delete':'time_entry.update',$userId,['entry_id'=>$id,'openproject_id'=>$opId]);
+        });
     }
 
     private function timeEntry(int$id,int$userId):array{foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_time_entries','WHERE'=>['id'=>$id,'users_id'=>$userId],'LIMIT'=>1])as$row)return$row;throw new RuntimeException('Entrada de tempo não encontrada.');}
@@ -364,8 +576,8 @@ final class TimeManagementService
     private function time(string $v):string{if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/',$v))throw new RuntimeException('Horário inválido.');return$v;}
     private function punchType(string $v):string{$allowed=['entrada_manha','saida_manha','entrada_tarde','saida_tarde','entrada_intermediaria','saida_intermediaria'];return in_array($v,$allowed,true)?$v:'';}
     private function date(string $v):string{$d=DateTimeImmutable::createFromFormat('!Y-m-d',$v);if(!$d||$d->format('Y-m-d')!==$v)throw new RuntimeException('Data inválida.');return$v;}
-    private function storeAttachment(int $absenceId,int $userId,array $file):void{$allowed=['pdf','png','jpg','jpeg','webp','doc','docx','xls','xlsx','odt','ods'];if((int)($file['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)throw new RuntimeException('Não foi possível receber um dos anexos.');$ext=mb_strtolower(pathinfo((string)$file['name'],PATHINFO_EXTENSION));if(!in_array($ext,$allowed,true)||($file['size']??0)>15*1024*1024)throw new RuntimeException('Anexo inválido ou maior que 15 MB.');$dir=GLPI_DOC_DIR.'/_plugins/demandas/absences';if(!is_dir($dir)&&!mkdir($dir,0750,true)&&!is_dir($dir))throw new RuntimeException('Não foi possível preparar o diretório de anexos.');$stored=bin2hex(random_bytes(20)).'.'.$ext;if(!move_uploaded_file($file['tmp_name'],$dir.'/'.$stored))throw new RuntimeException('Não foi possível salvar o anexo.');$this->db->insert('glpi_plugin_demandas_absence_files',['absences_id'=>$absenceId,'users_id'=>$userId,'original_name'=>mb_substr((string)$file['name'],0,255),'stored_name'=>$stored,'mime_type'=>mb_substr((string)($file['type']??''),0,120),'file_size'=>(int)$file['size'],'date_creation'=>date('Y-m-d H:i:s')]);}
-    private function deleteAbsenceFiles(int $absenceId):void{$dir=GLPI_DOC_DIR.'/_plugins/demandas/absences';foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absence_files','WHERE'=>['absences_id'=>$absenceId]])as$file){$path=$dir.'/'.basename((string)$file['stored_name']);if(is_file($path))@unlink($path);}$this->db->delete('glpi_plugin_demandas_absence_files',['absences_id'=>$absenceId]);}
-    private function deleteAbsence(int $absenceId):void{$this->deleteAbsenceFiles($absenceId);$this->db->delete('glpi_plugin_demandas_absences',['id'=>$absenceId]);}
-    private function audit(string $action,int $target,array $details):void{$this->db->insert('glpi_plugin_demandas_time_audit',['action'=>$action,'actor_users_id'=>(int)Session::getLoginUserID(),'target_users_id'=>$target,'details_json'=>json_encode($details,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),'date_creation'=>date('Y-m-d H:i:s')]);}
+    private function storeAttachment(int $absenceId,int $userId,array $file):void{$allowed=['pdf','png','jpg','jpeg','webp','doc','docx','xls','xlsx','odt','ods'];if((int)($file['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)throw new RuntimeException('Não foi possível receber um dos anexos.');$ext=mb_strtolower(pathinfo((string)$file['name'],PATHINFO_EXTENSION));if(!in_array($ext,$allowed,true)||($file['size']??0)>15*1024*1024)throw new RuntimeException('Anexo inválido ou maior que 15 MB.');$dir=GLPI_DOC_DIR.'/_plugins/demandas/absences';if(!is_dir($dir)&&!mkdir($dir,0750,true)&&!is_dir($dir))throw new RuntimeException('Não foi possível preparar o diretório de anexos.');$stored=bin2hex(random_bytes(20)).'.'.$ext;if(!move_uploaded_file($file['tmp_name'],$dir.'/'.$stored))throw new RuntimeException('Não foi possível salvar o anexo.');$this->newFiles[]=$dir.'/'.$stored;$this->write('insert','glpi_plugin_demandas_absence_files',['absences_id'=>$absenceId,'users_id'=>$userId,'original_name'=>mb_substr((string)$file['name'],0,255),'stored_name'=>$stored,'mime_type'=>mb_substr((string)($file['type']??''),0,120),'file_size'=>(int)$file['size'],'date_creation'=>date('Y-m-d H:i:s')]);}
+    private function deleteAbsenceFiles(int $absenceId):void{$dir=GLPI_DOC_DIR.'/_plugins/demandas/absences';foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absence_files','WHERE'=>['absences_id'=>$absenceId]])as$file){$path=$dir.'/'.basename((string)$file['stored_name']);$this->removedFiles[]=$path;}$this->write('delete','glpi_plugin_demandas_absence_files',['absences_id'=>$absenceId]);}
+    private function deleteAbsence(int $absenceId):void{$this->deleteAbsenceFiles($absenceId);$this->write('delete','glpi_plugin_demandas_absences',['id'=>$absenceId]);}
+    private function audit(string $action,int $target,array $details):void{$this->write('insert','glpi_plugin_demandas_time_audit',['action'=>$action,'actor_users_id'=>(int)Session::getLoginUserID(),'target_users_id'=>$target,'details_json'=>json_encode($details,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),'date_creation'=>date('Y-m-d H:i:s')]);}
 }
