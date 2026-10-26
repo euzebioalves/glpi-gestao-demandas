@@ -1,5 +1,7 @@
 # Gestão de Demandas 0.31.0 — em homologação
 
+> Registro histórico da implementação inicial. O bloqueio do Docker descrito abaixo foi resolvido; a suíte prática, as capturas atualizadas e a homologação humana foram concluídas na [release 0.31.1](RELEASE_0.31.1.md), que incorpora este escopo. As pendências de execução abaixo descrevem aquele momento, não o estado da publicação 0.31.1.
+
 ## Escopo e preservação
 
 Nova visão operacional na aba **Bugs e Melhorias**, sem substituir a **Visão geral**. Integra o trabalho local dessa aba com a main 0.30.0, preservando documentação/relações de WPs, Backlog e correções de permissões. Não altera ponto, banco de horas, entradas de tempo, fases públicas nem sincronização.

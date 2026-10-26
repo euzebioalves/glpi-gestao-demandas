@@ -1,6 +1,6 @@
 # Manual do Plugin Gestão de Demandas
 
-> Versão de referência: **0.31.0 (em homologação)** · Alvo: GLPI 11 e OpenProject 17.x.
+> Versão de referência: **0.31.1** · Alvo: GLPI 11 e OpenProject 17.x.
 
 ## 1. Finalidade
 
@@ -247,11 +247,11 @@ Após atualizar, conceda os direitos necessários em **Administração > Perfis 
 | PDF/Excel | Direitos de acesso à visão/conferência escolhida + Exportar a visão gerencial |
 
 1. Abra **Gerência > Visão Gerencial de Demandas > Bugs e Melhorias**.
-2. Os filtros aparecem expandidos. Marque os **Status GLPI incluídos** e aplique os filtros. Por padrão são todos os status nativos não solucionados/fechados; desmarcar todos produz zero resultados. O rótulo operacional “Para desenvolvimento” não é convertido arbitrariamente em um status GLPI.
+2. Os filtros começam recolhidos. Abra **Filtros estratégicos**, marque os **Status GLPI incluídos** e aplique os filtros. Por padrão são todos os status nativos não solucionados/fechados; desmarcar todos produz zero resultados. O rótulo operacional “Para desenvolvimento” não é convertido arbitrariamente em um status GLPI.
 3. Combine cliente, classificação, datas, status WP e demais critérios. A classificação usa a mesma origem/regras do painel geral: bugs/erros técnicos e melhorias; sugestões, coletores e outras classificações ficam fora. Sem classificação válida, o chamado não entra nessa aba.
-4. Comece por **Precisam de ação**. Clique no motivo para filtrar a grade; a fila destaca até dez chamados do filtro atual e oferece acesso à lista completa. Um chamado pode ter vários motivos, mas é contado uma vez por motivo.
+4. Comece por **Precisam de ação**. Os cartões mostram uma próxima ação, como **Atualizar dados**, **Vincular WP** ou **Conferir encerramento**. Clique para filtrar a grade. Indicadores zerados ficam em **Sem ocorrências**. **Por onde começar** destaca até dez chamados prioritários do filtro atual; cada linha resume os motivos e os status. Um chamado pode ter vários motivos, mas é contado uma vez por motivo: não some os cartões.
 5. Use **Técnico atribuído no GLPI** e **Responsável OpenProject** para organizar a conferência. São papéis distintos; o atribuído da WP também aparece junto dela. Nome ausente no snapshot é apresentado como não informado, sem concluir que a WP esteja sem dono no OpenProject.
-6. Confira o **Envelhecimento por etapa** e abra **Mais indicadores** para cobertura, volume e distribuições. A grade conta cada chamado uma vez e apresenta **todas** as WPs vinculadas, mesmo se o filtro corresponder a apenas uma delas.
+6. Em **Onde as demandas estão paradas**, compare as barras de quantidade de chamados por etapa e a coluna separada de maior tempo observado. Abra o histórico para ver os chamados mais antigos. Use **Mais indicadores** para cobertura, volume e distribuições. A grade conta cada chamado uma vez; clique em **Ver detalhes** na coluna **Work Packages** para consultar **todas** as WPs vinculadas, responsáveis e datas, mesmo se o filtro corresponder a apenas uma delas. Em telas estreitas, role as tabelas horizontalmente para acessar as demais colunas.
 
 ### Precisam de ação e envelhecimento observado
 
@@ -285,9 +285,17 @@ Os indicadores mostram o escopo dos filtros; clicar em um indicador ou seleciona
 
 Confira a última sincronização de cada WP e, se necessário, use o fluxo de sincronização existente antes de decidir. Sem data ou com mais de sete dias, aparece um aviso de desatualização. **Painel gerado** é o horário de montagem da página, não de atualização do OpenProject. Nenhuma página nova consulta a API, fecha chamados, altera WPs, fases públicas ou acompanhamentos. A decisão permanece com o analista.
 
-Captura abaixo da versão anterior da aba, com dados fictícios. A fila e o envelhecimento adicionados em 0.31.0 ainda aguardam captura após homologação no Docker; a imagem não comprova a validação desses recursos.
+Capturas da revisão 0.31.1 geradas pelo Playwright no GLPI 11.0.9 descartável, com dados fictícios. Os textos e controles novos foram verificados com contraste mínimo de 4,5:1 nos dois temas. As cores acompanham rótulos explícitos; não são a única indicação de situação.
 
-![Bugs e Melhorias — captura anterior, ambiente fictício](assets/manual/dashboard-bugs-1440-light.png)
+![Prioridades e ações — tema claro, dados fictícios](assets/manual/dashboard-actions-light.png)
+
+![Prioridades e ações — tema escuro, dados fictícios](assets/manual/dashboard-actions-dark.png)
+
+Veja também a [página completa](assets/manual/dashboard-bugs-1440-light.png) e a [visão em celular](assets/manual/dashboard-bugs-390-light.png). As capturas não representam validação de dados de produção.
+
+![Fila compacta com próximos passos e detalhes expansíveis — dados fictícios](assets/manual/dashboard-action-queue.png)
+
+![Quantidade e maior tempo observado em cada etapa — dados fictícios](assets/manual/dashboard-action-stages.png)
 
 ### 10.3 Alerta individual e visão padrão
 
@@ -295,7 +303,7 @@ No próprio chamado, o bloco **Status das WPs vinculadas** aparece na área de i
 
 ![Alerta individual no chamado — dados fictícios](assets/manual/dashboard-ticket-alert.png)
 
-No topo do painel, selecione **Minha visão padrão** e clique em **Salvar visão padrão**. A escolha vale apenas para seu usuário e só define qual aba abrir quando não houver uma aba explícita na URL. Links de drill-down continuam abrindo a aba indicada. A preferência não é compartilhada com outros usuários e não guarda os filtros. Se mudar para um perfil sem acesso à aba escolhida, o painel abre a visão geral; sem acesso gerencial, o acesso é negado.
+Na aba Bugs e Melhorias, abra **Opções do painel > Preferência de visão inicial**, selecione **Minha visão padrão** e clique em **Salvar visão padrão**. Na Visão geral, o formulário continua no topo. A escolha vale apenas para seu usuário e só define qual aba abrir quando não houver uma aba explícita na URL. Links de drill-down continuam abrindo a aba indicada. A preferência não é compartilhada com outros usuários e não guarda os filtros. Se mudar para um perfil sem acesso à aba escolhida, o painel abre a visão geral; sem acesso gerencial, o acesso é negado. As opções também contêm os critérios dos indicadores e o acesso à conciliação para perfis autorizados.
 
 Capturas do manual são geradas com dados sintéticos por `tests/dashboard-bugs.cjs`, incluindo desktop, celular e temas claro/escuro. Não gere capturas com dados de produção.
 

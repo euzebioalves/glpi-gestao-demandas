@@ -6,9 +6,13 @@ Os testes práticos e as capturas sanitizadas do manual usam Playwright. O coman
 
 Para uma base isolada exclusivamente para Playwright, sem usar a homologação compartilhada, execute `./start-e2e.ps1`. Ela sobe GLPI 11.0.9 em `http://localhost:8190`; os comandos de teste ficam descritos em [tests/e2e/README.md](tests/e2e/README.md).
 
+## Plugin 0.31.1 — dashboard para tomada de decisão
+
+A aba **Bugs e Melhorias** agora destaca ações concretas em cartões com contraste, resume os chamados em uma fila compacta e expande os detalhes das WPs sob demanda. Filtros e opções começam recolhidos; entregas e envelhecimento usam uma apresentação mais direta. Cálculos, permissões e Visão geral preservados. Veja [RELEASE_0.31.1.md](docs/RELEASE_0.31.1.md).
+
 ## Plugin 0.31.0
 
-Nova visão operacional na aba **Bugs e Melhorias**, preservando a **Visão geral**. Prioriza **Precisam de ação**, conferência de entregas e envelhecimento observado por etapa, com filtros de responsáveis GLPI/OpenProject, alertas por chamado e escolha pessoal da visão padrão. Todos exigem direitos específicos de perfil, sem concessão automática. Implementação em homologação: veja os testes executados e as limitações em [docs/RELEASE_0.31.0.md](docs/RELEASE_0.31.0.md).
+Nova visão operacional na aba **Bugs e Melhorias**, preservando a **Visão geral**. Prioriza **Precisam de ação**, conferência de entregas e envelhecimento observado por etapa, com filtros de responsáveis GLPI/OpenProject, alertas por chamado e escolha pessoal da visão padrão. Todos exigem direitos específicos de perfil, sem concessão automática. Incorporada à versão 0.31.1: veja a validação final em [docs/RELEASE_0.31.1.md](docs/RELEASE_0.31.1.md) e as regras em [docs/RELEASE_0.31.0.md](docs/RELEASE_0.31.0.md).
 
 ## Plugin 0.30.0
 

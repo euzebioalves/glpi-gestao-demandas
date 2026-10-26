@@ -2,6 +2,14 @@
 
 Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para instalação, configuração, permissões e fluxos de uso.
 
+## Versão 0.31.1 — dashboard para tomada de decisão
+
+- Cartões com quantidade, próxima ação e cores de contraste para pendências, divergências e conferência de entregas.
+- Fila compacta com chamado, próximo passo, técnico GLPI e resumo dos status das WPs; detalhes expansíveis preservam todos os vínculos, responsáveis e datas.
+- Filtros, opções, indicadores zerados e critérios recolhidos; envelhecimento em barras de quantidade, com maior tempo observado separado.
+- Temas claro/escuro e celular verificados por Playwright; capturas sintéticas atualizadas no manual.
+- Sem mudança de cálculos, direitos, integrações ou schema. Veja [RELEASE_0.31.1.md](../../docs/RELEASE_0.31.1.md).
+
 ## Versão 0.31.0
 
 - adiciona a aba **Bugs e Melhorias** com seleção explícita dos status nativos do GLPI; o escopo inicial permanece aberto;
@@ -13,7 +21,7 @@ Consulte o [manual operacional do plugin](../../docs/MANUAL_DO_PLUGIN.md) para i
 - mostra alertas técnicos individuais e a data da última sincronização, sem consultas externas;
 - permite salvar a aba padrão do próprio usuário e revalida o perfil ativo em cada acesso;
 - introduz quatro permissões independentes, desabilitadas por padrão; preserva o acesso e o comportamento da visão geral;
-- atualiza manual, tutorial e testes sintéticos. Capturas Playwright da nova visão aguardam a recuperação do engine Docker; não considerar a versão homologada em GLPI ainda.
+- atualiza manual, tutorial e testes sintéticos. A execução prática após recuperação do Docker está registrada na revisão 0.31.1.
 
 Atualize sem desinstalar. A migração cria somente a tabela de preferências pessoais. Veja [RELEASE_0.31.0.md](../../docs/RELEASE_0.31.0.md).
 
