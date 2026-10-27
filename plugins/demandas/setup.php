@@ -15,7 +15,7 @@ use GlpiPlugin\Demandas\OpenProjectPersonalToken;
 use GlpiPlugin\Demandas\WorkPackageMonitoringHub;
 use GlpiPlugin\Demandas\OperationalHealthHub;
 
-define('PLUGIN_DEMANDAS_VERSION', '0.33.0');
+define('PLUGIN_DEMANDAS_VERSION', '0.34.0');
 define('PLUGIN_DEMANDAS_MIN_GLPI', '11.0.0');
 define('PLUGIN_DEMANDAS_MAX_GLPI', '11.0.99');
 
@@ -27,6 +27,8 @@ function plugin_demandas_boot(): void
 function plugin_init_demandas(): void
 {
     global $PLUGIN_HOOKS;
+
+    \GlpiPlugin\Demandas\CredentialStore::register();
 
     $PLUGIN_HOOKS[Hooks::CSRF_COMPLIANT]['demandas'] = true;
     $PLUGIN_HOOKS[Hooks::CONFIG_PAGE]['demandas'] = 'front/config.form.php';

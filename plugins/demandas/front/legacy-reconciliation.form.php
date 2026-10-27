@@ -19,7 +19,7 @@ if (($_POST['action'] ?? '') === 'transfer') {
         } catch (Glpi\Exception\Http\AccessDeniedHttpException $exception) {
             throw $exception;
         } catch (DomainException $exception) {
-            Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+            Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
         } catch (Throwable) {
             Session::addMessageAfterRedirect('Não foi possível transferir o vínculo local. Os vínculos existentes foram preservados.', true, ERROR);
         }
@@ -39,7 +39,7 @@ if (($_POST['action'] ?? '') === 'transfer') {
         } catch (Glpi\Exception\Http\AccessDeniedHttpException $e) {
             throw $e;
         } catch (DomainException $e) {
-            Session::addMessageAfterRedirect($e->getMessage(), true, ERROR);
+            Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($e), true, ERROR);
         } catch (Throwable) {
             Session::addMessageAfterRedirect('Não foi possível conciliar a referência. Confira a configuração e tente novamente.', true, ERROR);
         }

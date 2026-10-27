@@ -9,12 +9,15 @@ use RuntimeException;
 
 final class WebhookHandler
 {
+    public const MAX_BODY_BYTES = 2 * 1024 * 1024;
+
     public function handle(string $rawBody, ?string $signature): array
     {
+        if (strlen($rawBody) > self::MAX_BODY_BYTES) throw new RuntimeException('O corpo do webhook excede 2 MB.');
         $this->assertSignature($rawBody, $signature);
 
         try {
-            $payload = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
+            $payload = json_decode($rawBody, true, 64, JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
             throw new RuntimeException('O corpo do webhook não contém JSON válido.', 0, $exception);
         }

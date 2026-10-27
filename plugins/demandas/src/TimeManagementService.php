@@ -576,7 +576,21 @@ final class TimeManagementService
     private function time(string $v):string{if(!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/',$v))throw new RuntimeException('Horário inválido.');return$v;}
     private function punchType(string $v):string{$allowed=['entrada_manha','saida_manha','entrada_tarde','saida_tarde','entrada_intermediaria','saida_intermediaria'];return in_array($v,$allowed,true)?$v:'';}
     private function date(string $v):string{$d=DateTimeImmutable::createFromFormat('!Y-m-d',$v);if(!$d||$d->format('Y-m-d')!==$v)throw new RuntimeException('Data inválida.');return$v;}
-    private function storeAttachment(int $absenceId,int $userId,array $file):void{$allowed=['pdf','png','jpg','jpeg','webp','doc','docx','xls','xlsx','odt','ods'];if((int)($file['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)throw new RuntimeException('Não foi possível receber um dos anexos.');$ext=mb_strtolower(pathinfo((string)$file['name'],PATHINFO_EXTENSION));if(!in_array($ext,$allowed,true)||($file['size']??0)>15*1024*1024)throw new RuntimeException('Anexo inválido ou maior que 15 MB.');$dir=GLPI_DOC_DIR.'/_plugins/demandas/absences';if(!is_dir($dir)&&!mkdir($dir,0750,true)&&!is_dir($dir))throw new RuntimeException('Não foi possível preparar o diretório de anexos.');$stored=bin2hex(random_bytes(20)).'.'.$ext;if(!move_uploaded_file($file['tmp_name'],$dir.'/'.$stored))throw new RuntimeException('Não foi possível salvar o anexo.');$this->newFiles[]=$dir.'/'.$stored;$this->write('insert','glpi_plugin_demandas_absence_files',['absences_id'=>$absenceId,'users_id'=>$userId,'original_name'=>mb_substr((string)$file['name'],0,255),'stored_name'=>$stored,'mime_type'=>mb_substr((string)($file['type']??''),0,120),'file_size'=>(int)$file['size'],'date_creation'=>date('Y-m-d H:i:s')]);}
+    private function storeAttachment(int $absenceId, int $userId, array $file): void
+    {
+        if (count($this->newFiles) >= 20) throw new RuntimeException('Envie até 20 anexos por operação.');
+        $validated = AttachmentSecurity::upload($file, ['pdf','png','jpg','jpeg','webp','doc','docx','xls','xlsx','odt','ods']);
+        $dir = GLPI_DOC_DIR . '/_plugins/demandas/absences';
+        if (!is_dir($dir) && !mkdir($dir, 0750, true) && !is_dir($dir)) throw new RuntimeException('Não foi possível preparar o diretório de anexos.');
+        $stored = bin2hex(random_bytes(20)) . '.' . $validated['extension'];
+        if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $stored)) throw new RuntimeException('Não foi possível salvar o anexo.');
+        $this->newFiles[] = $dir . '/' . $stored;
+        $this->write('insert', 'glpi_plugin_demandas_absence_files', [
+            'absences_id' => $absenceId, 'users_id' => $userId, 'original_name' => $validated['name'],
+            'stored_name' => $stored, 'mime_type' => $validated['mime'], 'file_size' => $validated['size'],
+            'date_creation' => date('Y-m-d H:i:s'),
+        ]);
+    }
     private function deleteAbsenceFiles(int $absenceId):void{$dir=GLPI_DOC_DIR.'/_plugins/demandas/absences';foreach($this->db->request(['FROM'=>'glpi_plugin_demandas_absence_files','WHERE'=>['absences_id'=>$absenceId]])as$file){$path=$dir.'/'.basename((string)$file['stored_name']);$this->removedFiles[]=$path;}$this->write('delete','glpi_plugin_demandas_absence_files',['absences_id'=>$absenceId]);}
     private function deleteAbsence(int $absenceId):void{$this->deleteAbsenceFiles($absenceId);$this->write('delete','glpi_plugin_demandas_absences',['id'=>$absenceId]);}
     private function audit(string $action,int $target,array $details):void{$this->write('insert','glpi_plugin_demandas_time_audit',['action'=>$action,'actor_users_id'=>(int)Session::getLoginUserID(),'target_users_id'=>$target,'details_json'=>json_encode($details,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),'date_creation'=>date('Y-m-d H:i:s')]);}

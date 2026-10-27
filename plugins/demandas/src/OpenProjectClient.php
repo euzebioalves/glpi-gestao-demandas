@@ -27,8 +27,11 @@ final class OpenProjectClient
         $this->allowsWorkPackageCreation = $allowsWorkPackageCreation;
 
         $this->client = new Client([
-            'base_uri' => rtrim((string) Config::get('openproject_internal_url'), '/') . '/',
-            'timeout' => max(2, (int) Config::get('request_timeout', 15)),
+            'base_uri' => IntegrationSecurity::baseUrl((string) Config::get('openproject_internal_url')) . '/',
+            'allow_redirects' => false,
+            'stream' => true,
+            'timeout' => min(120, max(2, (int) Config::get('request_timeout', 15))),
+            'read_timeout' => min(15, max(2, (int) Config::get('request_timeout', 15))),
             'connect_timeout' => 5,
             'auth' => ['apikey', $token],
             'headers' => [
@@ -342,7 +345,10 @@ final class OpenProjectClient
                 'headers' => ['Content-Type' => 'multipart/form-data; boundary=' . $multipart->getBoundary()],
                 'body' => $multipart,
             ]);
-            return json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+            if ($response->getStatusCode() >= 300) throw new \UnexpectedValueException('Resposta inesperada.');
+            return json_decode($this->responseBody($response), true, 64, JSON_THROW_ON_ERROR);
+        } catch (GuzzleException | \JsonException | RuntimeException $exception) {
+            throw IntegrationSecurity::failure($exception);
         } finally {
             if (is_resource($stream)) fclose($stream);
         }
@@ -356,7 +362,11 @@ final class OpenProjectClient
         $stream = $response->getBody();
         try {
             $bytes = '';
-            while (!$stream->eof() && strlen($bytes) <= 15 * 1024 * 1024) $bytes .= $stream->read(65536);
+            $deadline = microtime(true) + min(120, max(2, (int) Config::get('request_timeout', 15)));
+            while (!$stream->eof() && strlen($bytes) <= 15 * 1024 * 1024) {
+                if (microtime(true) > $deadline) throw new RuntimeException('A imagem excedeu o tempo de leitura.');
+                $bytes .= $stream->read(65536);
+            }
             if (strlen($bytes) > 15 * 1024 * 1024) throw new RuntimeException('Imagem muito grande.');
             return $bytes;
         } finally { $stream->close(); }
@@ -542,7 +552,8 @@ final class OpenProjectClient
                 }
             } catch (RuntimeException $exception) {
                 $message = $exception->getMessage();
-                if (str_contains($message, '403 Forbidden') || str_contains($message, 'MissingPermission')) {
+                $cause = $exception->getPrevious();
+                if ($cause instanceof \GuzzleHttp\Exception\RequestException && $cause->getResponse()?->getStatusCode() === 403) {
                     $message = 'O usuário da integração não possui permissão no OpenProject para registrar tempo neste projeto. '
                         . 'Execute novamente a automação de homologação ou conceda ao papel do usuário as permissões '
                         . '“Visualizar tempo gasto” e “Registrar as próprias horas”.';
@@ -829,18 +840,37 @@ final class OpenProjectClient
 
     private function request(string $method, string $uri, ?array $payload = null): array
     {
+        $uri = IntegrationSecurity::resource($uri);
         try {
             $options = [];
             if ($payload !== null) {
                 $options['json'] = $payload;
             }
             $response = $this->client->request($method, $uri, $options);
-            $body=(string)$response->getBody();if(trim($body)==='')return [];
-            $decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+            if ($response->getStatusCode() >= 300 && $response->getStatusCode() < 400) {
+                throw new \GuzzleHttp\Exception\RequestException('Redirecionamento não permitido.', new \GuzzleHttp\Psr7\Request($method, $uri), $response);
+            }
+            $body=$this->responseBody($response);if(trim($body)==='')return [];
+            $decoded = json_decode($body, true, 64, JSON_THROW_ON_ERROR);
             return is_array($decoded) ? $decoded : [];
-        } catch (GuzzleException | \JsonException $exception) {
-            throw new RuntimeException('Falha na comunicação com o OpenProject: ' . $exception->getMessage(), 0, $exception);
+        } catch (GuzzleException | \JsonException | RuntimeException $exception) {
+            throw IntegrationSecurity::failure($exception);
         }
+    }
+
+    private function responseBody(\Psr\Http\Message\ResponseInterface $response): string
+    {
+        $stream = $response->getBody();
+        $body = '';
+        $deadline = microtime(true) + min(120, max(2, (int) Config::get('request_timeout', 15)));
+        try {
+            while (!$stream->eof()) {
+                if (microtime(true) > $deadline) throw new \UnexpectedValueException('Tempo de leitura excedido.');
+                $body .= $stream->read(65536);
+                if (strlen($body) > 16 * 1024 * 1024) throw new \UnexpectedValueException('Resposta excede o limite.');
+            }
+            return $body;
+        } finally { $stream->close(); }
     }
 
     private function ticketUrl(int $ticketId): string

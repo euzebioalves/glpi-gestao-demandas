@@ -40,6 +40,6 @@ try {
     echo "</div></div><script>const prompt=document.getElementById('demandas-ai-prompt');const copy=async()=>{try{await navigator.clipboard.writeText(prompt.value)}catch(_){prompt.select();document.execCommand('copy')}};document.getElementById('demandas-copy-ai').onclick=copy;document.getElementById('demandas-open-chatgpt').onclick=async()=>{await copy();window.open('https://chatgpt.com/','_blank','noopener')};</script></div>";
     Html::footer();
 } catch (Throwable $exception) {
-    Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+    Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
     Html::redirect('/plugins/demandas/front/work-package-analysis.php?wp=' . $workPackageId . '&ticket=' . $ticketId);
 }

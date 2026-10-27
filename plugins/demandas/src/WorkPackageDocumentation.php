@@ -99,13 +99,10 @@ final class WorkPackageDocumentation
     {
         $draft = &self::draft($id);
         if (!empty($draft['done']) || !empty($draft['creating'])) throw new DomainException('Este envio já foi encerrado. Reabra a documentação da WP.');
-        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) throw new DomainException('Não foi possível receber o arquivo.');
-        if (($file['size'] ?? 0) <= 0 || $file['size'] > 15 * 1024 * 1024) throw new DomainException('Limite de 20 arquivos por edição, até 15 MB por arquivo.');
-        $name = basename(str_replace('\\', '/', (string) $file['name']));
-        if (mb_strlen($name) > 180 || preg_match('/[\x00-\x1f]/', $name)) throw new DomainException('Nome de arquivo inválido.');
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
         $allowed = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'txt', 'csv', 'log', 'json', 'xml', 'zip', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods'];
-        if (!in_array(strtolower(pathinfo($name, PATHINFO_EXTENSION)), $allowed, true)) throw new DomainException('Formato de anexo não permitido. Use imagens, documentos, texto ou ZIP.');
+        $validated = AttachmentSecurity::upload($file, $allowed);
+        $name = $validated['name'];
+        $mime = $validated['mime'];
         $fingerprint = hash_file('sha256', $file['tmp_name']) . ':' . $name;
         foreach ($draft['uploads'] as $uploaded) if ($uploaded['fingerprint'] === $fingerprint) return $uploaded;
         if (count($draft['uploads']) >= 20) throw new DomainException('Limite de 20 arquivos por edição.');

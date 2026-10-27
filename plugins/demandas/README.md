@@ -1,5 +1,11 @@
 # Gestão de Demandas
 
+## Versão 0.34.0 — segurança, etapa 3
+
+Tokens e segredo do webhook criptografados com a chave nativa do GLPI, preservando os valores existentes e a rotação nativa. URLs e redirecionamentos protegidos, erros sem detalhes sensíveis, uploads conferidos pelo conteúdo e limites de webhook/conversores. Dados, permissões e regras de negócio preservados.
+
+Atualize sem desinstalar e faça backup do banco, documentos e configuração do GLPI, incluindo `glpicrypt.key`. Apenas voltar o código antigo não desfaz a criptografia. Consulte [RELEASE_0.34.0.md](../../docs/RELEASE_0.34.0.md) para limites, testes e roteiro. Validação humana local aprovada; publicação da 0.34.0 autorizada.
+
 ## Versão 0.33.0 — operações recuperáveis
 
 - serializa operações concorrentes de horas e ponto por usuário e sincronização por vínculo;

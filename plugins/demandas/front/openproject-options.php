@@ -39,5 +39,5 @@ try {
     }
 } catch (Throwable $exception) {
     http_response_code(400);
-    echo json_encode(['error' => $exception->getMessage()], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['error' => \GlpiPlugin\Demandas\IntegrationSecurity::message($exception)], JSON_UNESCAPED_UNICODE);
 }
