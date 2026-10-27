@@ -4,6 +4,8 @@
 
 Etapa 5: pipeline de regressão, política estática PHP, verificação de segredos, dependências de testes fixadas e pacote conferido. Sem alteração funcional, de dados ou de permissões. Validação local aprovada; veja [docs/RELEASE_0.36.0.md](docs/RELEASE_0.36.0.md) e [docs/VALIDACAO_CONTINUA.md](docs/VALIDACAO_CONTINUA.md).
 
+Para a infraestrutura: [roteiro consolidado de instalação e atualização da 0.36.0](docs/RELEASE_0.36.0.md#instalação-e-atualização-em-produção--roteiro-consolidado-desde-0320), reunindo os requisitos desde 0.32.0, backup/chave, migrações, conversores, validação e restauração. Revisão apenas documental; ZIP e checksum publicados permanecem inalterados.
+
 ## Plugin 0.35.0 — indicadores e tratamento de pendências
 
 Etapa 4 validada em homologação: histórico observado compartilhado, qualidade explícita dos dados, rodadas parciais sem resolução automática e acompanhamento com responsável, prazo, motivo e auditoria. Dados e direitos preservados. Veja [docs/RELEASE_0.35.0.md](docs/RELEASE_0.35.0.md).

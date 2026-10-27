@@ -775,4 +775,4 @@ O endereço de saúde acessível no navegador é `http://localhost:8180/plugins/
 5. informe as URLs e o token registrado em `integration.env`;
 6. execute **Salvar e testar conexão**.
 
-A versão 0.35.0 foi validada em homologação e aprovada para instalação em produção. Em atualizações, faça backup do banco, documentos e configuração (incluindo glpicrypt.key) e use Atualizar, sem desinstalar o plugin.
+A versão 0.36.0 foi validada em homologação e publicada para instalação em produção. Consulte o [roteiro consolidado desde 0.32.0](https://github.com/euzebioalves/glpi-gestao-demandas/blob/main/docs/RELEASE_0.36.0.md), incluindo MariaDB, migrações, backup da glpicrypt.key, conversores e restauração. Em atualizações, use Atualizar, sem desinstalar. A revisão documental posterior à publicação não altera o ZIP, a tag ou o checksum da 0.36.0.

@@ -1,5 +1,9 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Documentação de instalação 0.36.0 — 27/10/2026
+
+Release publicada no commit `0b6a1cf82f4e1acce205b174fea735a84eddf6d8`, PR #21 mesclado, workflows do PR e da main aprovados. A pedido do usuário, `docs/RELEASE_0.36.0.md` consolida agora as instruções desde 0.32.0 (incluindo 0.32.1), com requisitos, origens/migrações, backup/chave, instalação, ferramentas opcionais de extração, conferência operacional e rollback. Revisão exclusivamente documental: manter a versão 0.36.0 e não substituir ZIP, checksum ou tag já publicados. A documentação revisada deve ser consultada na main e no texto da release; o snapshot da tag conserva a redação original. Não executar migrações/testes mutáveis para uma alteração somente de documentação.
+
 ## Atualização 0.36.0 — revisão, etapa 5
 
 0.35.0 confirmada em produção pelo usuário. Etapa 5 na branch `codex/security-continuous-validation`: `scripts/quality` reúne política estática por tokens, segredos conhecidos, lockfile, regressão Docker, inventário PHP e pacote determinístico. Workflow sem segredos de produção, token de leitura e runner efêmero. Não muda regras, banco ou direitos. Não adicionar analisadores/dependências sem decisão conforme AGENTS.md.
