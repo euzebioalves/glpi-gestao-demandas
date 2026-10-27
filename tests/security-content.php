@@ -104,4 +104,3 @@ try {
     catch(RuntimeException $e) { check(str_contains(Net::html($e),'&lt;img') && !str_contains(Net::html($e),'<img'), 'dynamic validation messages escaped for native raw HTML flashes'); }
 } finally { $DB->rollBack(); }
 echo "OK security content\n";
-

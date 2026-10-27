@@ -24,7 +24,7 @@ Rollback para 0.33.0 exige restaurar o backup coordenado de banco/configuração
 
 Executada em GLPI 11.0.9 e MariaDB 11.4, com OpenProject 17.7.2 na homologação e API sintética para simular falhas:
 
-- comparação semântica dos 21 grupos de tabelas e configurações antes/depois da migração, incluindo credenciais sem revelar valores;
+- comparação semântica dos 22 grupos de tabelas e configurações antes/depois da migração, incluindo credenciais sem revelar valores;
 - instalação limpa e duas atualizações repetidas, sem alteração de dados/permissões;
 - criptografia, rotação nativa em cópia privada da chave e transação revertida, preservação de tokens pessoais e rollback de migração com falha;
 - URLs inválidas, caminhos perigosos, redirecionamento HTTP sem atingir o destino, JSON inválido/grande, webhook excedente/profundo e assinaturas válidas/inválidas;
