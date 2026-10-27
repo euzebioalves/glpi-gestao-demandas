@@ -31,6 +31,8 @@ $visibleRows = array_slice($rows, ($page - 1) * $perPage, $perPage);
 
 Html::header(ManagementDashboard::getTypeName(), $_SERVER['PHP_SELF'], 'management', ManagementDashboard::class);
 
+if ($result['classification_unavailable']) echo '<div class="alert alert-warning">Classificação indisponível em '.(int)$result['classification_unavailable'].' chamado(s) acessível(is) no escopo inicial. Totais por classificação são parciais; revise a configuração. Ausência de indicador não comprova ausência de demanda.</div>';
+
 function demandasH(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES);

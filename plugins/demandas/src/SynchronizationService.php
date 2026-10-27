@@ -112,7 +112,7 @@ final class SynchronizationService
             $message = $exception->getMessage() === self::FOLLOWUP_PENDING
                 ? self::FOLLOWUP_PENDING
                 : 'Não foi possível concluir a sincronização. Confira o acesso à Work Package e a disponibilidade da integração antes de repetir.';
-            try { $this->record($link, $source, false, null, null, $message, []); }
+            try { $this->record($link, $source, false, null, null, $message, ['failure_category'=>IndicatorPolicy::failureCategory($exception)]); }
             catch (\Throwable) { /* A failed audit cannot expose SQL or remote payloads to the user. */ }
             throw new RuntimeException($message,0,$exception);
         }

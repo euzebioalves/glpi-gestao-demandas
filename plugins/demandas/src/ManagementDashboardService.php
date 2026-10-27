@@ -46,6 +46,7 @@ final class ManagementDashboardService
             throw new \Glpi\Exception\Http\AccessDeniedHttpException();
         }
         $allRows = $this->loadRows($filters['ticket_scope'], $filters['view'] === 'bugs');
+        $classificationUnknown = count(array_unique(array_column(array_filter($allRows, static fn($row)=>$row['classification_unavailable']), 'ticket_id')));
         if ($filters['view'] === 'bugs') {
             $allRows = array_values(array_filter($allRows, static fn($row) => in_array($row['classification_kind'], ['bug', 'improvement'], true)));
         }
@@ -96,6 +97,7 @@ final class ManagementDashboardService
         }
 
         return [
+            'classification_unavailable' => $classificationUnknown,
             'filters' => $filters,
             'rows' => $rows,
             'summary' => $this->summary($scopeRows),
@@ -185,28 +187,30 @@ final class ManagementDashboardService
             $opened = strtotime((string) ($row['opened_at'] ?? '')) ?: time();
             $age = max(0, (int) floor((time() - $opened) / 86400));
             $wpId = (int) ($row['openproject_work_package_id'] ?? 0);
-            $lastSync = !empty($row['last_synced_at']) ? strtotime((string) $row['last_synced_at']) : false;
             $row['age_days'] = $age;
             $row['age_bucket'] = $this->ageBucket($age);
             $row['has_wp'] = $wpId > 0;
-            $row['sync_stale'] = $wpId > 0 && ($lastSync === false || $lastSync > time() || $lastSync < strtotime('-7 days'));
+            $row['sync_stale'] = $wpId > 0 && IndicatorPolicy::freshness($row['last_synced_at'] ?? null) !== 'current';
             $row['glpi_status_name'] = Ticket::getStatus((int) $row['glpi_status']);
             $ticketId = (int) $row['ticket_id'];
             if (!isset($classifications[$ticketId])) {
                 $classification = ['value' => '', 'label' => 'Sem classificação'];
+                $unavailable = false;
                 try {
                     $classification = ClassificationPolicy::resolve($ticket);
                 } catch (\Throwable) {
-                    // O painel permanece disponível mesmo que a origem da
-                    // classificação esteja temporariamente inconsistente.
+                    $classification = ['value' => '', 'label' => 'Classificação indisponível — revisar configuração'];
+                    $unavailable = true;
                 }
                 $label = trim((string) ($classification['label'] ?? '')) ?: 'Sem classificação';
                 $classifications[$ticketId] = [
                     'value' => (string) ($classification['value'] ?? ''),
                     'label' => $label,
                     'kind' => $this->classificationKind($label),
+                    'unavailable' => $unavailable,
                 ];
             }
+            $row['classification_unavailable'] = $classifications[$ticketId]['unavailable'];
             $row['classification_value'] = $classifications[$ticketId]['value'];
             $row['classification_label'] = $classifications[$ticketId]['label'];
             $row['classification_kind'] = $classifications[$ticketId]['kind'];

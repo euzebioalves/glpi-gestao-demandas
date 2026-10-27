@@ -7,6 +7,7 @@ final class ActionDashboardPanel
 {
     private const ACTIONS = [
         'stale' => ['Atualizar dados', 'Sincronize as WPs antes de decidir.', 'amber', 'refresh'],
+        'sync_failed' => ['Conferir integração', 'A última tentativa falhou; confira acesso e disponibilidade.', 'amber', 'plug-off'],
         'unknown' => ['Conferir status', 'Verifique o status da WP no OpenProject.', 'amber', 'help-circle'],
         'closed_pending' => ['Revisar divergência', 'Chamado encerrado com WP não entregue.', 'red', 'alert-triangle'],
         'blocked' => ['Destravar execução', 'Confira o impedimento com o responsável.', 'red', 'hand-stop'],
@@ -98,7 +99,7 @@ final class ActionDashboardPanel
         foreach ($statuses as $status=>$n) $html .= '<span>'.self::h($status).($n>1?' × '.$n:'').'</span>';
         $html .= '</span>'.($stale?'<span class="da-tag da-amber">Dados desatualizados</span>':'').'<span class="da-expand">Ver detalhes</span></summary><ul class="da-wp-list">';
         foreach ($wps as $wp) {
-            $html .= '<li><div>'.DeliveryReview::wpLink((int)$wp['openproject_work_package_id']).' <strong>'.self::h($wp['openproject_status'] ?: 'Status não informado').'</strong></div><dl><dt>Responsável</dt><dd>'.self::h($wp['responsible'] ?: 'Não informado').'</dd><dt>Atribuído</dt><dd>'.self::h($wp['assignee'] ?: 'Não informado').'</dd><dt>Tempo na etapa</dt><dd>'.($wp['stage_days']===null?'Histórico insuficiente':(int)$wp['stage_days'].' dias observados').'</dd><dt>Observada desde</dt><dd>'.self::h($wp['observed_since'] ?: 'Não informado').'</dd><dt>Última sincronização</dt><dd>'.self::h($wp['last_synced_at'] ?: 'Não informada').'</dd></dl>'.(!empty($wp['sync_stale'])?'<p class="da-warning">Sincronize antes de decidir: dados desatualizados.</p>':'').'</li>';
+            $html .= '<li><div>'.DeliveryReview::wpLink((int)$wp['openproject_work_package_id']).' <strong>'.self::h($wp['openproject_status'] ?: 'Status não informado').'</strong></div><dl><dt>Responsável</dt><dd>'.self::h($wp['responsible'] ?: 'Não informado').'</dd><dt>Atribuído</dt><dd>'.self::h($wp['assignee'] ?: 'Não informado').'</dd><dt>Qualidade dos dados</dt><dd>'.self::h(IndicatorPolicy::qualityLabel($wp['quality'] ?? 'current')).'</dd><dt>Tempo na etapa</dt><dd>'.($wp['stage_days']===null?'Histórico insuficiente':(int)$wp['stage_days'].' dias observados').'</dd><dt>Observada desde</dt><dd>'.self::h($wp['observed_since'] ?: 'Não informado').'</dd><dt>Última sincronização</dt><dd>'.self::h($wp['last_synced_at'] ?: 'Não informada').'</dd></dl>'.(!empty($wp['sync_stale'])?'<p class="da-warning">Sincronize antes de decidir: dados desatualizados.</p>':'').'</li>';
         }
         return $html.'</ul></details>';
     }

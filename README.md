@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.35.0 — indicadores e tratamento de pendências
+
+Etapa 4 validada em homologação: histórico observado compartilhado, qualidade explícita dos dados, rodadas parciais sem resolução automática e acompanhamento com responsável, prazo, motivo e auditoria. Dados e direitos preservados. Veja [docs/RELEASE_0.35.0.md](docs/RELEASE_0.35.0.md).
+
 ## Plugin 0.34.0 — segurança de credenciais e conteúdo
 
 Etapa 3: criptografia nativa dos tokens e segredo de webhook, proteção de URLs/erros, validação real de anexos e limites de processamento. Preserva dados e permissões. Validação local aprovada; veja [docs/RELEASE_0.34.0.md](docs/RELEASE_0.34.0.md). Backup deve incluir a chave `glpicrypt.key` do GLPI.

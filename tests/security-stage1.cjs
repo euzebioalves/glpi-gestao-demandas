@@ -127,7 +127,7 @@ function fixture(input){const r=spawnSync('docker',['exec','-i','demandas-test-0
   await post(operator.context,operator.page,'operational-health.form.php',{action:'run'});
   let occurrence=fixture({mode:'snapshot'}).findings.find(f=>Number(f.tickets_id)===seed.tickets.visible);
   assert.equal(occurrence.state,'open');
-  await post(operator.context,operator.page,'operational-health.form.php',{action:'ignore',finding_id:occurrence.id});
+  await post(operator.context,operator.page,'operational-health.form.php',{action:'ignore',finding_id:occurrence.id,note:'Aguardar conferência com a equipe.'});
   await post(operator.context,operator.page,'operational-health.form.php',{action:'run'});
   const repeated=fixture({mode:'snapshot'}).findings;
   assert.equal(repeated.find(f=>Number(f.tickets_id)===seed.tickets.visible).state,'ignored','Repeat preserves treatment');

@@ -323,6 +323,19 @@ function plugin_demandas_install(): bool
         KEY `idx_finding_date` (`operational_findings_id`,`date_creation`), KEY `idx_user_date` (`users_id`,`date_creation`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    // Additive migration only: legacy findings, states and audit remain untouched.
+    foreach ([
+        'operational_findings' => ['owner_users_id'=>'int unsigned DEFAULT NULL', 'due_date'=>'date DEFAULT NULL', 'treatment_note'=>'text DEFAULT NULL'],
+        'operational_runs' => ['metrics_json'=>'longtext DEFAULT NULL'],
+    ] as $suffix => $columns) {
+        foreach ($columns as $column => $definition) {
+            $table = 'glpi_plugin_demandas_' . $suffix;
+            if (!$db->fieldExists($table, $column, false)) {
+                $db->doQuery('ALTER TABLE ' . $db->quoteName($table) . ' ADD COLUMN ' . $db->quoteName($column) . ' ' . $definition);
+            }
+        }
+    }
+
     $defaults = [
         'openproject_internal_url' => 'http://openproject/api/v3',
         'openproject_external_url' => 'http://localhost:8280',
