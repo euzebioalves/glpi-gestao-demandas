@@ -19,7 +19,9 @@ try {
     $_SESSION['glpiactiveprofile']=$profile+['ticket'=>READ|UPDATE|Ticket::READALL];
     foreach(Profile::definitions() as $key=>$_) $_SESSION['glpiactiveprofile'][$key]=READ;
     Config::setConfigurationValues('plugin:demandas',['classification_source_json'=>'{"mode":"none"}','operational_health_initial_days'=>'7','operational_health_stale_days'=>'7','operational_health_initial_statuses'=>'Novo,Em especificação']);
-    $date=static fn(int $days)=>date('Y-m-d H:i:s',time()-60-$days*86400);
+    // One reference instant: a slow DB must not place a later fixture event after its snapshot.
+    $referenceTime=time()-60;
+    $date=static fn(int $days)=>date('Y-m-d H:i:s',$referenceTime-$days*86400);
     check(Policy::freshness(null)==='not_consulted','No sync is not zero');
     check(Policy::freshness('2026-02-30 10:00:00')==='invalid_date','Impossible date');
     check(Policy::freshness($date(-2))==='invalid_date','Future date');

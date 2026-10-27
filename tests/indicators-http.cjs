@@ -7,7 +7,7 @@ function fixture(name,input){const r=spawnSync('docker',['exec','-i','demandas-t
 (async()=>{
  const password=randomBytes(24).toString('hex');
  const seed=fixture('security-stage1-fixture',{mode:'seed',password});fixture('indicators-http-fixture',{mode:'seed'});
- const browser=await chromium.launch({channel:'msedge',headless:true});
+ const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'msedge',headless:true});
  const endpoint=base+'/plugins/demandas/front/operational-health.php';
  async function login(role){const context=await browser.newContext();const page=await context.newPage();await page.goto(base);await page.locator('[name=login_name]').fill('security-'+role);await page.locator('[name=login_password]').fill(password);await Promise.all([page.waitForNavigation(),page.locator('[name=submit]').click()]);return {context,page};}
  async function post(c,p,form,csrf=true){await p.reload();const token=await p.locator('input[name=_glpi_csrf_token]').first().inputValue();return c.request.post(base+'/plugins/demandas/front/operational-health.form.php',{form:{...form,...(csrf?{_glpi_csrf_token:token}:{})},maxRedirects:0});}

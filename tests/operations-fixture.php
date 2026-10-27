@@ -8,7 +8,8 @@ use GlpiPlugin\Demandas\Profile as DP;
 use GlpiPlugin\Demandas\SynchronizationService;
 global $DB;
 $in=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);
-$user=$DB->request(['FROM'=>'glpi_users','WHERE'=>['name'=>($in['user']??'')==='security-admin'?'security-admin':'reconciliation-admin']])->current();
+$user=$DB->request(['FROM'=>'glpi_users','WHERE'=>['name'=>'security-admin']])->current();
+if (!$user) throw new RuntimeException('Execute primeiro o fixture de segurança.');
 $uid=(int)$user['id'];
 $_SESSION['glpiID']=$uid;$_SESSION['glpiactiveentities']=[0];$_SESSION['glpiactiveentities_string']='0';
 $_SESSION['glpiactiveprofile']=['interface'=>'central','ticket'=>READ|UPDATE|Ticket::READALL,'followup'=>READ|CREATE|UPDATE];
@@ -19,9 +20,14 @@ $base=['users_id'=>$uid,'tickets_id'=>0,'work_package_id'=>98001,'spent_on'=>'20
 function check(bool $ok,string $label):void{if(!$ok)throw new RuntimeException($label);}
 try{
     switch($in['mode']){
+        case 'file-inventory':
+            $files=[];
+            foreach(glob(GLPI_DOC_DIR.'/_plugins/demandas/absences/*')?:[] as $path) if(is_file($path)) $files[basename($path)]=hash_file('sha256',$path);
+            ksort($files);
+            echo json_encode(['files'=>$files,'records'=>array_values(iterator_to_array($DB->request(['FROM'=>'glpi_plugin_demandas_absence_files','ORDER'=>'id'])))]);break;
         case 'configure':
             GlpiPlugin\Demandas\Config::savePersonalToken($uid,'synthetic-personal');
-            Config::setConfigurationValues('plugin:demandas',['openproject_internal_url'=>'http://127.0.0.1:8398/api/v3','openproject_automation_api_token'=>'synthetic-personal','request_timeout'=>'2','webhook_secret'=>'synthetic-stage2-webhook','status_rules_json'=>json_encode(['1'=>['auto_followup'=>1,'private_followup'=>0,'message'=>'QA transição {{status.previous}} para {{status.current}}']])]);
+            GlpiPlugin\Demandas\CredentialStore::saveConfig(['openproject_internal_url'=>'http://127.0.0.1:8398/api/v3','openproject_automation_api_token'=>'synthetic-personal','request_timeout'=>'2','webhook_secret'=>'synthetic-stage2-webhook','status_rules_json'=>json_encode(['1'=>['auto_followup'=>1,'private_followup'=>0,'message'=>'QA transição {{status.previous}} para {{status.current}}']])]);
             echo '{}';break;
         case 'local':
             $date='2026-10-20';

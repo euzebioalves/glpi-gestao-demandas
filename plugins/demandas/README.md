@@ -1,5 +1,9 @@
 # Gestão de Demandas
 
+## Versão 0.36.0 — validação contínua
+
+Automação de testes e controles de segurança do desenvolvimento, inventário de dependências e verificação do pacote. Não modifica regras, dados, schema, credenciais ou permissões. Scripts de teste ficam fora do plugin instalado. Candidata em homologação; veja [RELEASE_0.36.0.md](../../docs/RELEASE_0.36.0.md).
+
 ## Versão 0.35.0 — indicadores e tratamentos
 
 A Central de Pendências usa o histórico observado de etapas compartilhado com o dashboard. Distingue dados desatualizados, não consultados, datas inválidas, histórico insuficiente e falhas de sincronização. Rodadas incompletas não resolvem pendências anteriores. Acompanhamento com responsável voluntário, prazo, observação e adiamento justificado, com histórico auditável e gravação atômica. Atualização aditiva preserva dados e permissões. Roteiro e limitações: [RELEASE_0.35.0.md](../../docs/RELEASE_0.35.0.md).

@@ -10,16 +10,17 @@ const operation=(mode,args={})=>fixture('operations-fixture',{mode,user:'securit
  const password=randomBytes(24).toString('hex');
  const seed=fixture('security-stage1-fixture',{mode:'seed',password});
  operation('configure');
- const browser=await chromium.launch({channel:'msedge',headless:true});
+ const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'msedge',headless:true});
  async function login(role){const context=await browser.newContext();const page=await context.newPage();await page.goto(base);await page.locator('[name=login_name]').fill('security-'+role);await page.locator('[name=login_password]').fill(password);await Promise.all([page.waitForNavigation(),page.locator('[name=submit]').click()]);return {context,page};}
  const snapshot=()=>fixture('security-stage1-fixture',{mode:'snapshot'});
- const inventory=()=>docker(['sh','-c','find /var/glpi/_plugins/demandas/absences -type f 2>/dev/null | sort']);
+ const inventory=()=>JSON.stringify(operation('file-inventory'));
  try{
   const {context,page}=await login('admin');
   const clock=base+'/plugins/demandas/front/timeclock.php?year=2026&month=10';
   async function punch(extra){await page.goto(clock);const csrf=await page.locator('input[name=_glpi_csrf_token]').first().inputValue();return context.request.post(base+'/plugins/demandas/front/punch.form.php',{multipart:{_glpi_csrf_token:csrf,users_id:String(seed.users.admin),punch_date:'2026-10-21','records[0][time]':'08:00','records[1][time]':'17:00',absence_action:'set',absence_kind:'justified',...extra},maxRedirects:0});}
   await punch({'absence_files[]':{name:'qa.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 synthetic QA')}});
   const before=snapshot();const files=inventory();
+  assert(Object.keys(JSON.parse(files).files).length>0,'Fixture must inspect the actual GLPI attachment directory');
   assert.equal((await punch({'records[1][time]':'bad',absence_kind:'unjustified'})).status(),302);
   assert.deepEqual(snapshot(),before,'failed day modified absence or punches');assert.equal(inventory(),files,'failed day deleted old attachment');
   assert.equal((await punch({'absence_files[0]':{name:'qa-new.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 synthetic QA')},'absence_files[1]':{name:'bad.exe',mimeType:'application/octet-stream',buffer:Buffer.from('synthetic')}})).status(),302);
@@ -39,7 +40,7 @@ const operation=(mode,args={})=>fixture('operations-fixture',{mode,user:'securit
   assert.equal(await row.locator('.te-select,.te-action[data-action=sync]').count(),0);
   assert.equal(await row.locator('.te-edit:disabled').count(),1);
   for(const theme of ['light','dark'])for(const width of [390,1366]){
-   await page.setViewportSize({width,height:768});await page.locator('html').evaluate((el,theme)=>el.setAttribute('data-glpi-theme',theme),theme);
+   await page.setViewportSize({width,height:768});await page.reload();await page.locator('html').evaluate((el,theme)=>{el.setAttribute('data-glpi-theme',theme==='dark'?'auror_dark':'auror');el.setAttribute('data-glpi-theme-dark',theme==='dark'?'1':'0');},theme);
    await page.locator('#te-recovery-'+entry).evaluate(el=>el.open=true);
    const button=page.locator('#te-recovery-'+entry+' button');await button.scrollIntoViewIfNeeded();await button.click({trial:true});
   }

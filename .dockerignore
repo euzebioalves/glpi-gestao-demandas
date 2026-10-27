@@ -1,0 +1,5 @@
+# The GLPI Dockerfile installs system packages only; it never copies workspace data.
+**
+!docker/
+!docker/glpi/
+!docker/glpi/Dockerfile
