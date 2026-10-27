@@ -1,0 +1,46 @@
+name: Security and regression
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 10 * * 1'
+
+permissions:
+  contents: read
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PLAYWRIGHT_CHANNEL: chromium
+    steps:
+      # Public repository: no token, third-party action or persisted credential needed.
+      - name: Checkout exact event commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git init .
+          git remote add origin https://github.com/euzebioalves/glpi-gestao-demandas.git
+          git fetch --depth=1 origin "$GITHUB_SHA"
+          git checkout --detach FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Locked test dependencies and advisories
+        run: |
+          npm ci --ignore-scripts
+          npm audit --audit-level=high
+          npx --no-install playwright install --with-deps chromium
+      - name: Offline checks and negative controls
+        run: |
+          python3 scripts/quality/check.py
+          python3 scripts/quality/selftest.py
+      - name: Clean Docker installation and regressions
+        run: python3 scripts/quality/run.py --provision-ci --integration
+      - name: Package checksums
+        run: cat dist/quality/*.sha256 >> "$GITHUB_STEP_SUMMARY"

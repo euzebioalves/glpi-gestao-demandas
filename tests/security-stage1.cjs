@@ -9,7 +9,7 @@ function fixture(input){const r=spawnSync('docker',['exec','-i','demandas-test-0
 (async()=>{
  const password=randomBytes(24).toString('hex');
  const seed=fixture({mode:'seed',password});
- const browser=await chromium.launch({channel:'msedge',headless:true});
+ const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'msedge',headless:true});
  async function login(role){const context=await browser.newContext();const page=await context.newPage();await page.goto(base);await page.locator('[name=login_name]').fill('security-'+role);await page.locator('[name=login_password]').fill(password);await Promise.all([page.waitForNavigation(),page.locator('[name=submit]').click()]);return {context,page};}
  async function post(context,page,path,form,csrf=true){await page.reload();const token=await page.locator('input[name=_glpi_csrf_token]').first().inputValue();return context.request.post(base+'/plugins/demandas/front/'+path,{form:{...form,...(csrf?{_glpi_csrf_token:token}:{})},maxRedirects:0});}
  try{

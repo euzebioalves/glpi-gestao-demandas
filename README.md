@@ -1,5 +1,9 @@
 # MVP de Gestão de Demandas — GLPI + OpenProject
 
+## Plugin 0.36.0 — validação contínua de segurança
+
+Etapa 5: pipeline de regressão, política estática PHP, verificação de segredos, dependências de testes fixadas e pacote conferido. Sem alteração funcional, de dados ou de permissões. Validação local aprovada; veja [docs/RELEASE_0.36.0.md](docs/RELEASE_0.36.0.md) e [docs/VALIDACAO_CONTINUA.md](docs/VALIDACAO_CONTINUA.md).
+
 ## Plugin 0.35.0 — indicadores e tratamento de pendências
 
 Etapa 4 validada em homologação: histórico observado compartilhado, qualidade explícita dos dados, rodadas parciais sem resolução automática e acompanhamento com responsável, prazo, motivo e auditoria. Dados e direitos preservados. Veja [docs/RELEASE_0.35.0.md](docs/RELEASE_0.35.0.md).

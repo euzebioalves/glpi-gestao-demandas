@@ -1,5 +1,13 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.36.0 — revisão, etapa 5
+
+0.35.0 confirmada em produção pelo usuário. Etapa 5 na branch `codex/security-continuous-validation`: `scripts/quality` reúne política estática por tokens, segredos conhecidos, lockfile, regressão Docker, inventário PHP e pacote determinístico. Workflow sem segredos de produção, token de leitura e runner efêmero. Não muda regras, banco ou direitos. Não adicionar analisadores/dependências sem decisão conforme AGENTS.md.
+
+Testes mutáveis são exclusivos de `demandas-test-021-glpi` / `demandas-test-021-db` (8386); nunca executar contra 8180. O fixture de operações usa o usuário sintético security-admin e grava credenciais pelo CredentialStore. Relatórios/pacotes ficam em dist/quality; backups privados em dist nunca são publicados. Cobertura, limitações e comandos em `docs/VALIDACAO_CONTINUA.md` e `docs/RELEASE_0.36.0.md`. Execução remota acompanhada no PR #21; merge e release exigem conferir o resultado do workflow do commit publicado.
+
+Suíte integrada local aprovada: instalação limpa/repetida, 66 regras de dashboard, 36 indicadores, credenciais/conteúdo, rede, perfis/CSRF, operações e webhook. Cinco controles negativos e pacote determinístico conferidos. Fixture de indicadores fixa o instante de referência; anexos são conferidos pelo GLPI_DOC_DIR real e por hashes/metadados. Homologação 8180 ativa em 0.36.0, com os 22 hashes de dados/configuração/direitos idênticos antes/depois. Validação humana aprovada em 27/10/2026; publicação da main e release autorizadas pelo usuário.
+
 ## Atualização 0.35.0 — revisão, etapa 4
 
 `StageObservation` compartilha a sequência local entre dashboard e central; `IndicatorPolicy` valida datas, frescor, nomes iniciais configurados, entrega exata e categoria segura de falha. A leitura de eventos conserva a última falha até uma observação bem-sucedida posterior. Não inferir indisponibilidade/permissão por texto de exceção. Novos eventos de sincronização guardam apenas categoria allowlist, sem regravar históricos. Fases públicas e filtros remotos abertos permanecem independentes.
