@@ -63,7 +63,7 @@ try {
     (new SynchronizationService())->synchronizeByWorkPackage((int) $workPackage['id'], 'creation');
     Session::addMessageAfterRedirect('Work Package criada e vinculada com sucesso.', true, INFO);
 } catch (Throwable $exception) {
-    Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+    Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
 }
 
 Html::redirect('/front/ticket.form.php?id=' . $ticketId . '&forcetab=GlpiPlugin\\Demandas\\TicketDemand$1');

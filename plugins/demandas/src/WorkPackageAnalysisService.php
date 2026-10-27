@@ -240,6 +240,7 @@ final class WorkPackageAnalysisService
         if ($selectedIds === []) {
             return ['text' => 'Nenhum anexo foi selecionado.', 'results' => []];
         }
+        if (count($selectedIds) > 5) throw new RuntimeException('Selecione até cinco anexos por análise.');
         $sections = [];
         $results = [];
         foreach ($attachments as $attachment) {
@@ -263,6 +264,8 @@ final class WorkPackageAnalysisService
             return null;
         }
         $extension = mb_strtolower(pathinfo((string) ($attachment['name'] ?? ''), PATHINFO_EXTENSION));
+        try { AttachmentSecurity::inspect($path, $extension); }
+        catch (\DomainException) { return null; }
         $text = match ($extension) {
             'txt', 'csv', 'json', 'xml' => file_get_contents($path) ?: null,
             'pdf' => $this->runTool(['timeout', '25s', 'pdftotext', '-layout', $path, '-']),
@@ -280,12 +283,13 @@ final class WorkPackageAnalysisService
             return null;
         }
         try {
-            $this->runTool([
+            $converted = $this->runTool([
                 'timeout', '35s', 'libreoffice', '--headless', '--nologo', '--nolockcheck',
                 '-env:UserInstallation=file://' . $directory . '/profile', '--convert-to', 'txt:Text', '--outdir', $directory, $path,
             ]);
+            if ($converted === null) return null;
             $files = glob($directory . '/*.txt') ?: [];
-            return $files === [] ? null : (file_get_contents($files[0]) ?: null);
+            return $files === [] ? null : (file_get_contents($files[0], false, null, 0, 1024 * 1024) ?: null);
         } finally {
             $this->removeDirectory($directory);
         }
@@ -293,17 +297,41 @@ final class WorkPackageAnalysisService
 
     private function runTool(array $command): ?string
     {
+        // No new dependency: Linux timeout/prlimit are supplied by the GLPI image.
+        // Without these guards, fail closed for conversion (plain text remains available).
+        if (!is_executable('/usr/bin/prlimit') || !is_executable('/usr/bin/timeout')) return null;
+        $command = array_slice($command, 2); // replace the old timeout wrapper
+        $command = array_merge(['/usr/bin/timeout', '-k', '2s', '35s', '/usr/bin/prlimit',
+            '--as=1073741824', '--cpu=30', '--fsize=16777216', '--'], $command);
         $pipes = [];
         $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        if (!is_resource($process)) {
-            return null;
-        }
+        if (!is_resource($process)) return null;
         fclose($pipes[0]);
-        $output = stream_get_contents($pipes[1]);
-        stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        return proc_close($process) === 0 && is_string($output) ? $output : null;
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+        $output = '';
+        $bytes = 0;
+        $deadline = microtime(true) + 38;
+        $exit = -1;
+        try {
+            do {
+                $chunk = fread($pipes[1], 65536);
+                $errors = fread($pipes[2], 65536);
+                $bytes += strlen($chunk ?: '') + strlen($errors ?: '');
+                if ($bytes > 1024 * 1024 || microtime(true) > $deadline) {
+                    proc_terminate($process);
+                    return null;
+                }
+                $output .= $chunk ?: '';
+                $status = proc_get_status($process);
+                if (!$status['running'] && $status['exitcode'] >= 0) $exit = $status['exitcode'];
+                if (!$status['running'] && feof($pipes[1]) && feof($pipes[2])) break;
+                usleep(10000);
+            } while (true);
+            return $exit === 0 ? $output : null;
+        } finally {
+            fclose($pipes[1]); fclose($pipes[2]); proc_close($process);
+        }
     }
 
     private function removeDirectory(string $directory): void

@@ -42,7 +42,7 @@ final class SynchronizationService
                 $errors[] = sprintf(
                     '#%d: %s',
                     (int) ($link['openproject_work_package_id'] ?? 0),
-                    $exception->getMessage()
+                    IntegrationSecurity::message($exception)
                 );
             }
         }

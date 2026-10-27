@@ -11,13 +11,19 @@ final class Config
 
     public static function all(): array
     {
-        return \Config::getConfigurationValues(self::CONTEXT);
+        $values = \Config::getConfigurationValues(self::CONTEXT);
+        foreach (CredentialStore::KEYS as $key) {
+            if (isset($values[$key])) $values[$key] = CredentialStore::decode((string) $values[$key]);
+        }
+        return $values;
     }
 
     public static function get(string $key, mixed $default = null): mixed
     {
-        $values = self::all();
-        return $values[$key] ?? $default;
+        $values = \Config::getConfigurationValues(self::CONTEXT, [$key]);
+        $value = $values[$key] ?? $default;
+        return isset($values[$key]) && in_array($key, CredentialStore::KEYS, true)
+            ? CredentialStore::decode((string) $value) : $value;
     }
 
     public static function save(array $input): void
@@ -70,7 +76,10 @@ final class Config
             $values['glpi_external_url'] = rtrim($values['glpi_external_url'], '/');
         }
 
-        \Config::setConfigurationValues(self::CONTEXT, $values);
+        foreach (['openproject_internal_url', 'openproject_external_url', 'glpi_external_url'] as $key) {
+            if (isset($values[$key]) && $values[$key] !== '') $values[$key] = IntegrationSecurity::baseUrl($values[$key]);
+        }
+        CredentialStore::saveConfig($values);
     }
 
     public static function isAutomationReady(): bool
@@ -103,14 +112,16 @@ final class Config
             return '';
         }
 
-        $db = \DBConnection::getReadConnection();
+        // Read on the same primary as the encryption marker; replicas may lag during migration.
+        global $DB;
+        $db = $DB;
         foreach ($db->request([
             'SELECT' => ['openproject_api_token'],
             'FROM' => self::USER_TOKENS_TABLE,
             'WHERE' => ['users_id' => $userId],
             'LIMIT' => 1,
         ]) as $row) {
-            return trim((string) ($row['openproject_api_token'] ?? ''));
+            return trim(CredentialStore::decode((string) ($row['openproject_api_token'] ?? '')));
         }
 
         return '';
@@ -129,7 +140,9 @@ final class Config
         }
 
         $token = trim($token);
-        $db = \DBConnection::getReadConnection();
+        global $DB;
+        $db = $DB;
+        CredentialStore::migrate();
         $existing = null;
         foreach ($db->request([
             'FROM' => self::USER_TOKENS_TABLE,
@@ -149,16 +162,16 @@ final class Config
 
         $values = [
             'users_id' => $userId,
-            'openproject_api_token' => $token,
+            'openproject_api_token' => CredentialStore::encode($token),
             'date_mod' => date('Y-m-d H:i:s'),
         ];
         if ($existing !== null) {
-            $db->update(self::USER_TOKENS_TABLE, $values, ['id' => (int) $existing['id']]);
+            OperationGuard::write($db->update(self::USER_TOKENS_TABLE, $values, ['id' => (int) $existing['id']]));
             return;
         }
 
         $values['date_creation'] = date('Y-m-d H:i:s');
-        $db->insert(self::USER_TOKENS_TABLE, $values);
+        OperationGuard::write($db->insert(self::USER_TOKENS_TABLE, $values));
     }
 
     /** A autorização acompanha exclusivamente os direitos do perfil ativo no GLPI. */
@@ -185,7 +198,7 @@ final class Config
         $secret = trim((string) self::get('webhook_secret', ''));
         if ($secret === '') {
             $secret = bin2hex(random_bytes(32));
-            \Config::setConfigurationValues(self::CONTEXT, ['webhook_secret' => $secret]);
+            CredentialStore::saveConfig(['webhook_secret' => $secret]);
         }
 
         return $secret;

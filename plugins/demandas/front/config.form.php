@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Session::addMessageAfterRedirect('Configuração salva.', true, INFO);
         }
     } catch (Throwable $exception) {
-        Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+        Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
     }
 
     if ($isPersonalAction) {
@@ -165,7 +165,7 @@ if ($canManageConfiguration && DemandasConfig::isAutomationReady()) {
     try {
         $statuses = OpenProjectClient::forAutomation()->getStatuses();
     } catch (Throwable $exception) {
-        $statusLoadError = $exception->getMessage();
+        $statusLoadError = \GlpiPlugin\Demandas\IntegrationSecurity::message($exception);
     }
 }
 $configuredMapping = StatusMapper::configuredMapping();
@@ -283,6 +283,10 @@ function demandasRenderConfigurationTutorial(): void
     <p>Em <strong>Entradas de Tempo</strong>, um envio com resposta perdida fica em <strong>Conferir envio</strong>. Confira as horas na WP do OpenProject. Se o lançamento existe, informe o ID da entrada de tempo: o plugin valida usuário, WP, atividade, data, duração e comentário antes de associar, sem criar outra entrada. Se não existe, marque explicitamente a confirmação para liberar nova tentativa. Esta decisão é auditada; declarar ausência sem conferir pode duplicar horas.</p>
     <p>Estados <strong>Atualização pendente</strong> e <strong>Exclusão pendente</strong> conservam a operação original no mesmo ID remoto. Use <strong>Sincronizar</strong> para concluir antes de fazer outra edição. Em caso de recusa de permissão, corrija o acesso no OpenProject e repita. Não exclua o registro local para contornar uma falha de comunicação.</p>
     <p>Ponto e ausência do mesmo dia são salvos juntos; se houver erro, corrija os campos e reenvie o formulário. Acompanhamentos automáticos com falha ficam em fila: repita a sincronização do chamado após resolver o problema. A fila mantém a mensagem e a privacidade configuradas no momento da transição, sem alterar as permissões do perfil.</p>
+    <h3 class="h4">Proteção de credenciais e arquivos</h3>
+    <p>Os tokens e o segredo do webhook são criptografados com a chave nativa do GLPI. A atualização conserva os valores: não é necessário cadastrar novamente. O backup precisa incluir banco, documentos e o diretório de configuração com <code>glpicrypt.key</code>. Preserve essa chave; trocar somente o código por uma versão anterior não desfaz a criptografia. Use o procedimento nativo do GLPI para rotacionar a chave, com o plugin ativo.</p>
+    <p>Informe URLs HTTP(S) sem usuário/senha, parâmetros ou fragmentos. Use HTTPS em produção e a URL final da API: redirecionamentos não são seguidos. Erros da API exibem uma referência para a infraestrutura localizar no log protegido, sem registrar corpos ou credenciais.</p>
+    <p>O webhook aceita até 2 MB e mantém a assinatura existente. Anexos são conferidos pelo conteúdo real: até 15 MB por arquivo, 20 por operação de ponto ou edição de documentação. Imagens limitadas a 40 milhões de pixels; arquivos compactados têm limites de expansão. Formatos incompatíveis são recusados sem apagar anexos anteriores. Na preparação de contexto, selecione até cinco anexos; conversões exigem as ferramentas locais com <code>timeout</code> e <code>prlimit</code>. Arquivos que excedam os limites são indicados como não extraídos.</p>
     <h3 class="h4">Checklist de validação</h3>
     <ul class="mb-0">
       <li>o teste de conexão automática foi concluído sem erro;</li>

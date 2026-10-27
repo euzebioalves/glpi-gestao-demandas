@@ -100,7 +100,7 @@ final class ClassificationPolicy
                     return ['value' => $value, 'label' => self::ruleLabel($value)];
                 }
             } catch (\Throwable $exception) {
-                throw new RuntimeException('Não foi possível ler a classificação configurada: ' . $exception->getMessage(), 0, $exception);
+                throw new RuntimeException('Não foi possível ler a classificação configurada. Solicite a verificação da origem ao administrador.', 0, $exception);
             }
             return ['value' => '', 'label' => 'Sem classificação'];
         }

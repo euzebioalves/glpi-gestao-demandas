@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             Session::addMessageAfterRedirect('Exceção individual salva.', true, INFO);
         }
     } catch (Throwable $exception) {
-        Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+        Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
     }
     Html::redirect('/plugins/demandas/front/timeclock-admin.php');
 }

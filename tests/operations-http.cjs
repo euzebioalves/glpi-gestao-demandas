@@ -24,6 +24,11 @@ const operation=(mode,args={})=>fixture('operations-fixture',{mode,user:'securit
   assert.deepEqual(snapshot(),before,'failed day modified absence or punches');assert.equal(inventory(),files,'failed day deleted old attachment');
   assert.equal((await punch({'absence_files[0]':{name:'qa-new.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.4 synthetic QA')},'absence_files[1]':{name:'bad.exe',mimeType:'application/octet-stream',buffer:Buffer.from('synthetic')}})).status(),302);
   assert.deepEqual(snapshot(),before,'partial upload changed DB');assert.equal(inventory(),files,'partial upload left a new file');
+  for (const name of ['fake.png','fake.pdf','fake.docx']) {
+   await punch({'absence_files[]':{name,mimeType:'application/pdf',buffer:Buffer.from('<?php echo "invalid";')}});
+   assert.deepEqual(snapshot(),before,'forged attachment changed DB');assert.equal(inventory(),files,'forged attachment left file');
+  }
+  console.log('PASS: forged contents rejected regardless of browser MIME; previous files and records preserved');
   console.log('PASS: multipart failure preserves existing files, rolls back records and cleans newly uploaded files');
   const entry=operation('create').id;
   docker(['sh','-c','cat > /tmp/operations-api-mode'],'lost');operation('sync',{id:entry});

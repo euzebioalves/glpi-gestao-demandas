@@ -88,6 +88,7 @@ function plugin_demandas_install(): bool
 {
     global $DB;
     $db = $DB; // O instalador deve usar a conexão de escrita do GLPI.
+    \GlpiPlugin\Demandas\CredentialStore::register();
     plugin_demandas_migrate_timestamps($db);
 
     $db->doQuery("CREATE TABLE IF NOT EXISTS `glpi_plugin_demandas_followup_jobs` (
@@ -361,8 +362,8 @@ function plugin_demandas_install(): bool
         'plugin_update_last_checked_at' => '',
         'plugin_update_last_error' => '',
     ];
-    $current = Config::getConfigurationValues('plugin:demandas');
-    Config::setConfigurationValues('plugin:demandas', $current + $defaults);
+    $current = \GlpiPlugin\Demandas\Config::all();
+    Config::setConfigurationValues('plugin:demandas', array_diff_key($defaults, $current));
     CronTask::register(\GlpiPlugin\Demandas\PluginUpdateService::class, 'checkRelease', DAY_TIMESTAMP, [
         'comment' => 'Verificar novas releases publicadas do plugin Gestão de Demandas',
         'mode' => CronTask::MODE_EXTERNAL,
@@ -375,6 +376,8 @@ function plugin_demandas_install(): bool
             'openproject_automation_api_token' => (string) $current['openproject_api_token'],
         ]);
     }
+
+    \GlpiPlugin\Demandas\CredentialStore::migrate();
 
     $profileRight = new ProfileRight();
     foreach (DemandasProfile::getAllRights() as $right) {

@@ -24,6 +24,6 @@ try {
         Session::addMessageAfterRedirect('Situação da pendência atualizada e registrada na auditoria.', true, INFO);
     }
 } catch (\Throwable $exception) {
-    Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+    Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
 }
 Html::redirect('/plugins/demandas/front/operational-health.php');

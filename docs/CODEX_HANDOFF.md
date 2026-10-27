@@ -1,5 +1,17 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.34.0 — segurança, etapa 3
+
+Produção confirmou MariaDB e funcionamento da 0.33.0. A etapa 3 protege credenciais e conteúdo sem modificar direitos, vínculos, saldos ou fases públicas. `CredentialStore` migra tokens pessoais, automático/legado e segredo de webhook em transação, com marcador `credentials_encrypted_0340`. Usa ciphertext nativo de `GLPIKey`, registrado em `SECURED_CONFIGS`/`SECURED_FIELDS` para rotação. Não adicionar prefixos ao ciphertext ou gravar valores diretamente por SQL. `Config::get` decifra apenas o segredo solicitado; `Config::all` entrega valores decifrados para os fluxos internos autorizados.
+
+O instalador grava somente configurações ausentes, sem recriptografar valores atuais. Backup inclui `glpicrypt.key`; rollback exige o conjunto banco/configuração compatível. Chave ausente/inválida falha sem substituição automática dos segredos.
+
+`IntegrationSecurity` valida URLs e caminhos e apresenta erros seguros mantendo a exceção anterior para a classificação de operações incertas da etapa 2. Não remover essa cadeia: respostas perdidas não podem liberar outro POST. Log novo contém apenas referência/categoria/status, sem payloads. Históricos anteriores são preservados.
+
+`AttachmentSecurity` verifica bytes/tamanho/MIME e limites de imagens/arquivos compactados. Não extrai ZIP nem promete antivírus. Webhook: 2 MB/64 níveis, assinatura sobre bytes originais. API: sem redirects, até 16 MB/64 níveis. Extração: até cinco anexos, `timeout`/`prlimit`, drenagem não bloqueante de stdout/stderr e descarte de conversões falhas. Ausência das ferramentas desabilita conversão, sem instalar dependências automaticamente.
+
+Roteiro, riscos residuais e testes em `docs/RELEASE_0.34.0.md`. Implementação local na branch `codex/security-credentials-content`. Homologação atualizada/ativa em 0.34.0; hashes semânticos antes/depois coincidiram, incluindo tokens e permissões. Imagem reconstruída pelo Dockerfile existente com PDF/Office/OCR, sem trocar as versões-base ou volumes. Conexão automática local confirmada. Backups de banco/configuração em `dist/` ignorado; Validação humana local aprovada e publicação da 0.34.0 na main autorizada pelo usuário.
+
 ## Atualização 0.33.0 — segurança, etapa 2
 
 `OperationGuard` usa locks de conexão no banco primário para serializar entradas de tempo/ponto por usuário e sincronizações por vínculo, além de transações nativas do GLPI. O ambiente-base é MariaDB 11.4; a verificação de transação externa usa `@@session.in_transaction` (não transportar sem revisão para outro SGBD). Locks liberam ao encerrar a conexão; o estado de envio incerto persiste antes do POST remoto.

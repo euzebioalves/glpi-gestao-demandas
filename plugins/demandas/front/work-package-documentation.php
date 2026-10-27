@@ -53,7 +53,7 @@ try {
     throw $exception;
 } catch (Throwable $exception) {
     http_response_code(400);
-    $result = ['error' => $exception instanceof DomainException ? $exception->getMessage() : 'Não foi possível concluir a operação no OpenProject. Confira o token, as permissões e os dados. Seu texto permanece no editor.'];
+    $result = ['error' => $exception instanceof DomainException ? \GlpiPlugin\Demandas\IntegrationSecurity::message($exception) : 'Não foi possível concluir a operação no OpenProject. Confira o token, as permissões e os dados. Seu texto permanece no editor.'];
 }
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode($result + ['csrf' => Session::getNewCSRFToken()], JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);

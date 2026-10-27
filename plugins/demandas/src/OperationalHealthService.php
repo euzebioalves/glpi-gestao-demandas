@@ -76,7 +76,7 @@ final class OperationalHealthService
         } catch (\Throwable $exception) {
             $this->db->update(self::RUNS, [
                 'status' => 'error',
-                'error_message' => mb_substr($exception->getMessage(), 0, 2000),
+                'error_message' => mb_substr(IntegrationSecurity::message($exception), 0, 2000),
                 'finished_at' => date('Y-m-d H:i:s'),
             ], ['id' => $runId]);
             throw $exception;

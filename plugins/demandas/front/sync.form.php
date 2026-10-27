@@ -31,7 +31,7 @@ try {
         INFO
     );
 } catch (Throwable $exception) {
-    Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+    Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
 }
 
 Html::redirect('/front/ticket.form.php?id=' . $ticketId . '&forcetab=GlpiPlugin\\Demandas\\TicketDemand$1');

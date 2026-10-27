@@ -23,6 +23,6 @@ try {
         Session::addMessageAfterRedirect('Permissões individuais atualizadas.', true, INFO);
     }
 } catch (Throwable $exception) {
-    Session::addMessageAfterRedirect($exception->getMessage(), true, ERROR);
+    Session::addMessageAfterRedirect(\GlpiPlugin\Demandas\IntegrationSecurity::html($exception), true, ERROR);
 }
 Html::redirect('/front/user.form.php?id=' . $userId . '&forcetab=GlpiPlugin\\Demandas\\UserTimeProfile$1');

@@ -22,7 +22,7 @@ try {
     $ticketId = $ticket?->getID() ?? 0;
 } catch (Throwable $exception) {
     Html::header('Preparar análise em IA', $_SERVER['PHP_SELF'], 'management', WorkPackageMonitoringHub::class);
-    echo "<div class='container-xl'><div class='alert alert-danger'>" . WorkPackageMonitoringView::escape($exception->getMessage()) . "</div><a class='btn btn-outline-primary' href='/plugins/demandas/front/work-package-monitor.php'>Voltar para as Work Packages</a></div>";
+    echo "<div class='container-xl'><div class='alert alert-danger'>" . WorkPackageMonitoringView::escape(\GlpiPlugin\Demandas\IntegrationSecurity::message($exception)) . "</div><a class='btn btn-outline-primary' href='/plugins/demandas/front/work-package-monitor.php'>Voltar para as Work Packages</a></div>";
     Html::footer();
     return;
 }
@@ -59,7 +59,7 @@ foreach (WorkPackageAnalysisService::SECTIONS as $key => $label) {
     $sensitive = in_array($key, ['ticket_description', 'ticket_followups'], true) ? " <span class='badge bg-yellow-lt text-yellow'>Sensível</span>" : '';
     echo "<div class='col-md-6'><label class='form-check form-switch'><input class='form-check-input' type='checkbox' name='sections[]' value='" . WorkPackageMonitoringView::escape($key) . "'" . $checked . "><span class='form-check-label'>" . WorkPackageMonitoringView::escape($label) . $sensitive . '</span></label></div>';
 }
-echo "</div><h2 class='h3'>Anexos</h2>";
+echo "</div><h2 class='h3'>Anexos</h2><p class='text-muted'>Selecione até cinco anexos de até 15 MB. Arquivos incompatíveis ou que excedam os limites de processamento serão indicados como não extraídos.</p>";
 if (!$hasTicket) {
     echo "<p class='text-muted'>A extração de anexos fica disponível quando a WP possui chamado GLPI vinculado.</p>";
 } elseif ($context['attachments'] === []) {

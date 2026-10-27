@@ -468,7 +468,7 @@ final class TicketDemand extends CommonDBTM
         try {
             $projects = OpenProjectClient::forCurrentUser()->getProjects();
         } catch (\Throwable $exception) {
-            echo "<div class='alert alert-danger'>" . htmlspecialchars($exception->getMessage()) . '</div>';
+            echo "<div class='alert alert-danger'>" . htmlspecialchars(IntegrationSecurity::message($exception)) . '</div>';
             return;
         }
 

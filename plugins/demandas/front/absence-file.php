@@ -28,5 +28,6 @@ header('Content-Type: ' . $mime);
 header('Content-Length: ' . (string) filesize($path));
 header("Content-Disposition: attachment; filename*=UTF-8''" . rawurlencode($originalName));
 header('X-Content-Type-Options: nosniff');
+header('Cache-Control: private, no-store');
 readfile($path);
 exit;
