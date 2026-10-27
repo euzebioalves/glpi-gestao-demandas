@@ -13,7 +13,7 @@ final class DeliveryReview
 
     public static function delivered(string $status): bool
     {
-        return mb_strtolower(trim($status)) === 'entregue';
+        return IndicatorPolicy::delivered($status);
     }
 
     public static function state(array $links): string
@@ -44,7 +44,7 @@ final class DeliveryReview
             $status = trim((string) ($link['openproject_status'] ?? '')) ?: 'Status não informado';
             $date = (string) ($link['last_synced_at'] ?? '');
             $ts = $date !== '' ? strtotime($date) : false;
-            $stale = !$ts || $ts > time() || $ts < strtotime('-7 days');
+            $stale = IndicatorPolicy::freshness($date) !== 'current';
             $html .= '<li class="mb-2">' . self::wpLink($id) . ' — <strong>' . htmlspecialchars($status, ENT_QUOTES) . '</strong>'
                 . '<br><small class="text-muted">Última sincronização: ' . ($ts ? date('d/m/Y H:i', $ts) : 'não registrada')
                 . ($stale ? ' — dados desatualizados; sincronize antes de decidir' : '') . '</small></li>';

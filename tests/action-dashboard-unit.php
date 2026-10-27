@@ -16,7 +16,7 @@ namespace GlpiPlugin\Demandas {
         public static function checkRight(string $right): void { if (!self::has($right)) throw new \Glpi\Exception\Http\AccessDeniedHttpException(); }
     }
     class Config { public static function get($key,$default='') { return 'https://example.invalid'; } }
-    class ClassificationPolicy { public static function resolve(\Ticket $ticket): array { return ['label'=>$ticket->fields['classification']]; } }
+    class ClassificationPolicy { public static bool $fail=false; public static function resolve(\Ticket $ticket): array { if(self::$fail) throw new \RuntimeException('Synthetic unavailable source'); return ['label'=>$ticket->fields['classification']]; } }
 }
 namespace {
     date_default_timezone_set('UTC');
@@ -50,7 +50,7 @@ namespace {
                     break;
                 case 'glpi_plugin_demandas_events':
                     foreach ($this->events as $row) if (in_array($row['tickets_id'],$query['WHERE']['tickets_id'],true)
-                        && $row['is_success']===$query['WHERE']['is_success'] && in_array($row['event_type'],$query['WHERE']['event_type'],true)) yield $row;
+                        && (!isset($query['WHERE']['is_success']) || $row['is_success']===$query['WHERE']['is_success']) && in_array($row['event_type'],$query['WHERE']['event_type'],true)) yield $row;
                     break;
                 case 'glpi_tickets_users':
                     foreach ($this->owners as $row) if (in_array($row['tickets_id'],$query['WHERE']['glpi_tickets_users.tickets_id'],true)) yield $row;
@@ -66,6 +66,8 @@ namespace {
             $this->preferences=[$where+$values]; return true;
         }
     }
+    require __DIR__.'/../plugins/demandas/src/IndicatorPolicy.php';
+    require __DIR__.'/../plugins/demandas/src/StageObservation.php';
     require __DIR__.'/../plugins/demandas/src/ActionDashboard.php';
     require __DIR__.'/../plugins/demandas/src/ActionDashboardPanel.php';
     require __DIR__.'/../plugins/demandas/src/DeliveryReview.php';
@@ -153,9 +155,9 @@ namespace {
     same($stale['work_packages'][0]['stage_days'],20,'Stale observation ends at sync, not now');
     same($stale['attention']['stale'],A::REASONS['stale'],'Stale warning');
     same(str_contains(Panel::workPackages($one['work_packages']),'<script>'),false,'Owner/status HTML escaped');
-    ob_start(); Panel::show($result['actions'],$result['filters']); $panel=ob_get_clean();
+    ob_start(); Panel::show($result['actions'],$result['filters']); Panel::stages($result['actions'],$result['filters']); $panel=ob_get_clean();
     same(str_contains($panel,'aria-label="Precisam de ação"'),true,'Attention section renders');
-    same(str_contains($panel,'aria-label="Envelhecimento por etapa"'),true,'Age section renders');
+    same(str_contains($panel,'Envelhecimento por etapa'),true,'Age section renders');
     same(str_contains($panel,'<script>'),false,'Panel escapes owner values');
     foreach ($DB->queries as $query) if (in_array($query['FROM'],['glpi_plugin_demandas_events','glpi_tickets_users'],true)) {
         $ids=$query['WHERE'][$query['FROM']==='glpi_tickets_users'?'glpi_tickets_users.tickets_id':'tickets_id'];
@@ -194,5 +196,10 @@ namespace {
     denied(fn()=>$service->result(['view'=>'bugs']),'No technical access');
     P::$rights=[];
     denied(fn()=>$service->result(['view'=>'general']),'No dashboard access');
+    P::$rights=[P::VIEW_DASHBOARD,P::VIEW_TECHNICAL,P::VIEW_BUGS_DASHBOARD];
+    \GlpiPlugin\Demandas\ClassificationPolicy::$fail=true;
+    $incomplete=$service->result(['view'=>'bugs']);
+    same($incomplete['classification_unavailable']>0,true,'Unavailable classification explicitly counted before focused exclusion');
+    same($incomplete['rows'],[],'Unavailable classification is not invented as bug/improvement');
     echo "PASS: $checks isolated rule assertions (not native GLPI/E2E).\n";
 }

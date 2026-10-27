@@ -1,5 +1,9 @@
 # Gestão de Demandas
 
+## Versão 0.35.0 — indicadores e tratamentos
+
+A Central de Pendências usa o histórico observado de etapas compartilhado com o dashboard. Distingue dados desatualizados, não consultados, datas inválidas, histórico insuficiente e falhas de sincronização. Rodadas incompletas não resolvem pendências anteriores. Acompanhamento com responsável voluntário, prazo, observação e adiamento justificado, com histórico auditável e gravação atômica. Atualização aditiva preserva dados e permissões. Roteiro e limitações: [RELEASE_0.35.0.md](../../docs/RELEASE_0.35.0.md).
+
 ## Versão 0.34.0 — segurança, etapa 3
 
 Tokens e segredo do webhook criptografados com a chave nativa do GLPI, preservando os valores existentes e a rotação nativa. URLs e redirecionamentos protegidos, erros sem detalhes sensíveis, uploads conferidos pelo conteúdo e limites de webhook/conversores. Dados, permissões e regras de negócio preservados.
@@ -767,4 +771,4 @@ O endereço de saúde acessível no navegador é `http://localhost:8180/plugins/
 5. informe as URLs e o token registrado em `integration.env`;
 6. execute **Salvar e testar conexão**.
 
-Esta versão é destinada exclusivamente à homologação local.
+A versão 0.35.0 foi validada em homologação e aprovada para instalação em produção. Em atualizações, faça backup do banco, documentos e configuração (incluindo glpicrypt.key) e use Atualizar, sem desinstalar o plugin.

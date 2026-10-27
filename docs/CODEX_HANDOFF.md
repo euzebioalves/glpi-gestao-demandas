@@ -1,5 +1,13 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.35.0 — revisão, etapa 4
+
+`StageObservation` compartilha a sequência local entre dashboard e central; `IndicatorPolicy` valida datas, frescor, nomes iniciais configurados, entrega exata e categoria segura de falha. A leitura de eventos conserva a última falha até uma observação bem-sucedida posterior. Não inferir indisponibilidade/permissão por texto de exceção. Novos eventos de sincronização guardam apenas categoria allowlist, sem regravar históricos. Fases públicas e filtros remotos abertos permanecem independentes.
+
+`OperationalHealthService` usa conexão primária, lock global curto por execução/tratativa e transação. Falhas revertem alterações da rodada; qualquer vínculo com dado ausente/desatualizado/última falha torna o resultado parcial e bloqueia TODAS as resoluções dessa rodada. Só uma rodada completa resolve ocorrências dos chamados efetivamente avaliados, com auditoria de execução e evidência anterior. Migração adiciona colunas nulas owner_users_id/due_date/treatment_note e metrics_json, sem reescrever dados. Direitos permanecem os mesmos. Assumir responsável usa exclusivamente o ator da sessão; prazo validado, adiamento exige motivo. O histórico acessível é limitado a 100 eventos mais recentes, sem exclusão. Não usar essas tratativas para fechar chamados ou alterar WPs.
+
+Versão 0.35.0 instalada e ativa na homologação http://localhost:8180, Validada pelo usuário, com publicação na main e release 0.35.0 autorizadas. Os 22 hashes semânticos de dados/configuração/direitos coincidiram antes/depois; novas colunas ficaram nulas, sem tratativas automáticas. Testes: 36 casos de indicadores/tratativas/rollback, 66 de dashboard, HTTP/CSRF/perfis/responsividade, regressão de operações e instalação limpa/repetida aprovados. Backups privados de banco e configuração/chave em dist/; não publicar esses arquivos. Roteiro e evidências em `docs/RELEASE_0.35.0.md`.
+
 ## Atualização 0.34.0 — segurança, etapa 3
 
 Produção confirmou MariaDB e funcionamento da 0.33.0. A etapa 3 protege credenciais e conteúdo sem modificar direitos, vínculos, saldos ou fases públicas. `CredentialStore` migra tokens pessoais, automático/legado e segredo de webhook em transação, com marcador `credentials_encrypted_0340`. Usa ciphertext nativo de `GLPIKey`, registrado em `SECURED_CONFIGS`/`SECURED_FIELDS` para rotação. Não adicionar prefixos ao ciphertext ou gravar valores diretamente por SQL. `Config::get` decifra apenas o segredo solicitado; `Config::all` entrega valores decifrados para os fluxos internos autorizados.

@@ -19,8 +19,11 @@ try {
     if ($action === 'run') {
         $result = $service->run((int) Session::getLoginUserID());
         Session::addMessageAfterRedirect($result['findings_count'] . ' pendência(s) identificada(s) na verificação local.', true, INFO);
+        if ($result['status'] === 'partial') {
+            Session::addMessageAfterRedirect('Avaliação parcial: há dados ausentes ou desatualizados. Nenhuma pendência anterior foi resolvida automaticamente.', true, WARNING);
+        }
     } else {
-        $service->act((int) ($_POST['finding_id'] ?? 0), $action, (int) Session::getLoginUserID());
+        $service->act((int) ($_POST['finding_id'] ?? 0), $action, (int) Session::getLoginUserID(), $_POST);
         Session::addMessageAfterRedirect('Situação da pendência atualizada e registrada na auditoria.', true, INFO);
     }
 } catch (\Throwable $exception) {

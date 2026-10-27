@@ -13,6 +13,7 @@ final class ActionDashboard
     public const REASONS = [
         'stale' => 'Dados da integração desatualizados',
         'unknown' => 'Status da WP não informado',
+        'sync_failed' => 'Última tentativa de sincronização falhou',
         'closed_pending' => 'Chamado encerrado com WP não entregue',
         'blocked' => 'WP bloqueada ou em dúvida',
         'all_delivered' => 'Todas as WPs entregues — conferir encerramento',
@@ -30,74 +31,29 @@ final class ActionDashboard
 
     public static function stage(string $status): string
     {
+        if (IndicatorPolicy::delivered($status)) return 'delivered';
         return match (self::normalized($status)) {
             'novo', 'em especificacao' => 'specification',
             'a desenvolver', 'planejado', 'a ser planejado' => 'ready',
             'em desenvolvimento', 'em andamento', 'retrabalho' => 'development',
             'desenvolvido', 'aguardando testes', 'em testes', 'testado', 'pronto para entrega' => 'validation',
             'bloqueado', 'em duvida' => 'blocked',
-            'entregue' => 'delivered',
             default => 'other',
         };
     }
 
-    /** Earliest observation in the current uninterrupted LOCAL stage sequence.
-     * Not a claim about the exact transition date in OpenProject.
-     */
     public static function observedSince(array $events, string $current, ?string $lastSync): ?string
     {
-        $state = ['status'=>null, 'since'=>null];
-        $limit = strtotime($lastSync ?? '') ?: 0;
-        if (!$limit || $limit > time()) return null;
-        foreach ($events as $event) {
-            $state = self::advanceObservation($state, $event, $limit);
-        }
-        return trim($current) !== '' && $state['status'] === trim($current) ? $state['since'] : null;
-    }
-
-    private static function advanceObservation(array $state, array $event, int $limit): array
-    {
-        $date = (string) ($event['date_creation'] ?? '');
-        $ts = strtotime($date) ?: 0;
-        if (!$ts || !$limit || $ts > $limit) return $state;
-        $next = trim((string) ($event['new_status'] ?? ''));
-        if ($next === '') return ['status'=>null, 'since'=>null];
-        $previous = trim((string) ($event['previous_status'] ?? ''));
-        // A different preceding stage is evidence of a gap, even when the latest status matches.
-        $stageKey = static fn(string $status): string => self::stage($status) === 'other'
-            ? 'other:' . self::normalized($status) : self::stage($status);
-        $newAssociation = in_array($event['event_type'] ?? '', ['legacy_link_reconciled','legacy_link_transferred'], true);
-        $since = $newAssociation || $state['status'] === null || $stageKey($next) !== $stageKey($state['status'])
-            || ($previous !== '' && $stageKey($previous) !== $stageKey($next)) ? $date : $state['since'];
-        return ['status'=>$next, 'since'=>$since];
+        return StageObservation::observedSince($events, $current, $lastSync);
     }
 
     public static function enrich(array $groups, int $attentionDays, bool $review): array
     {
         if (!$groups) return [];
         $db = \DBConnection::getReadConnection();
-        $history = [];
+        $history = StageObservation::load($db, array_map(static fn($group)=>['links'=>$group['work_packages']], $groups));
         $owners = [];
-        $limits = [];
-        foreach ($groups as $id=>$group) foreach ($group['work_packages'] as $wp) {
-            $limit = strtotime((string)($wp['last_synced_at'] ?? '')) ?: 0;
-            $limits[$id][(int)$wp['openproject_work_package_id']] = $limit <= time() ? $limit : 0;
-        }
         foreach (array_chunk(array_keys($groups), 300) as $ids) {
-            foreach ($db->request([
-                'SELECT'=>['tickets_id','openproject_work_package_id','previous_status','new_status','date_creation','event_type'],
-                'FROM'=>'glpi_plugin_demandas_events',
-                'WHERE'=>['tickets_id'=>$ids,'is_success'=>1,'event_type'=>['work_package_synchronized','legacy_link_reconciled','legacy_link_transferred']],
-                'ORDER'=>['date_creation ASC','id ASC'],
-            ]) as $event) {
-                $ticketId = (int)$event['tickets_id'];
-                $wpId = (int)$event['openproject_work_package_id'];
-                if (empty($limits[$ticketId][$wpId])) continue;
-                // Keep one state per authorized link, not a copy of every historical event.
-                $history[$ticketId][$wpId] = self::advanceObservation(
-                    $history[$ticketId][$wpId] ?? ['status'=>null,'since'=>null], $event, $limits[$ticketId][$wpId]
-                );
-            }
             foreach ($db->request([
                 'SELECT'=>['glpi_tickets_users'=>['tickets_id','users_id'], 'glpi_users'=>['name','realname','firstname']],
                 'FROM'=>'glpi_tickets_users',
@@ -121,13 +77,15 @@ final class ActionDashboard
                 $wp['assignee'] = is_array($details) && is_string($details['assignee'] ?? null) ? trim($details['assignee']) : '';
                 $wp['stage'] = self::stage((string)$wp['openproject_status']);
                 $state = $history[$id][$wpId] ?? ['status'=>null,'since'=>null];
+                $wp['quality'] = $state['failure'] ?? IndicatorPolicy::freshness($wp['last_synced_at'] ?? null);
+                if (isset($state['failure'])) $group['attention']['sync_failed'] = true;
                 $wp['observed_since'] = trim((string)$wp['openproject_status']) !== '' && $state['status'] === trim((string)$wp['openproject_status']) ? $state['since'] : null;
                 // The last successful sync is the upper observation bound, never "now" for stale data.
                 $wp['stage_days'] = $wp['observed_since'] === null ? null : max(0, (int)floor((strtotime($wp['last_synced_at']) - strtotime($wp['observed_since'])) / 86400));
                 $group['stages'][$wp['stage']] = true;
                 if ($wp['responsible'] !== '') $group['op_owners'][$wp['responsible']] = $wp['responsible'];
                 if ($wp['sync_stale']) $group['attention']['stale'] = true;
-                if (trim((string)$wp['openproject_status']) === '') $group['attention']['unknown'] = true;
+                if (!IndicatorPolicy::statusKnown((string)$wp['openproject_status'])) $group['attention']['unknown'] = true;
                 if ($group['is_open'] && $wp['stage'] !== 'delivered') {
                     if ($wp['stage'] === 'blocked') $group['attention']['blocked'] = true;
                     if ($wp['responsible'] === '') $group['attention']['unassigned'] = true;

@@ -40,6 +40,7 @@ $headers = ['Chamado', 'Título', 'Cliente', 'Classificação', 'Status GLPI', '
 $summaryRows = [
     ['Visão', $bugsView ? 'Bugs e Melhorias' : 'Visão geral'],
     ['Filtros aplicados', json_encode($result['filters'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
+    ['Classificação indisponível no escopo inicial (totais por classificação parciais)', $result['classification_unavailable']],
     ['Atualidade', 'Dados locais da última sincronização; não consultados em tempo real'],
     ['Escopo dos chamados', $result['filters']['ticket_scope'] === 'open' ? 'Abertos (exclui solucionados e fechados)' : 'Todos, inclusive solucionados e fechados'],
     ['Chamados no escopo', $summary['total']],
