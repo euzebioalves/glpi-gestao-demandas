@@ -2,7 +2,7 @@
 
 ## Versão 0.36.0 — validação contínua
 
-Automação de testes e controles de segurança do desenvolvimento, inventário de dependências e verificação do pacote. Não modifica regras, dados, schema, credenciais ou permissões. Scripts de teste ficam fora do plugin instalado. Candidata em homologação; veja [RELEASE_0.36.0.md](../../docs/RELEASE_0.36.0.md).
+Automação de testes e controles de segurança do desenvolvimento, inventário de dependências e verificação do pacote. Não modifica regras, dados, schema, credenciais ou permissões. Scripts de teste ficam fora do plugin instalado. Validação local aprovada; veja [RELEASE_0.36.0.md](../../docs/RELEASE_0.36.0.md).
 
 ## Versão 0.35.0 — indicadores e tratamentos
 

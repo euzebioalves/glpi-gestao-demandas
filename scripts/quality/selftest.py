@@ -44,6 +44,8 @@ class Gates(unittest.TestCase):
     def test_php_rules(self):
         with tempfile.TemporaryDirectory(dir=temporary_root) as folder:
             root = Path(folder)
+            # Linux mkdtemp uses 0700; copied fixtures must be readable by www-data.
+            root.chmod(0o755)
             (root / 'plugins/demandas').mkdir(parents=True)
             source = root / 'plugins/demandas/check.php'
             remote = '/tmp/quality-negative-' + root.name

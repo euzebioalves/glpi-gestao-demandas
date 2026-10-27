@@ -1,6 +1,6 @@
 # 0.36.0 — Validação contínua de segurança
 
-Etapa 5 da revisão. A versão 0.35.0 foi confirmada em produção pelo usuário. A 0.36.0 prepara a automação de desenvolvimento e a homologação local; publicação depende de nova validação.
+Etapa 5 da revisão. A versão 0.35.0 foi confirmada em produção pelo usuário. A 0.36.0 foi validada pelo usuário em homologação, com publicação na main e release autorizadas em 27/10/2026.
 
 ## Escopo
 
@@ -33,4 +33,4 @@ Ver [VALIDACAO_CONTINUA.md](VALIDACAO_CONTINUA.md). Scripts e fixtures ficam for
 - Homologação http://localhost:8180 atualizada e ativa em 0.36.0. Os 22 grupos de dados/configurações/direitos mantiveram exatamente os mesmos hashes antes e depois, incluindo valores criptografados e os campos de acompanhamento da etapa 4.
 - Backups privados e evidências locais em dist/before-stage5.sql, dist/before-stage5-config.tar.gz, dist/stage5-before.json, dist/stage5-after.json e dist/stage5-regression.log, ignorados pelo Git. Não distribuir os backups.
 
-O workflow remoto só poderá ser executado depois que a branch for publicada no GitHub; a existência do YAML não comprova uma execução remota bem-sucedida. O provisionamento do runner efêmero também aguarda essa primeira execução. Não houve publicação de release nem alteração em produção nesta etapa.
+A publicação inclui conferência do workflow remoto no [PR #21](https://github.com/euzebioalves/glpi-gestao-demandas/pull/21) e na main antes de disponibilizar o ZIP. O runner é provisionado do zero no GitHub; os fixtures sintéticos são legíveis pelo usuário www-data também no Linux. A instalação em produção é realizada pela infraestrutura após backup.
