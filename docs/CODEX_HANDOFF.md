@@ -1,5 +1,22 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Requisito para a próxima versão — ajuda nos cards de ponto (04/11/2026)
+
+Solicitação do usuário: na próxima versão do plugin, incluir um recurso de ajuda clicável em **todos os cards de Gerência > Horas e Ponto > Registro de Ponto**. Ao clicar, abrir um **modal** com explicação objetiva, em português, do indicador correspondente. Esta anotação registra trabalho pendente; não representa funcionalidade já implementada.
+
+Conteúdo obrigatório, conforme o cálculo atual em `front/timeclock.php` e `TimeManagementService::balance`, `month` e `calculateDay`:
+
+- **Saldo Consolidado:** saldo histórico informado em Minha jornada mais os resultados desde o Início da acumulação até hoje, excluindo os dias sinalizados como incompletos. Não é limitado ao mês exibido. Ausências e dias neutros seguem suas regras existentes.
+- **Saldo Geral:** mesmo saldo histórico e período acumulado, incluindo os resultados dos dias com marcações incompletas, inclusive o dia atual. Quando não houver dias incompletos nesse período, Consolidado e Geral terão o mesmo valor.
+- **Banco de Horas:** soma dos resultados diários do mês selecionado, incluindo dias incompletos, sem adicionar o saldo histórico. Explicar por que pode ficar negativo durante o expediente: somente pares de entrada/saída são somados como tempo trabalhado, enquanto a jornada esperada já participa do cálculo.
+- **Dias Registrados:** quantidade de dias do mês selecionado com pelo menos uma marcação, completos ou incompletos. Não é o número de marcações nem o total de dias úteis; ausência sem marcação não incrementa este card.
+
+Explicar também que feriados/dias não úteis configurados são neutros, assim como dias sem marcação e sem ausência registrada; indicar Minha jornada para consultar saldo histórico/data inicial e Auditoria do banco para conferir a composição. Usar exemplos fictícios simples (por exemplo, crédito de 30 minutos no dia anterior e débito provisório de 8 horas hoje resultam em -7h30 no mês), sem dados reais de usuários.
+
+Critérios de aceite: botão/ícone de ajuda identificável em cada um dos quatro cards, acionável por teclado, modal responsivo e legível nos temas claro/escuro, fechamento acessível e retorno do foco ao botão. A ajuda deve estar disponível a quem já pode consultar o painel, sem exigir permissão administrativa nem ampliar acessos. Validar os textos contra as regras efetivas na implementação.
+
+Atenção à definição atual: `incomplete` é quantidade ímpar de marcações. Dois registros já formam um par e podem entrar no Consolidado, mesmo sem encerrar toda a jornada. Não prometer que esse card contém apenas dias definitivamente encerrados. Este pedido autoriza a ajuda explicativa, não uma mudança de cálculo; qualquer revisão de saldo/jornada exige decisão específica conforme AGENTS.md. Preservar dados, permissões e regras existentes.
+
 ## Documentação de instalação 0.36.0 — 27/10/2026
 
 Release publicada no commit `0b6a1cf82f4e1acce205b174fea735a84eddf6d8`, PR #21 mesclado, workflows do PR e da main aprovados. A pedido do usuário, `docs/RELEASE_0.36.0.md` consolida agora as instruções desde 0.32.0 (incluindo 0.32.1), com requisitos, origens/migrações, backup/chave, instalação, ferramentas opcionais de extração, conferência operacional e rollback. Revisão exclusivamente documental: manter a versão 0.36.0 e não substituir ZIP, checksum ou tag já publicados. A documentação revisada deve ser consultada na main e no texto da release; o snapshot da tag conserva a redação original. Não executar migrações/testes mutáveis para uma alteração somente de documentação.
