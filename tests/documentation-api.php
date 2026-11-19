@@ -33,6 +33,7 @@ elseif ($path === '/api/v3/attachments' && $method === 'POST') {
     header('Content-Type: '.$attachment['contentType']);echo base64_decode($attachment['bytes']);exit;
 } elseif ($path === '/api/v3/work_packages' && $method === 'POST') {
     $id=990000+$state['creates']++;$response=wp($id,$input['description']['raw']);
+    $response['subject']=$input['subject'];
     $response['_links']['attachments']=$input['_links']['attachments']??[];
     $state['wps'][$id]=$response;
 } elseif (preg_match('~/work_packages/(\d+)/attachments$~',$path,$m)) {

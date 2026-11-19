@@ -482,6 +482,9 @@ final class TicketDemand extends CommonDBTM
         echo "<form id='demandas-create-wp-form' method='post' action='/plugins/demandas/front/work-package-documentation.php' class='row g-3 align-items-end demandas-documentation-form'>";
         echo "<input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
         echo "<input type='hidden' name='tickets_id' value='" . $ticket->getID() . "'>";
+        echo "<div class='col-12'><label class='form-label' for='demandas-wp-subject'>Título da Work Package <span class='text-danger'>*</span></label>";
+        echo "<input class='form-control' id='demandas-wp-subject' name='wp_subject' required maxlength='255' aria-describedby='demandas-wp-subject-help' value='" . htmlspecialchars(WorkPackageTitle::suggested($ticket), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . "'>";
+        echo "<div class='form-hint' id='demandas-wp-subject-help'>Sugestão baseada no chamado. Edite o título que será enviado ao OpenProject (até 255 caracteres). O título do chamado não será alterado.</div></div>";
         if ($hasLinkedWorkPackages) {
             echo "<div class='col-12'><label class='form-label'>Motivo da nova Work Package <span class='text-danger'>*</span></label>";
             echo "<textarea class='form-control' name='additional_wp_reason' rows='3' maxlength='2000' required placeholder='Explique objetivamente por que este chamado precisa de outra Work Package.'></textarea>";

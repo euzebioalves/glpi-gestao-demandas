@@ -231,13 +231,14 @@ final class WorkPackageDocumentation
             }
             if (!$draft['created']) {
                 if (!empty($draft['creating'])) throw new DomainException('O resultado da criação anterior não foi confirmado. Confira no OpenProject e concilie a WP se ela existir; não repita a criação.');
+                $subject = WorkPackageTitle::resolve($ticket, $input['wp_subject'] ?? null);
                 $selection = [];
                 foreach (['assignee', 'responsible', 'priority', 'customer'] as $key) $selection[$key] = (string) ($input['wp_' . $key] ?? '');
                 // Validate the template/type before the irreversible external operation.
                 self::template($draftId, $input);
                 $draft['creating'] = true;
                 try {
-                    $wp = $client->createWorkPackage($ticket, (int) ($input['project_id'] ?? 0), (int) ($input['type_id'] ?? 0), $selection, $reason, $markdown, $attachmentIds);
+                    $wp = $client->createWorkPackage($ticket, (int) ($input['project_id'] ?? 0), (int) ($input['type_id'] ?? 0), $selection, $reason, $markdown, $attachmentIds, $subject);
                 } catch (\Throwable $exception) {
                     $cause = $exception->getPrevious();
                     $status = $cause instanceof \GuzzleHttp\Exception\RequestException ? $cause->getResponse()?->getStatusCode() : null;

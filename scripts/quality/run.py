@@ -140,6 +140,7 @@ def main():
             run('node', 'tests/indicators-http.cjs')
             run(sys.executable, 'tests/operations.py')
             run('node', 'tests/operations-http.cjs')
+            run('node', 'tests/time-performance.cjs')
         finally:
             for pid in workers:
                 if pid.isdigit():

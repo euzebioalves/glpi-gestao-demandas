@@ -222,12 +222,14 @@ final class OpenProjectClient
         array $selection = [],
         string $additionalReason = '',
         ?string $documentation = null,
-        array $attachments = []
+        array $attachments = [],
+        ?string $subject = null
     ): array
     {
         if (!$this->allowsWorkPackageCreation) {
             throw new RuntimeException('O token automático não pode ser utilizado para criar Work Packages.');
         }
+        $subject = WorkPackageTitle::resolve($ticket, $subject);
         $project = $this->request('GET', 'projects/' . $projectId);
         $types = $this->getTypesForProject($projectId);
         $allowedType = null;
@@ -255,7 +257,7 @@ final class OpenProjectClient
         }
 
         $payload = [
-            'subject' => sprintf('[GLPI #%d] %s', $ticket->getID(), $ticket->fields['name']),
+            'subject' => $subject,
             'description' => [
                 'format' => 'markdown',
                 'raw' => WorkPackageTemplate::render(
