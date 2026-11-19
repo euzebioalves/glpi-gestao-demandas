@@ -29,10 +29,11 @@ Sem --integration, executa somente política estática, sintaxe, testes isolados
 - administrador, equipe, consulta, cliente e outra entidade por HTTP, CSRF e responsividade;
 - timeout, indisponibilidade, 401/403/422, concorrência, resultado incerto, repetição e recuperação;
 - acompanhamentos atômicos e webhook assinado repetível.
+- entradas de tempo paginadas sem consultas remotas na abertura, relatório sob demanda restrito ao proprietário, sessão liberada durante pesquisa lenta e ajuda dos cards por teclado.
 
 Fixtures não dependem de usuários de suítes antigas. Indicadores usam um único instante de referência, evitando falsos erros quando o banco demora. A conferência de anexos usa GLPI_DOC_DIR e hashes dos arquivos reais, junto com seus metadados no banco. Temas HTTP usam auror/auror_dark nativos do GLPI.
 
-Os testes de instalação criam schemas glpi_security_clean_* somente no banco descartável, preservados para diagnóstico. As APIs simuladas usam portas internas 8398/8399 e são encerradas ao finalizar. Não execute duas suítes simultaneamente nesse mesmo container.
+Os testes de instalação criam schemas glpi_security_clean_* somente no banco descartável, preservados para diagnóstico. As APIs simuladas usam portas internas 8397/8398/8399 e são encerradas ao finalizar. Não execute duas suítes simultaneamente nesse mesmo container.
 
 ## Dependências e revisão
 

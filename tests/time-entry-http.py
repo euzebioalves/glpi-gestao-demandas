@@ -76,7 +76,7 @@ action(admin,{'action':'sync','entry_id':entry['id']})
 synced=fixture('time-snapshot')[-1]
 check(synced['sync_status']=='synced' and int(synced['openproject_time_entry_id'])==93001, 'sincronização manual externa')
 status, html=request(admin,PAGE)
-check(status==200 and b'/projects/projeto-ficticio/cost_reports?' in html, 'link correto de Tempo e Custos')
+check(status==200 and ('/plugins/demandas/front/time-entry-report.php?id='+str(entry['id'])).encode() in html, 'relatório de Tempo e Custos disponível sob demanda')
 action(admin,{**base,'entry_id':entry['id'],'ended_at':'10:30'})
 check(int(fixture('time-snapshot')[-1]['minutes'])==90, 'edição sincronizada')
 action(admin,{'action':'delete','entry_id':entry['id']})

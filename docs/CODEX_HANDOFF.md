@@ -1,8 +1,20 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Atualização 0.37.0 — desempenho, em homologação
+
+A listagem de entradas de tempo não deve consultar a API nem gravar identificadores de projeto ao abrir. Consulta total/contagem no banco e limita as linhas a 50 por página, com ordenação estável por ID. O total é do intervalo inteiro; seleção em lote é da página atual. Conserva os 500 vínculos mais recentes do seletor e revalida leitura nativa uma vez por chamado durante a requisição.
+
+`time-entry-report.php` resolve o projeto somente no clique quando não houver identificador local, usando entrada sincronizada do próprio usuário, token pessoal e URL externa validada. Não recebe URL nem WP arbitrários e não grava nada. Falha remota mantém a listagem disponível. `time-entry-activities.php` e `time-entry-work-packages.php` liberam a sessão somente depois da autorização; não adicionar gravações de sessão nesses fluxos. Não liberar a sessão do POST mutável: mensagens/CSRF e guardas permanecem intactos. Sem cache compartilhado de autorização ou token.
+
+Editor abre antes da consulta de atividades; AbortController e identidade da requisição impedem respostas antigas de substituir a seleção atual. Testes sintéticos em `tests/time-performance.cjs`, exclusivamente no Docker descartável 8386; nunca no 8180. Regressões existentes continuam obrigatórias. Não publicar antes da validação humana.
+
+A ajuda dos quatro cards de ponto solicitada abaixo está implementada por `TimeclockHelp`, sem mudar o serviço de cálculo. O requisito histórico abaixo continua como referência de conteúdo e critérios.
+
+Validação técnica concluída em 19/11/2026: suíte integrada e testes específicos de desempenho/interface aprovados; listagem com zero chamadas à API, relatório por proprietário, sessão concorrente e resposta antiga descartada. Homologação 8180 ativa em 0.37.0, 22 hashes de dados/configurações/direitos preservados. Evidências e limites em `docs/DESEMPENHO_0.37.0.md`; backups privados em dist. Aguardando validação humana, sem publicação remota.
+
 ## Requisito para a próxima versão — ajuda nos cards de ponto (04/11/2026)
 
-Solicitação do usuário: na próxima versão do plugin, incluir um recurso de ajuda clicável em **todos os cards de Gerência > Horas e Ponto > Registro de Ponto**. Ao clicar, abrir um **modal** com explicação objetiva, em português, do indicador correspondente. Esta anotação registra trabalho pendente; não representa funcionalidade já implementada.
+Solicitação do usuário: na próxima versão do plugin, incluir um recurso de ajuda clicável em **todos os cards de Gerência > Horas e Ponto > Registro de Ponto**. Ao clicar, abrir um **modal** com explicação objetiva, em português, do indicador correspondente. Implementado na preparação da 0.37.0; conteúdo e critérios originais preservados abaixo.
 
 Conteúdo obrigatório, conforme o cálculo atual em `front/timeclock.php` e `TimeManagementService::balance`, `month` e `calculateDay`:
 

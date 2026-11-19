@@ -9,6 +9,9 @@ Session::checkLoginUser();
 AccessPolicy::check(DemandasProfile::VIEW_TIME_PORTAL);
 AccessPolicy::check(DemandasProfile::LOG_OWN_TIME);
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+// Read-only requests retain the authorized session snapshot without locking other tabs.
+session_write_close();
 
 try {
     $query = trim((string) ($_GET['query'] ?? ''));
