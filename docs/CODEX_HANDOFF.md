@@ -1,5 +1,9 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Release 0.37.0 — publicação autorizada
+
+Validação humana local aprovada em 19/11/2026. Publicar na main, conferir o workflow remoto e gerar a release com ZIP, SHA256, manifesto e `docs/RELEASE_0.37.0.md`. O roteiro acumula os cuidados desde 0.32.0; nenhum backup privado acompanha os anexos. As notas de preparação abaixo são históricas.
+
 ## Complemento da candidata 0.37.0 — usabilidade
 
 A 0.37.0 ainda não foi publicada; os ajustes de usabilidade integram a mesma candidata local. `time-entry.php` usa o Select2 já distribuído no GLPI, com dropdownParent no modal, pesquisa local sobre as opções autorizadas e ponte de eventos jQuery/nativos para carregar atividades uma única vez. Alterações programáticas usam `change.select2`; não disparar uma nova busca remota apenas para atualizar o rótulo. O limite anterior de 500 vínculos recentes foi preservado.
