@@ -1,5 +1,15 @@
 # Desempenho — preparação da 0.37.0
 
+## Complemento de usabilidade da mesma candidata
+
+- Em **Entradas de Tempo > Nova entrada > Relacionada ao GLPI**, o seletor usa o Select2 nativo do GLPI, com busca por número da WP, número do chamado e título. A pesquisa é local sobre as opções já autorizadas, mantendo o limite anterior de 500 vínculos recentes; não consulta o OpenProject a cada tecla. A edição também usa o seletor pesquisável. Dropdown e campo de pesquisa permanecem dentro do modal para permitir digitação e navegação por teclado.
+- Em **Chamado > Evolução da Demanda**, a criação inicial e a criação de outra WP exibem **Título da Work Package**. A sugestão é `[GLPI #ID] Título do chamado`; pode ser substituída integralmente. O servidor exige texto não vazio, em uma linha, com até 255 caracteres. Alterar projeto/tipo ou receber erro mantém o texto no formulário. O chamado e os títulos de WPs existentes não são alterados.
+- A retomada após criação confirmada e falha de relacionamento mantém a WP original, mesmo se o campo de título for modificado antes de repetir. Não há renomeação ou nova criação nessa retomada.
+
+Validação específica de criação: `tests/documentation.cjs` com `documentation-api.php` e fixtures exclusivamente no Docker descartável. Confere o título no payload remoto, recusa campos inválidos antes da criação, preserva o texto ao trocar opções e repete somente o relacionamento pendente. A pesquisa está coberta por `tests/time-performance.cjs`, incluindo carregamento de atividades e troca da origem da WP.
+
+Em 19/11/2026, os testes de documentação e de Entradas de Tempo passaram no Docker isolado. A execução integrada aprovou instalação/atualização, autorização, CSRF, conteúdo, webhook e operações; interrompeu na localização do botão pelo teste novo. Após ajustar apenas o seletor do teste, a suíte de Entradas de Tempo passou integralmente, assim como a verificação do pacote. Evidências locais: `dist/usability-documentation.log`, `dist/usability-quality.log` e `dist/usability-time-performance.log`. Os hashes de dados, configuração e permissões da homologação permaneceram iguais antes/depois deste complemento; a versão ativa continua sendo a candidata 0.37.0, sem publicação remota. A integração foi exercitada com API simulada; a validação humana com o OpenProject real permanece pendente.
+
 ## Diagnóstico e mudanças
 
 Na 0.36.0, abrir Entradas de Tempo podia consultar todos os projetos, cada WP sem chamado e seus projetos antes de devolver a página. Isso também atrasava o retorno após salvar. A latência se acumulava conforme o número de WPs distintas. O diagnóstico veio do código; não houve acesso ou medição direta em produção.

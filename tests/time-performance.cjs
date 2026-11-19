@@ -41,6 +41,20 @@ function mode(value){docker(['sh','-c','cat > /tmp/time-performance-mode'],value
   assert(docker(['cat','/tmp/time-performance-started']).trim());
   assert.equal((await context.request.get(url)).status(),200);assert.equal(completed,false,'Slow search blocked the session');await slow;mode('ok');
   console.log('PASS: slow API search does not lock another page in the same session');
+  await page.goto(url);await page.locator('button[data-bs-target="#teCreate"]').click();
+  const linked=page.locator('#te-create-wp');
+  assert(await linked.evaluate(el=>!!jQuery(el).data('select2')),'Native Select2 initialized');
+  const choice=await linked.locator('option[data-wp]').first().evaluate(el=>({wp:el.dataset.wp,value:el.value,text:el.textContent}));
+  await page.locator('#teCreate .select2-selection').click();
+  await page.locator('#teCreate .select2-search__field').fill(choice.wp);
+  await page.locator('#teCreate .select2-results__option[aria-selected]').filter({hasText:choice.text}).first().click();
+  assert.equal(await linked.inputValue(),choice.value);
+  await page.locator('#teCreate .te-activity:not([disabled])').waitFor();
+  assert.equal(await page.locator('#teCreate .te-activity option').count(),2,'Selection loads activities');
+  await page.locator('#teCreate label[for=te-source-external]').click();
+  await page.locator('#teCreate label[for=te-source-glpi]').click();
+  assert.equal(await linked.inputValue(),'','Switching source clears the selection');
+  console.log('PASS: searchable native selector in modal, selection triggers activities and source reset stays synchronized');
   await page.goto(url);await page.locator('.te-edit').first().click();await page.locator('#teEdit').waitFor({state:'visible'});await page.locator('#teEdit .te-activity:not([disabled])').waitFor();
   await page.route('**/time-entry-activities.php?*',async route=>{
    const latest=new URL(route.request().url()).searchParams.get('wp')==='98999';
@@ -49,7 +63,7 @@ function mode(value){docker(['sh','-c','cat > /tmp/time-performance-mode'],value
   });
   const selector=page.locator('#teEdit .te-wp');
   await selector.evaluate(el=>{el.dispatchEvent(new Event('change',{bubbles:true}));const option=new Option('WP sintética','0:98999');option.dataset.wp='98999';el.add(option);});
-  await selector.selectOption('0:98999');await page.waitForTimeout(1000);
+  await selector.selectOption('0:98999',{force:true});await page.waitForTimeout(1000);
   assert((await page.locator('#teEdit .te-activity').innerText()).includes('Atividade atual'));
   assert(!(await page.locator('#teEdit .te-activity').innerText()).includes('Resposta antiga'));
   console.log('PASS: stale activity responses cannot replace the latest WP selection');

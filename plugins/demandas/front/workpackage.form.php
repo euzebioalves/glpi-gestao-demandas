@@ -45,7 +45,8 @@ try {
         $projectId,
         $typeId,
         $selection,
-        $additionalReason
+        $additionalReason,
+        subject: \GlpiPlugin\Demandas\WorkPackageTitle::resolve($ticket, $_POST['wp_subject'] ?? null)
     );
     $metadata = $workPackage['_demandas'];
     TicketDemand::saveLink(

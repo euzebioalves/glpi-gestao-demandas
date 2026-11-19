@@ -63,6 +63,10 @@ const base = 'http://127.0.0.1:8386', endpoint = '/plugins/demandas/front/work-p
         await page.screenshot({path:path.join(os.tmpdir(),'documentation-ticket.png'),fullPage:true});
         await page.locator('[data-bs-target="#demandas-create-additional-wp"]').click();
         const modal=page.locator('#demandas-create-additional-wp');
+        const title=modal.locator('[name=wp_subject]');
+        assert((await title.inputValue()).startsWith('[GLPI #'+seed.ticket+'] '));
+        const customTitle='Corrigir cálculo — validação "QA" & acentuação';
+        await title.fill(customTitle);
         assert.equal(await modal.locator('.doc-workspace').isVisible(),false,'No editor before project/type');
         assert.equal(await modal.locator('.tox-tinymce').count(),0,'No TinyMCE initialized before options');
         await modal.locator('[name=additional_wp_reason]').fill('Correção anterior não resolveu completamente o bug.');
@@ -91,11 +95,22 @@ const base = 'http://127.0.0.1:8386', endpoint = '/plugins/demandas/front/work-p
         await modal.locator('[name=type_id]').selectOption('88');
         await modal.locator('.doc-workspace').waitFor({state:'visible'});
         assert.match(await page.evaluate(()=>tinymce.activeEditor.getContent()),/Texto preservado/);
+        assert.equal(await title.inputValue(),customTitle,'Changing project/type must preserve the title');
+        const createsBeforeInvalid=fixture({mode:'api-state'}).creates;
+        for(const invalid of ['   ','x'.repeat(256),'Linha\nquebrada']) {
+            const rejected=await page.evaluate(async ({endpoint,invalid})=>{
+                const form=document.querySelector('#demandas-create-wp-form'),section=form.querySelector('.demandas-documentation');
+                const body=new FormData(form);body.set('action','save');body.set('format','markdown');body.set('documentation','Teste sintético');body.set('wp_subject',invalid);body.set('_glpi_csrf_token',section.dataset.csrf);
+                const response=await fetch(endpoint,{method:'POST',body});const data=await response.json();if(data.csrf)section.dataset.csrf=data.csrf;return response.status;
+            },{endpoint,invalid});
+            assert.equal(rejected,400);assert.equal(fixture({mode:'api-state'}).creates,createsBeforeInvalid);
+        }
         await modal.locator('[name=relation_target]').selectOption(String(seed.wp)); await modal.locator('[name=confirm_relation]').check();
         fixture({mode:'failure',relation:true});const before=fixture({mode:'api-state'}).creates;
         await modal.locator('#demandas-create-button').click();
         await page.waitForFunction(()=>document.querySelector('#demandas-create-additional-wp .doc-status')?.textContent.includes('foi criada e vinculada'));
         assert.equal(fixture({mode:'api-state'}).creates,before+1);
+        assert.equal(fixture({mode:'api-state'}).wps[990000+before].subject,customTitle);
         fixture({mode:'failure'});
         await Promise.all([page.waitForNavigation(),modal.locator('#demandas-create-button').click()]);
         state=fixture({mode:'api-state'});assert.equal(state.creates,before+1);assert(state.relations.some(r=>r._links.to.href.endsWith('/'+seed.wp)));
@@ -128,6 +143,7 @@ const base = 'http://127.0.0.1:8386', endpoint = '/plugins/demandas/front/work-p
         await page.locator('.demandas-documentation').waitFor();
         assert.equal(await page.locator('.doc-workspace').isVisible(),false,'Unlinked ticket starts without editor');
         assert.equal(await page.locator('.doc-files').isVisible(),false);
+        assert((await page.locator('[name=wp_subject]').inputValue()).startsWith('[GLPI #'+candidates.tickets.first+'] '));
         const reconciliation='/plugins/demandas/front/legacy-reconciliation.php?ticket_scope=all&ticket=';
         const postReconciliation='/plugins/demandas/front/legacy-reconciliation.form.php';
         await page.goto(base+reconciliation+candidates.tickets.first);

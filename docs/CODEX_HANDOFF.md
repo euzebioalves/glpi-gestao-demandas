@@ -1,5 +1,11 @@
 # Guia de continuidade — Plugin Gestão de Demandas
 
+## Complemento da candidata 0.37.0 — usabilidade
+
+A 0.37.0 ainda não foi publicada; os ajustes de usabilidade integram a mesma candidata local. `time-entry.php` usa o Select2 já distribuído no GLPI, com dropdownParent no modal, pesquisa local sobre as opções autorizadas e ponte de eventos jQuery/nativos para carregar atividades uma única vez. Alterações programáticas usam `change.select2`; não disparar uma nova busca remota apenas para atualizar o rótulo. O limite anterior de 500 vínculos recentes foi preservado.
+
+A criação inicial e adicional compartilha `wp_subject`, preenchido com `[GLPI #ID] Título do chamado`. O texto é editável e enviado sem acrescentar outro prefixo. `WorkPackageTitle` valida texto em uma linha, não vazio, até 255 caracteres; null preserva chamadas legadas. `WorkPackageDocumentation::save` valida antes de marcar a criação como em andamento, e o cliente repete a validação antes de chamar a API. A retomada de uma relação após criação confirmada ignora mudanças no título, preservando a mesma WP; não usar esse campo para renomear WPs existentes. O chamado não é alterado. Direitos e CSRF mantidos.
+
 ## Atualização 0.37.0 — desempenho, em homologação
 
 A listagem de entradas de tempo não deve consultar a API nem gravar identificadores de projeto ao abrir. Consulta total/contagem no banco e limita as linhas a 50 por página, com ordenação estável por ID. O total é do intervalo inteiro; seleção em lote é da página atual. Conserva os 500 vínculos mais recentes do seletor e revalida leitura nativa uma vez por chamado durante a requisição.
